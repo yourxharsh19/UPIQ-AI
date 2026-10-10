@@ -1,4 +1,4 @@
-import api from './api';
+import api from './api.js';
 
 export const AuthService = {
   login: async (email, password) => {
@@ -11,9 +11,9 @@ export const AuthService = {
     return response.data;
   },
 
-  loginWithGoogle: async (googleData) => {
-    const response = await api.post('/auth/google', googleData);
-    return response.data;
+  loginWithGoogle: async () => {
+    // Google OAuth is not implemented on the backend; disabled to prevent unverified auth attempts
+    throw new Error('Google OAuth login is not supported by the backend.');
   },
 
   getMe: async () => {
@@ -23,4 +23,3 @@ export const AuthService = {
 };
 
 export default AuthService;
-

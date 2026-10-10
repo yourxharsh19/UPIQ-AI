@@ -1,17 +1,19 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeProvider } from './context/ThemeContext';
 import { FinancialProvider, useFinancial } from './context/FinancialContext';
 import { MainLayout } from './components/layout/MainLayout';
+import { LazyPageErrorBoundary } from './components/common/LazyPageErrorBoundary.js';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
-import { Dashboard } from './pages/Dashboard';
-import { Transactions } from './pages/Transactions';
-import { AIAssistant } from './pages/AIAssistant';
-import { Insights } from './pages/Insights';
-import { Reports } from './pages/Reports';
-import { Admin } from './pages/Admin';
-import { Profile } from './pages/Profile';
+
+const Dashboard = lazy(() => import('./pages/Dashboard').then((module) => ({ default: module.Dashboard })));
+const Transactions = lazy(() => import('./pages/Transactions').then((module) => ({ default: module.Transactions })));
+const AIAssistant = lazy(() => import('./pages/AIAssistant').then((module) => ({ default: module.AIAssistant })));
+const Insights = lazy(() => import('./pages/Insights').then((module) => ({ default: module.Insights })));
+const Reports = lazy(() => import('./pages/Reports').then((module) => ({ default: module.Reports })));
+const Admin = lazy(() => import('./pages/Admin').then((module) => ({ default: module.Admin })));
+const Profile = lazy(() => import('./pages/Profile').then((module) => ({ default: module.Profile })));
 
 const AppContent = () => {
   const { isAuthenticated, activeTab, currentView, profile } = useFinancial();
@@ -79,7 +81,13 @@ const AppContent = () => {
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         className="w-full min-h-screen"
       >
-        <MainLayout>{renderPage()}</MainLayout>
+        <MainLayout>
+          <LazyPageErrorBoundary>
+            <Suspense fallback={<div className="p-6 text-sm text-[var(--text-muted)]" role="status">Loading view…</div>}>
+              {renderPage()}
+            </Suspense>
+          </LazyPageErrorBoundary>
+        </MainLayout>
       </motion.div>
     );
   };

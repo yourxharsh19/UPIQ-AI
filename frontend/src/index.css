@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+@theme {
+  --shadow-premium: 0 8px 24px -10px rgba(0, 0, 0, 0.45);
+  --shadow-premium-hover: 0 14px 32px -10px rgba(0, 0, 0, 0.55);
+  --color-primary-50: #eef2ff;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+}
+
 @layer base {
   :root {
     color-scheme: dark;
@@ -8,6 +19,10 @@
     --border-card: rgba(255, 255, 255, 0.075);
     --text-primary: #f4f4f5;
     --text-secondary: #a1a1aa;
+    --bg-surface: rgba(255, 255, 255, 0.035);
+    --border-base: var(--border-card);
+    --text-main: var(--text-primary);
+    --text-muted: var(--text-secondary);
   }
 
   html.light, body.light, .light {
@@ -92,6 +107,9 @@ html.light, body.light, .light {
   --text-muted: #6B7280;
   --primary: #7C3AED;
   --accent: #EC4899;
+  --bg-surface: #F9FAFB;
+  --border-base: #E5E7EB;
+  --text-main: #1F2937;
 }
 
 .light body,

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import api from "../services/axios";
+import { useFinancial } from "../context/FinancialContext";
+import api from "../services/api";
 import Button from "../components/ui/Button";
 import { Wallet } from "lucide-react";
 import logo from "../assets/logo.png";
@@ -13,7 +13,7 @@ const Register = () => {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const { navigateToLogin } = useFinancial();
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -26,7 +26,7 @@ const Register = () => {
     try {
       await api.post("/auth/register", form);
       alert("Registration Successful! Please login.");
-      navigate("/login");
+      navigateToLogin();
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed. Please try again.");
     } finally {
@@ -125,7 +125,7 @@ const Register = () => {
         <p className="text-center mt-8 text-[var(--text-muted)]">
           Already have an account?{" "}
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => navigateToLogin()}
             className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline underline-offset-4"
           >
             Login here

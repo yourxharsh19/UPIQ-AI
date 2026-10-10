@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect } from "react";
-import api from "../services/axios";
+import api from "../services/api";
 
 export const AuthContext = createContext();
 
@@ -9,13 +9,13 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const checkAuth = async () => {
-            console.log("AuthContext: Performing checkAuth...");
-            const token = localStorage.getItem("token");
-            if (token) {
-                console.log("AuthContext: Token found in localStorage");
-                setUser({ token });
-            } else {
-                console.log("AuthContext: No token found");
+            try {
+                const token = localStorage.getItem("token");
+                if (token) {
+                    setUser({ token });
+                }
+            } catch {
+                // Ignore localStorage errors
             }
             setLoading(false);
         };
@@ -24,37 +24,43 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = async (email, password) => {
-        console.log("AuthContext: Attempting login for email:", email);
         try {
             const response = await api.post("/auth/login", { email, password });
-            console.log("AuthContext: API response received:", response.data);
 
             if (response.data && response.data.data && response.data.data.token) {
                 const token = response.data.data.token;
-                console.log("AuthContext: Login SUCCESS, token found");
                 localStorage.setItem("token", token);
                 setUser({ token });
-                console.log("AuthContext: Global USER state updated");
                 return true;
             } else {
-                console.warn("AuthContext: Token MISSING in response", response.data);
                 throw new Error("Invalid response structure from login API");
             }
         } catch (error) {
-            console.error("AuthContext: Login request FAILED", error);
+            console.error("AuthContext: Login request failed:", error.userFriendlyMessage || error.message);
             throw error;
         }
     };
 
     const logout = () => {
-        localStorage.removeItem("token");
+        try {
+            localStorage.removeItem("token");
+            localStorage.removeItem("upiq_auth");
+        } catch {
+            // Ignore localStorage errors
+        }
         setUser(null);
-        window.location.href = "/login";
+        if (typeof window !== "undefined" && window.location && window.location.pathname !== "/login") {
+            window.location.href = "/login";
+        }
     };
 
     const setUserFromToken = (token) => {
         if (token) {
-            localStorage.setItem("token", token);
+            try {
+                localStorage.setItem("token", token);
+            } catch {
+                // Ignore localStorage errors
+            }
             setUser({ token });
         }
     };

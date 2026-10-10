@@ -7,12 +7,11 @@ import {
   ArrowLeft,
   Fingerprint,
   Lock,
-  CheckCircle2,
 } from 'lucide-react';
 import { useFinancial } from '../context/FinancialContext';
 
 export const Login = () => {
-  const { login, loginWithGoogle, supportedCurrencies, navigateToHome, postLoginRedirect } = useFinancial();
+  const { login, supportedCurrencies, navigateToHome, postLoginRedirect } = useFinancial();
 
   const [name, setName] = useState('');
   const [vpa, setVpa] = useState('');
@@ -22,39 +21,40 @@ export const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [useBiometric, setUseBiometric] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const triggerLoginProcess = (emailVal, passVal, currVal, nameVal, roleVal) => {
+  // Triggers the login flow with a brief animated delay so the spinner is visible.
+  // Resets isSubmitting in a finally block to ensure the card re-mounts on failure.
+  const triggerLoginProcess = async (emailVal, passVal, currVal, nameVal, roleVal, isDemoVal = false) => {
     setIsSubmitting(true);
-    setTimeout(() => {
-      login(emailVal, passVal, currVal, nameVal, roleVal);
-    }, 550);
+    setErrorMessage('');
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 550));
+      const res = await login(emailVal, passVal, currVal, nameVal, roleVal, isDemoVal);
+      if (!res?.success) {
+        setErrorMessage(res?.error || 'Login failed. Invalid credentials.');
+      } else {
+        setErrorMessage('');
+      }
+    } catch (err) {
+      setErrorMessage(err?.userFriendlyMessage || err?.message || 'Login failed. Invalid credentials.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const isAdm = vpa.toLowerCase().includes('admin');
-    triggerLoginProcess(vpa, password, selectedCurrency, name, isAdm ? 'admin' : 'user');
-  };
-
-  const handleGoogleLogin = () => {
-    setIsSubmitting(true);
-    setTimeout(() => {
-      loginWithGoogle({
-        email: 'google.user@gmail.com',
-        name: 'Google User',
-        currencyCode: selectedCurrency,
-        googleId: 'g_auth_10928374',
-        credential: 'google_identity_credential_token_verified',
-      });
-    }, 550);
+    triggerLoginProcess(vpa, password, selectedCurrency, name, isAdm ? 'admin' : 'user', false);
   };
 
   const handleUserDemo = () => {
-    triggerLoginProcess('user@upiq.ai', 'user123', selectedCurrency, 'User Account', 'user');
+    triggerLoginProcess('user@upiq.ai', 'user123', selectedCurrency, 'User Account', 'user', true);
   };
 
   const handleAdminDemo = () => {
-    triggerLoginProcess('admin@upiq.ai', 'admin123', selectedCurrency, 'System Administrator', 'admin');
+    triggerLoginProcess('admin@upiq.ai', 'admin123', selectedCurrency, 'System Administrator', 'admin', true);
   };
 
   const handleCurrencySelect = (code, country) => {
@@ -129,6 +129,17 @@ export const Login = () => {
                 </div>
               )}
 
+              {errorMessage && (
+                <div
+                  id="login-error"
+                  role="alert"
+                  aria-live="assertive"
+                  className="rounded-xl border border-rose-500/40 bg-rose-950/50 px-4 py-3 text-sm font-medium text-rose-200"
+                >
+                  {errorMessage}
+                </div>
+              )}
+
               {/* Form Title & Logo Header */}
               <div className="text-center space-y-2">
                 <img
@@ -141,12 +152,11 @@ export const Login = () => {
               </div>
 
               {/* DIRECT GOOGLE / GMAIL LOGIN BUTTON */}
-              <motion.button
+              <button
                 type="button"
-                whileHover={{ scale: 1.015 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleGoogleLogin}
-                className="w-full py-3 px-4 rounded-xl border border-slate-700 bg-slate-950 hover:bg-slate-800/90 text-xs font-bold text-slate-100 flex items-center justify-center gap-3 shadow-md transition-all cursor-pointer group"
+                disabled
+                className="w-full py-3 px-4 rounded-xl border border-slate-800 bg-slate-950/50 text-xs font-semibold text-slate-500 flex items-center justify-center gap-3 shadow-md cursor-not-allowed opacity-60"
+                title="Google sign-in is currently unavailable"
               >
                 {/* Official Google Logo SVG */}
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
@@ -167,8 +177,8 @@ export const Login = () => {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
                 </svg>
-                <span>Continue with Google / Gmail</span>
-              </motion.button>
+                <span>Continue with Google (Unavailable)</span>
+              </button>
 
               {/* DIVIDER */}
               <div className="relative flex items-center justify-center my-1">
@@ -359,7 +369,7 @@ export const Login = () => {
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Google OAuth Ready
+                  <Lock className="w-3 h-3 text-slate-500" /> Google OAuth (Planned)
                 </span>
               </div>
             </motion.div>
@@ -379,3 +389,5 @@ export const Login = () => {
     </div>
   );
 };
+
+export default Login;

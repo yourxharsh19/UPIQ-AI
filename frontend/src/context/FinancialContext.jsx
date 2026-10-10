@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { getInitialAuthState } from '../utils/authUtils';
+import { activateDemoSession, applySessionExpiration, authenticateWithBackend, clearAuthSession } from '../utils/authFlow.js';
 import { AuthService } from '../services/auth.service';
 import { TransactionService } from '../services/transaction.service';
 import { FinancialDashboardService } from '../services/financial-dashboard.service';
@@ -20,6 +22,8 @@ import {
 
 const FinancialContext = createContext();
 
+
+
 export const FinancialProvider = ({ children }) => {
   // Helper to safely load initial state from localStorage or fallback
   const getInitialState = (key, fallback) => {
@@ -39,7 +43,7 @@ export const FinancialProvider = ({ children }) => {
     }
   };
 
-  const [isAuthenticated, setIsAuthenticated] = useState(() => getInitialState('auth', false));
+  const [isAuthenticated, setIsAuthenticated] = useState(getInitialAuthState);
   const [profile, setProfile] = useState(() => getInitialState('profile', initialProfile));
   const [selectedCurrencyCode, setSelectedCurrencyCode] = useState(() => {
     const savedProf = getInitialState('profile', null);
@@ -63,7 +67,7 @@ export const FinancialProvider = ({ children }) => {
 
   // View routing states: 'home' | 'login' | 'app'
   const [currentView, setCurrentView] = useState(() => {
-    const isAuth = getInitialState('auth', false);
+    const isAuth = getInitialAuthState();
     return isAuth ? 'app' : 'home';
   });
   const [postLoginRedirect, setPostLoginRedirect] = useState('dashboard');
@@ -73,6 +77,26 @@ export const FinancialProvider = ({ children }) => {
   const [isFraudDrawerOpen, setIsFraudDrawerOpen] = useState(false);
   const [aiPromptQuery, setAiPromptQuery] = useState('');
   const [toasts, setToasts] = useState([]);
+
+  const handlingExpiryRef = useRef(false);
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      applySessionExpiration({
+        storage: localStorage,
+        handledRef: handlingExpiryRef,
+        setIsAuthenticated,
+        setCurrentView,
+        setProfile,
+        initialProfile,
+        addToast,
+      });
+    };
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('upiq:session-expired', handleSessionExpired);
+      return () => window.removeEventListener('upiq:session-expired', handleSessionExpired);
+    }
+  }, []);
 
   // Toast helper
   const addToast = (title, message, type = 'info') => {
@@ -105,7 +129,7 @@ export const FinancialProvider = ({ children }) => {
 
   // Fetch real transaction ledger from backend
   const refreshTransactions = useCallback(async () => {
-    const token = localStorage.getItem('upiq_token');
+    const token = localStorage.getItem('token');
     if (!token) return;
     try {
       setLoading(true);
@@ -124,7 +148,7 @@ export const FinancialProvider = ({ children }) => {
 
   // Fetch real financial dashboard calculation summary from backend
   const refreshDashboard = useCallback(async () => {
-    const token = localStorage.getItem('upiq_token');
+    const token = localStorage.getItem('token');
     if (!token) return;
     try {
       const res = await FinancialDashboardService.getDashboardSummary();
@@ -274,33 +298,11 @@ export const FinancialProvider = ({ children }) => {
   };
 
   // Auth operations
-  const login = async (email, password, currencyCode, userName, role) => {
+  const login = async (email, password, currencyCode, userName, role, isDemo = false) => {
     const isAdmin = (email && email.toLowerCase().includes('admin')) || role === 'admin';
     const basePreset = isAdmin ? testAdminUser : testStandardUser;
     const targetCurrency = currencyCode || selectedCurrencyCode || basePreset.currency || 'INR';
     setSelectedCurrencyCode(targetCurrency);
-
-    let token = null;
-    try {
-      const res = await AuthService.login(email, password || 'password123');
-      if (res?.data?.token) {
-        token = res.data.token;
-      }
-    } catch {
-      try {
-        await AuthService.register(email, password || 'password123', userName || 'User', isAdmin ? 'ADMIN' : 'USER');
-        const loginRes = await AuthService.login(email, password || 'password123');
-        if (loginRes?.data?.token) {
-          token = loginRes.data.token;
-        }
-      } catch (regErr) {
-        console.warn('Backend login/registration fallback warning:', regErr);
-      }
-    }
-
-    if (token) {
-      localStorage.setItem('upiq_token', token);
-    }
 
     const derivedName = userName && userName.trim()
       ? userName
@@ -317,6 +319,39 @@ export const FinancialProvider = ({ children }) => {
       accountType: isAdmin ? 'UPIQ Super Admin' : 'UPIQ Pro AI',
     };
 
+    // Explicit Demo Flow
+    if (isDemo) {
+      const result = activateDemoSession({
+        storage: localStorage,
+        profile: updatedProfile,
+        currency: targetCurrency,
+      });
+      if (!result.success) return result;
+
+      handlingExpiryRef.current = false;
+      setProfile(updatedProfile);
+      setIsAuthenticated(true);
+      const destinationTab = postLoginRedirect || (isAdmin ? 'admin' : 'dashboard');
+      setActiveTab(destinationTab);
+      setCurrentView('app');
+      setPostLoginRedirect('dashboard');
+
+      addToast('Demo Mode Activated', `Exploring as ${updatedProfile.name}`, 'info');
+      return result;
+    }
+
+    // Backend-Authenticated Flow
+    const result = await authenticateWithBackend({
+      authService: AuthService,
+      email,
+      password,
+      profile: updatedProfile,
+      currency: targetCurrency,
+      storage: localStorage,
+    });
+    if (!result.success) return result;
+
+    handlingExpiryRef.current = false;
     setProfile(updatedProfile);
     setIsAuthenticated(true);
     const destinationTab = postLoginRedirect || (isAdmin ? 'admin' : 'dashboard');
@@ -324,29 +359,21 @@ export const FinancialProvider = ({ children }) => {
     setCurrentView('app');
     setPostLoginRedirect('dashboard');
 
-    try {
-      localStorage.setItem('upiq_auth', JSON.stringify(true));
-      localStorage.setItem('upiq_profile', JSON.stringify(updatedProfile));
-      localStorage.setItem('upiq_currency', JSON.stringify(targetCurrency));
-    } catch {}
-
     addToast('Welcome to UPIQ AI', `Logged in as ${updatedProfile.name}`, 'success');
+    return result;
   };
 
-  const loginWithGoogle = async (googleData = {}) => {
-    const email = googleData.email || 'google.user@gmail.com';
-    const name = googleData.name || 'Google User';
-    await login(email, 'password123', 'INR', name, 'USER');
+  const loginWithGoogle = async () => {
+    addToast('Google Sign-In Unavailable', 'Google OAuth is not implemented on the backend.', 'warning');
   };
 
   const logout = () => {
+    handlingExpiryRef.current = true;
     setIsAuthenticated(false);
     setActiveTab('dashboard');
     setCurrentView('home');
-    try {
-      localStorage.removeItem('upiq_auth');
-      localStorage.removeItem('upiq_token');
-    } catch {}
+    clearAuthSession(localStorage, { clearProfile: true });
+    setProfile(initialProfile);
     addToast('Logged Out', 'You have been signed out of UPIQ AI session', 'info');
   };
 
@@ -376,7 +403,7 @@ export const FinancialProvider = ({ children }) => {
       date: newTx.date || new Date().toISOString(),
     };
 
-    const token = localStorage.getItem('upiq_token');
+    const token = localStorage.getItem('token');
     let createdTx = null;
 
     if (token) {
@@ -410,7 +437,7 @@ export const FinancialProvider = ({ children }) => {
   };
 
   const updateTransaction = async (id, updatedFields) => {
-    const token = localStorage.getItem('upiq_token');
+    const token = localStorage.getItem('token');
     if (token && id && !id.toString().startsWith('tx-')) {
       try {
         const txPayload = {
@@ -434,7 +461,7 @@ export const FinancialProvider = ({ children }) => {
   };
 
   const deleteTransaction = async (id) => {
-    const token = localStorage.getItem('upiq_token');
+    const token = localStorage.getItem('token');
     if (token && id && !id.toString().startsWith('tx-')) {
       try {
         await TransactionService.delete(id);
@@ -449,7 +476,7 @@ export const FinancialProvider = ({ children }) => {
   };
 
   const deleteAllTransactions = async () => {
-    const token = localStorage.getItem('upiq_token');
+    const token = localStorage.getItem('token');
     if (token) {
       try {
         await TransactionService.deleteAll();
