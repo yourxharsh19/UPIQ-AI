@@ -1,17 +1,18 @@
-import api from "./axios";
+import api from './api';
 
-const PDFService = {
-    upload: async (file) => {
-        const formData = new FormData();
-        formData.append("file", file);
+export const PDFService = {
+  upload: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
 
-        const response = await api.post("/pdf/upload", formData, {
-            headers: {
-                "Content-Type": "multipart/form-data",
-            },
-        });
-        return response.data;
-    },
+    const response = await api.post('/pdf/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };
 
 export default PDFService;
+

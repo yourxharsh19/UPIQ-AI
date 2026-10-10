@@ -1,10 +1,11 @@
-import api from "./axios";
+import api from './api';
 
-const FinancialChatService = {
+export const FinancialChatService = {
   ask: async (question) => {
-    const response = await api.post("/financial-chat", { question });
+    const response = await api.post('/financial-chat', { question });
     return response.data;
   },
 };
 
 export default FinancialChatService;
+

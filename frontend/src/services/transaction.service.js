@@ -1,40 +1,41 @@
-import api from "./axios";
+import api from './api';
 
-const TransactionService = {
-    getAll: async () => {
-        const response = await api.get("/transactions");
-        return response.data;
-    },
+export const TransactionService = {
+  getAll: async () => {
+    const response = await api.get('/transactions');
+    return response.data;
+  },
 
-    create: async (transactionData) => {
-        const response = await api.post("/transactions", transactionData);
-        return response.data;
-    },
+  create: async (txData) => {
+    const response = await api.post('/transactions', txData);
+    return response.data;
+  },
 
-    getByCategory: async (category) => {
-        const response = await api.get(`/transactions/category/${category}`);
-        return response.data;
-    },
+  getByCategory: async (category) => {
+    const response = await api.get(`/transactions/category/${category}`);
+    return response.data;
+  },
 
-    categorizeUncategorized: async () => {
-        const response = await api.post("/transactions/categorize-uncategorized");
-        return response.data;
-    },
+  categorizeUncategorized: async () => {
+    const response = await api.post('/transactions/categorize-uncategorized');
+    return response.data;
+  },
 
-    async update(id, transactionData) {
-        // PUT /api/transactions/{id}
-        return api.put(`/transactions/${id}`, transactionData);
-    },
+  update: async (id, txData) => {
+    const response = await api.put(`/transactions/${id}`, txData);
+    return response.data;
+  },
 
-    async delete(id) {
-        // DELETE /api/transactions/{id}
-        return api.delete(`/transactions/${id}`);
-    },
+  delete: async (id) => {
+    const response = await api.delete(`/transactions/${id}`);
+    return response.data;
+  },
 
-    async deleteAll() {
-        // DELETE /api/transactions
-        return api.delete('/transactions');
-    }
+  deleteAll: async () => {
+    const response = await api.delete('/transactions');
+    return response.data;
+  },
 };
 
 export default TransactionService;
+

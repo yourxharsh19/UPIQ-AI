@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Upload, FileText, Check, X, AlertCircle, Save } from "lucide-react";
+import { Upload, FileText, X, AlertCircle, Save } from "lucide-react";
 import PDFService from "../services/pdf.service";
 import TransactionService from "../services/transaction.service";
 import Button from "../components/ui/Button";

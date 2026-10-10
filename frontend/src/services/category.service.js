@@ -1,37 +1,31 @@
-import api from './axios';
+import api from './api';
 
-const CategoryService = {
-    async getAll() {
-        // GET /api/categories
-        return api.get('/categories');
-    },
+export const CategoryService = {
+  getAll: async () => {
+    const response = await api.get('/categories');
+    return response.data;
+  },
 
-    async create(categoryData) {
-        // POST /api/categories
-        // categoryData: { name, type, description }
-        return api.post('/categories', categoryData);
-    },
+  getByType: async (type) => {
+    const response = await api.get(`/categories/type/${type}`);
+    return response.data;
+  },
 
-    async update(id, categoryData) {
-        // PUT /api/categories/{id}
-        return api.put(`/categories/${id}`, categoryData);
-    },
+  create: async (categoryData) => {
+    const response = await api.post('/categories', categoryData);
+    return response.data;
+  },
 
-    async delete(id) {
-        // DELETE /api/categories/{id}
-        return api.delete(`/categories/${id}`);
-    },
+  update: async (id, categoryData) => {
+    const response = await api.put(`/categories/${id}`, categoryData);
+    return response.data;
+  },
 
-    async getByType(type) {
-        // GET /api/categories/type/{type}
-        // type: "income" or "expense"
-        return api.get(`/categories/type/${type}`);
-    },
-
-    async getById(id) {
-        // GET /api/categories/{id}
-        return api.get(`/categories/${id}`);
-    }
+  delete: async (id) => {
+    const response = await api.delete(`/categories/${id}`);
+    return response.data;
+  },
 };
 
 export default CategoryService;
+
