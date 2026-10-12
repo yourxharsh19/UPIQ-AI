@@ -32,10 +32,10 @@ public class ParserService {
 
         try {
             if (validationService.isPDF(file)) {
-                log.info("Parsing PDF file: {}", file.getOriginalFilename());
+                log.info("Parsing uploaded PDF");
                 transactions = pdfParserService.parsePDF(file);
             } else if (validationService.isCSV(file)) {
-                log.info("Parsing CSV file: {}", file.getOriginalFilename());
+                log.info("Parsing uploaded CSV");
                 transactions = csvParserService.parseCSV(file);
             } else {
                 throw new ParsingException("Unsupported file type. Only PDF and CSV files are allowed");
@@ -58,11 +58,11 @@ public class ParserService {
             transactions.removeIf(tx -> tx == null || tx.getAmount() == null || tx.getAmount() <= 0);
 
         } catch (ParsingException e) {
-            log.error("Parsing error: {}", e.getMessage());
+            log.warn("Statement parsing failed (exceptionClass={})", e.getClass().getSimpleName());
             throw e;
         } catch (Exception e) {
-            log.error("Unexpected error during parsing: {}", e.getMessage(), e);
-            throw new ParsingException("Failed to parse file: " + e.getMessage(), e);
+            log.error("Unexpected statement parsing error (exceptionClass={})", e.getClass().getSimpleName());
+            throw new ParsingException("Could not parse uploaded statement", e);
         }
 
         String message = String.format(

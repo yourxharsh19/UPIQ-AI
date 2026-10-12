@@ -10,10 +10,12 @@ import {
 } from 'recharts';
 import { Card } from '../common/Card';
 import { useFinancial } from '../../context/FinancialContext';
+import { getMonthlyCashFlow } from '../../utils/dashboardAnalytics.js';
 
 export const IncomeExpenseChart = () => {
-  const { trends, formatCurrency } = useFinancial();
+  const { transactions, transactionsError, loading, formatCurrency } = useFinancial();
   const [timeRange, setTimeRange] = useState('6M');
+  const trends = getMonthlyCashFlow(transactions, { '1M': 1, '3M': 3, '6M': 6, '1Y': 12 }[timeRange]);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -24,15 +26,15 @@ export const IncomeExpenseChart = () => {
           </p>
           <p className="text-emerald-400 font-semibold flex items-center justify-between gap-4">
             <span>Income:</span>
-            <span>{formatCurrency(payload[0]?.value)}</span>
+            <span>{formatCurrency(payload.find((item) => item.dataKey === 'income')?.value)}</span>
           </p>
           <p className="text-rose-400 font-semibold flex items-center justify-between gap-4">
             <span>Expense:</span>
-            <span>{formatCurrency(payload[1]?.value)}</span>
+            <span>{formatCurrency(payload.find((item) => item.dataKey === 'expense')?.value)}</span>
           </p>
           <p className="text-indigo-400 font-semibold flex items-center justify-between gap-4">
             <span>Savings:</span>
-            <span>{formatCurrency(payload[2]?.value)}</span>
+            <span>{formatCurrency(payload.find((item) => item.dataKey === 'savings')?.value)}</span>
           </p>
         </div>
       );
@@ -71,6 +73,13 @@ export const IncomeExpenseChart = () => {
       </div>
 
       {/* Recharts Area Container */}
+      {loading ? (
+        <div className="flex h-72 items-center justify-center text-sm text-[var(--text-muted)]" role="status">Loading transaction history…</div>
+      ) : transactionsError ? (
+        <div className="flex h-72 items-center justify-center text-sm text-rose-400" role="alert">{transactionsError}</div>
+      ) : trends.length === 0 ? (
+        <div className="flex h-72 items-center justify-center text-center text-sm text-[var(--text-muted)]">Add transactions to see your cash flow.</div>
+      ) : (
       <div className="h-72 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={trends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -90,7 +99,7 @@ export const IncomeExpenseChart = () => {
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" />
             <XAxis dataKey="period" stroke="#64748b" fontSize={11} tickLine={false} />
-            <YAxis stroke="#64748b" fontSize={11} tickLine={false} />
+            <YAxis stroke="#64748b" fontSize={11} tickLine={false} tickFormatter={(value) => formatCurrency(value, 0)} />
             <RechartsTooltip content={<CustomTooltip />} />
             <Area
               type="monotone"
@@ -120,6 +129,7 @@ export const IncomeExpenseChart = () => {
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      )}
 
       {/* Legend */}
       <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-slate-800/80 light:border-slate-200 text-xs font-semibold">

@@ -1,6 +1,6 @@
 # UPIQ AI 2.0
 
-UPIQ AI is a college group project exploring personal finance management. It provides transaction tracking, deterministic financial summaries, statement parsing, and a bounded financial assistant. A separate research package supports a question-only/raw-context/verified-context LLM experiment. Product screens include additional prototype features; their implementation status is listed in [docs/FEATURE_STATUS.md](docs/FEATURE_STATUS.md).
+UPIQ AI is a personal-finance college project. It provides transaction tracking, deterministic financial summaries, statement parsing, local category budgets, and a bounded financial assistant. A separate research package supports a question-only/raw-context/verified-context LLM experiment. The maintained project records are [Bugs and Issues](docs/BUGS_AND_ISSUES.md) and [Future Implementation](docs/FUTURE_IMPLEMENTATION.md).
 
 ## Architecture and stack
 
@@ -12,7 +12,7 @@ UPIQ AI is a college group project exploring personal finance management. It pro
 
 ## Frontend pages and workflows
 
-The current app view switch exposes Home, Login, Dashboard, Transactions, AI Assistant, Insights (also used for the Security tab), Reports, Profile, and an Admin view conditional on the client profile role. The Login screen includes explicit demo choices. Registration and Categories components exist but are not reachable from the active view switch. See [the feature matrix](docs/FEATURE_STATUS.md) for workflow completeness and evidence.
+The active view switch exposes Home, Login, Register, Dashboard, Transactions, Categories, AI Assistant, Insights, Reports, Profile, and an Admin view gated in the UI by profile role. Server-side authorization remains authoritative. Advanced predictions/cloud budget sync are labeled Coming Soon; the estimate and budgets currently run in the browser.
 
 Transactions can be created, viewed, filtered, edited, and deleted through frontend services. Statement upload currently accepts PDF, previews parsed rows, and lets the user save them. The backend parser also accepts CSV, but there is no CSV upload flow in the current UI. The dashboard combines backend financial summary data with client-side widgets. Reports can request an authenticated PDF; the report preview/archive currently uses frontend state and is not a backend report-history workflow.
 
@@ -20,7 +20,7 @@ Transactions can be created, viewed, filtered, edited, and deleted through front
 
 The backend exposes `POST /api/auth/register` and `POST /api/auth/login`; a successful login returns an `ApiResponse` with `data.token`. The frontend validates saved JWT structure before restoring a backend session, stores the bearer token, and attaches it to protected Axios requests. Client-side token structure validation is not token authenticity validation; the backend validates protected requests. A protected 401 clears auth/session storage, resets in-memory user state, and returns the app to Login without reloading. Demo login is an explicit local demo path and is separate from backend authentication. Google login is unavailable.
 
-The frontend API base defaults to `http://localhost:8080/api` (`VITE_API_BASE_URL`). Implemented API paths include `/api/transactions`, `/api/categories`, `/api/pdf/upload`, `/api/financial/dashboard`, `/api/financial/report`, `/api/financial-chat`, `/api/auth`, `/api/v1/users`, and health routes. Protected routes require `Authorization: Bearer <token>`; auth and health routes are public as configured. See [docs/API.md](docs/API.md) for methods and payload details. Do not assume UI labels imply a working API feature.
+The frontend API base defaults to `http://localhost:8080/api` (`VITE_API_BASE_URL`). Implemented API paths include `/api/transactions`, `/api/categories`, `/api/pdf/upload`, `/api/pdf/import`, `/api/financial/dashboard`, `/api/financial/report`, `/api/financial-chat`, `/api/auth`, `/api/v1/users`, and health routes. Protected routes require `Authorization: Bearer <token>`; auth and health routes are public as configured. The canonical docs describe request boundaries and known limitations. Do not assume UI labels imply a working API feature.
 
 ## Prerequisites and local development
 
@@ -75,18 +75,17 @@ See [.env.example](.env.example) for the supported template variables: database 
 
 ## Database and API notes
 
-The datasource is PostgreSQL, configured from `DB_URL` or `DB_HOST`/`DB_PORT`/`DB_NAME`. Hibernate updates the schema automatically in the current development configuration. Compose persists data in its `upiq-postgres-data` volume. `/api/auth/**` and `/health/**` are public; other API requests require authentication. Transaction and category operations are designed to scope records to the authenticated user. API reference: [docs/API.md](docs/API.md).
+The datasource is PostgreSQL, configured from `DB_URL` or `DB_HOST`/`DB_PORT`/`DB_NAME`. Hibernate updates the schema automatically in the current configuration; the production migration risk is documented in [Bugs and Issues](docs/BUGS_AND_ISSUES.md). Compose persists data in its `upiq-postgres-data` volume. `/api/auth/**` and `/health/**` are public; other API requests require authentication. Transaction and category operations are scoped to the authenticated user.
 
 ## Limitations and known risks
 
-- Budget/forecast, investment, fraud, notification, and admin screens contain prototype or local/demo state; they do not represent complete backend services. Budgets are not synced across devices.
-- Financial chat handles a bounded set of intents and depends on backend/Ollama for grounded answers. The frontend contains heuristic fallback responses with hard-coded example claims; treat those claims as prototype behavior, not account analysis.
-- Report PDF generation is backed by the API, but the report archive/preview has incomplete frontend state wiring and may not be available for a newly logged-in account.
-- Backend CSV parsing exists, but upload UI is PDF-only. Parsing uses text extraction and does not OCR scanned image PDFs.
-- Registration role assignment and authenticated user-directory endpoints need authorization review before public deployment. CORS currently allows any origin (credentials are disabled).
-- Financial transaction data has no currency metadata in the backend calculation model; do not infer currency from calculated values.
-- The research dataset is small, and no evaluation metrics/statistics exist. Recorded local System B runtime issues are not evidence that any system performs better.
+- Browser-local budgets and simple run-rate estimates are not server-synchronized or AI predictions. Investment advice, fraud detection, persistent push notifications, and live admin telemetry are not implemented.
+- Financial chat supports bounded intents and depends on backend/Ollama for grounded answers. A timeout is not evidence of an incorrect calculation; consult the issue register before drawing performance conclusions.
+- Backend CSV parsing exists, but the browser upload UI is PDF-only. Parsing uses heuristic text extraction and does not OCR scanned image PDFs.
+- Transaction records have no currency metadata and use a `Double` amount. Do not infer original currency or conversion from display formatting.
+- Backend schema uses Hibernate `ddl-auto: update`; a versioned production migration workflow is not yet configured. CORS uses a wildcard origin with credentials disabled; set deployment-specific policy before exposing publicly.
+- The research dataset is small, and no answer-quality metrics/statistics exist. Recorded local runtime issues are not evidence that any system performs better.
 
 ## Team workflow and documentation
 
-Check `git status` before editing, work on a focused branch, and run the relevant backend tests/frontend checks. Review `git diff` and `git diff --check`; do not commit secrets, `.env`, model files, generated build output, or local research results. The technical handover is [docs/PROJECT_IMPLEMENTATION_GUIDE.md](docs/PROJECT_IMPLEMENTATION_GUIDE.md); feature coverage is [docs/FEATURE_STATUS.md](docs/FEATURE_STATUS.md), known issues [docs/BUGS_AND_LIMITATIONS.md](docs/BUGS_AND_LIMITATIONS.md), and endpoint reference [docs/API.md](docs/API.md).
+Check `git status` before editing, preserve existing work, and run relevant backend tests/frontend checks. Review `git diff` and `git diff --check`; do not commit secrets, `.env`, model files, generated build output, or local research results. See [Docs/BUGS_AND_ISSUES.md](docs/BUGS_AND_ISSUES.md) for current API/persistence boundaries and audit findings, and [Docs/FUTURE_IMPLEMENTATION.md](docs/FUTURE_IMPLEMENTATION.md) for feature status and the roadmap.

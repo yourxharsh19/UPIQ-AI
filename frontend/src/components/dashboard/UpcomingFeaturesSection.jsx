@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Clock, CheckCircle2, ChevronRight, Server, ArrowRight, ShieldCheck, FileSpreadsheet, Mic, Cloud, ShieldAlert, TrendingUp } from 'lucide-react';
+import { Sparkles, Clock, Server } from 'lucide-react';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
 import { BackendFeatureRoadmapModal } from '../common/BackendFeatureRoadmapModal';
@@ -22,7 +22,7 @@ export const UpcomingFeaturesSection = () => {
                 <Sparkles className="w-4 h-4 animate-pulse" />
               </span>
               <h3 className="text-lg font-bold text-slate-100 light:text-slate-900">
-                UPIQ System Roadmap & Feature Matrix
+                UPIQ Feature Roadmap
               </h3>
               <Badge variant="ai" size="sm">
                 Backend Status Verified
@@ -34,7 +34,7 @@ export const UpcomingFeaturesSection = () => {
           </div>
 
           <Button onClick={() => setIsRoadmapOpen(true)} variant="secondary" size="sm" icon={Server}>
-            View Full System Matrix
+            View Feature Roadmap
           </Button>
         </div>
 

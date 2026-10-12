@@ -12,7 +12,8 @@ public class OllamaClientException extends RuntimeException {
         HTTP_ERROR,
         MALFORMED_RESPONSE,
         EMPTY_RESPONSE,
-        INVALID_CONFIGURATION
+        INVALID_CONFIGURATION,
+        CLIENT_ERROR
     }
 
     private final Kind kind;

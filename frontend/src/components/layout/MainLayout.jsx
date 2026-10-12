@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { BottomNav } from './BottomNav';
-import { FraudAlertDrawer } from '../insights/FraudAlertDrawer';
 import { AddEditTransactionModal } from '../transactions/AddEditTransactionModal';
 import { ToastContainer } from '../common/Toast';
 import { useFinancial } from '../../context/FinancialContext';
@@ -13,12 +12,13 @@ import { GradientTransition } from '../common/GradientTransition';
 const TAB_INDEX_MAP = {
   dashboard: 0,
   transactions: 1,
-  'ai-assistant': 2,
-  insights: 3,
-  security: 4,
-  reports: 5,
-  profile: 6,
-  admin: 7,
+  categories: 2,
+  'ai-assistant': 3,
+  insights: 4,
+  security: 5,
+  reports: 6,
+  profile: 7,
+  admin: 8,
 };
 
 export const MainLayout = ({ children }) => {
@@ -110,9 +110,6 @@ export const MainLayout = ({ children }) => {
 
       {/* Mobile Bottom Navigation */}
       <BottomNav />
-
-      {/* Security & Fraud Alert Drawer */}
-      <FraudAlertDrawer />
 
       {/* Quick Add Transaction Modal */}
       <AddEditTransactionModal

@@ -1,4 +1,4 @@
-import api from './api';
+import api from './api.js';
 
 export const FinancialDashboardService = {
   getDashboardSummary: async () => {
@@ -6,10 +6,14 @@ export const FinancialDashboardService = {
     return response.data;
   },
 
-  downloadPdfReport: async () => {
-    const response = await api.get('/financial/report', { responseType: 'blob' });
+  downloadPdfReport: async (month) => {
+    const response = await api.get('/financial/report', {
+      params: month ? { month } : undefined,
+      responseType: 'blob',
+    });
     const disposition = response.headers['content-disposition'];
-    const filename = disposition?.match(/filename\*?=(?:UTF-8''|")?([^;"]+)/i)?.[1]?.replaceAll('"', '') || 'upiq-financial-report.pdf';
+    const filename = disposition?.match(/filename\*?=(?:UTF-8''|")?([^;"]+)/i)?.[1]?.replaceAll('"', '')
+      || `UPIQ-Monthly-Report-${month || 'current'}.pdf`;
     const blobUrl = window.URL.createObjectURL(response.data);
     const link = document.createElement('a');
     link.href = blobUrl;

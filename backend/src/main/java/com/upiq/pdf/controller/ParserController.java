@@ -3,7 +3,9 @@ package com.upiq.pdf.controller;
 import com.upiq.auth.model.User;
 import com.upiq.config.ApiResponse;
 import com.upiq.pdf.dto.ParsingResponse;
+import com.upiq.pdf.dto.StatementImportResult;
 import com.upiq.pdf.service.ParserService;
+import com.upiq.pdf.service.StatementImportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -19,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ParserController {
 
         private final ParserService parserService;
+        private final StatementImportService statementImportService;
 
         /**
          * Upload and parse a transaction file (PDF or CSV)
@@ -30,8 +33,7 @@ public class ParserController {
         public ResponseEntity<ApiResponse<ParsingResponse>> uploadAndParse(
                         @RequestParam("file") MultipartFile file,
                         @AuthenticationPrincipal User user) {
-                log.info("Received file upload request from user {}: {} ({} bytes)",
-                                user.getId(), file.getOriginalFilename(), file.getSize());
+                log.info("Received statement upload ({} bytes)", file.getSize());
 
                 ParsingResponse response = parserService.parseFile(file);
 
@@ -42,6 +44,15 @@ public class ParserController {
                                 .build();
 
                 return ResponseEntity.ok(apiResponse);
+        }
+
+        /** Parse and idempotently import rows from the original statement for the authenticated user. */
+        @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+        public ResponseEntity<ApiResponse<StatementImportResult>> importStatement(
+                        @RequestParam("file") MultipartFile file,
+                        @AuthenticationPrincipal User user) {
+                StatementImportResult result = statementImportService.importStatement(file, user.getId());
+                return ResponseEntity.ok(ApiResponse.success(result, "Statement import processed"));
         }
 
         /**

@@ -5,32 +5,27 @@ import {
   ShieldCheck,
   ArrowRight,
   ArrowLeft,
-  Fingerprint,
   Lock,
 } from 'lucide-react';
 import { useFinancial } from '../context/FinancialContext';
 
 export const Login = () => {
-  const { login, supportedCurrencies, navigateToHome, postLoginRedirect } = useFinancial();
+  const { login, navigateToHome, navigateToRegister, postLoginRedirect } = useFinancial();
 
-  const [name, setName] = useState('');
   const [vpa, setVpa] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedCurrency, setSelectedCurrency] = useState('INR');
-  const [selectedCountry, setSelectedCountry] = useState('India');
   const [showPassword, setShowPassword] = useState(false);
-  const [useBiometric, setUseBiometric] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   // Triggers the login flow with a brief animated delay so the spinner is visible.
   // Resets isSubmitting in a finally block to ensure the card re-mounts on failure.
-  const triggerLoginProcess = async (emailVal, passVal, currVal, nameVal, roleVal, isDemoVal = false) => {
+  const triggerLoginProcess = async (emailVal, passVal, isDemoVal = false, nameVal = '', roleVal = 'user') => {
     setIsSubmitting(true);
     setErrorMessage('');
     try {
       await new Promise((resolve) => setTimeout(resolve, 550));
-      const res = await login(emailVal, passVal, currVal, nameVal, roleVal, isDemoVal);
+      const res = await login(emailVal, passVal, 'INR', nameVal, roleVal, isDemoVal);
       if (!res?.success) {
         setErrorMessage(res?.error || 'Login failed. Invalid credentials.');
       } else {
@@ -45,32 +40,15 @@ export const Login = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const isAdm = vpa.toLowerCase().includes('admin');
-    triggerLoginProcess(vpa, password, selectedCurrency, name, isAdm ? 'admin' : 'user', false);
+    triggerLoginProcess(vpa, password);
   };
 
   const handleUserDemo = () => {
-    triggerLoginProcess('user@upiq.ai', 'user123', selectedCurrency, 'User Account', 'user', true);
+    triggerLoginProcess('user@upiq.ai', 'user123', true, 'User Account', 'user');
   };
 
   const handleAdminDemo = () => {
-    triggerLoginProcess('admin@upiq.ai', 'admin123', selectedCurrency, 'System Administrator', 'admin', true);
-  };
-
-  const handleCurrencySelect = (code, country) => {
-    setSelectedCurrency(code);
-    if (country) {
-      setSelectedCountry(country);
-    } else {
-      const match = supportedCurrencies.find((item) => item.code === code);
-      if (match) setSelectedCountry(match.country);
-    }
-  };
-
-  const handleCountrySelect = (country) => {
-    setSelectedCountry(country);
-    const match = supportedCurrencies.find((item) => item.country === country);
-    if (match) setSelectedCurrency(match.code);
+    triggerLoginProcess('admin@upiq.ai', 'admin123', true, 'System Administrator', 'admin');
   };
 
   return (
@@ -148,7 +126,7 @@ export const Login = () => {
                   className="w-14 h-14 rounded-2xl object-cover ring-2 ring-indigo-500/40 mx-auto shadow-xl shadow-indigo-600/40 hover:scale-105 transition-transform"
                 />
                 <h1 className="text-2xl font-bold text-slate-100">Sign In to UPIQ AI</h1>
-                <p className="text-xs text-slate-400">Select your country & currency preference</p>
+                <p className="text-xs text-slate-400">Sign in to your UPIQ account. Financial amounts are shown in INR.</p>
               </div>
 
               {/* DIRECT GOOGLE / GMAIL LOGIN BUTTON */}
@@ -190,127 +168,31 @@ export const Login = () => {
 
               {/* FORM FIELDS */}
               <form onSubmit={handleSubmit} className="space-y-3.5">
-                {/* Full Name */}
-                <div>
-                  <label htmlFor="full-name-field" className="block text-xs font-semibold text-slate-300 mb-1">
-                    Full Name
-                  </label>
-                  <input
-                    id="full-name-field"
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                  />
-                </div>
-
                 {/* Email / UPI ID */}
                 <div>
-                  <label htmlFor="vpa-field" className="block text-xs font-semibold text-slate-300 mb-1">
-                    UPI ID or Email Address
+                    <label htmlFor="vpa-field" className="block text-xs font-semibold text-slate-300 mb-1">
+                      Email Address
                   </label>
                   <div className="relative">
                     <span className="absolute left-3.5 top-2.5 text-xs text-slate-500 font-mono">@</span>
                     <input
                       id="vpa-field"
-                      type="text"
+                      type="email"
                       required
                       value={vpa}
                       onChange={(e) => setVpa(e.target.value)}
                       className="w-full pl-8 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder="name@upiq.ai or mobile"
+                      placeholder="name@example.com"
                     />
                   </div>
                 </div>
 
-                {/* Password / Passkey Toggle */}
+                {/* Password */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label htmlFor="password-field" className="block text-xs font-semibold text-slate-300">
-                      Password / Authentication
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setUseBiometric(!useBiometric)}
-                      className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
-                    >
-                      <Fingerprint className="w-3.5 h-3.5" />
-                      {useBiometric ? 'Use Password' : 'Use Passkey'}
-                    </button>
-                  </div>
-
-                  {useBiometric ? (
-                    <motion.button
-                      type="button"
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setPassword('passkey-demo')}
-                      className="w-full py-3 px-4 rounded-xl border border-indigo-500/30 bg-indigo-600/10 hover:bg-indigo-600/20 text-xs font-semibold text-indigo-300 flex items-center justify-between transition-all"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Fingerprint className="w-4 h-4 text-emerald-400" />
-                        Authenticate with Device Passkey
-                      </span>
-                      <ArrowRight className="w-4 h-4" />
-                    </motion.button>
-                  ) : (
-                    <div className="relative">
-                      <input
-                        id="password-field"
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pl-4 pr-12 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-2.5 text-[11px] font-semibold text-slate-400 hover:text-slate-200"
-                      >
-                        {showPassword ? 'Hide' : 'Show'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Country & Currency Selector Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label htmlFor="country-select-box" className="block text-xs font-semibold text-slate-300 mb-1">
-                      Country / Region
-                    </label>
-                    <select
-                      id="country-select-box"
-                      value={selectedCountry}
-                      onChange={(e) => handleCountrySelect(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                    >
-                      {supportedCurrencies.map((c) => (
-                        <option key={c.country} value={c.country}>
-                          {c.country}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="currency-select-box" className="block text-xs font-semibold text-slate-300 mb-1">
-                      Display Currency
-                    </label>
-                    <select
-                      id="currency-select-box"
-                      value={selectedCurrency}
-                      onChange={(e) => handleCurrencySelect(e.target.value, null)}
-                      className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                    >
-                      {supportedCurrencies.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.code} ({c.symbol})
-                        </option>
-                      ))}
-                    </select>
+                  <label htmlFor="password-field" className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
+                  <div className="relative">
+                    <input id="password-field" type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-4 pr-12 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-[11px] font-semibold text-slate-400 hover:text-slate-200">{showPassword ? 'Hide' : 'Show'}</button>
                   </div>
                 </div>
 
@@ -328,7 +210,7 @@ export const Login = () => {
                     </span>
                   ) : (
                     <>
-                      <span>Login with UPI PIN / Biometrics</span>
+                      <span>Sign in</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -362,12 +244,12 @@ export const Login = () => {
                 </div>
               </form>
 
+              <p className="text-center text-xs text-slate-400">
+                New to UPIQ? <button type="button" onClick={navigateToRegister} className="font-semibold text-indigo-300 hover:text-indigo-200">Create an account</button>
+              </p>
+
               {/* Bottom Security Footer */}
               <div className="pt-2 border-t border-slate-800/80 text-center flex items-center justify-center gap-4 text-[10px] text-slate-500">
-                <span className="flex items-center gap-1">
-                  <Lock className="w-3 h-3 text-emerald-400" /> 256-Bit SSL
-                </span>
-                <span>•</span>
                 <span className="flex items-center gap-1">
                   <Lock className="w-3 h-3 text-slate-500" /> Google OAuth (Planned)
                 </span>

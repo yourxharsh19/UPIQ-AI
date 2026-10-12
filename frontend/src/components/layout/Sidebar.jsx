@@ -3,28 +3,28 @@ import {
   LayoutDashboard,
   Receipt,
   Bot,
+  Tags,
   BrainCircuit,
-  TrendingUp,
   ShieldAlert,
   FileText,
   ShieldCheck,
   User,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
 } from 'lucide-react';
 import { useFinancial } from '../../context/FinancialContext';
 
 export const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const { activeTab, setActiveTab, fraudAlerts, profile } = useFinancial();
+  const { activeTab, setActiveTab, profile } = useFinancial();
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'transactions', label: 'Transactions', icon: Receipt },
+    { id: 'categories', label: 'Categories', icon: Tags },
     { id: 'ai-assistant', label: 'AI Assistant', icon: Bot, isAi: true },
-    { id: 'insights', label: 'Budgets & Predictions', icon: BrainCircuit },
-    { id: 'security', label: 'Security & Fraud', icon: ShieldAlert, badge: fraudAlerts.length },
+    { id: 'insights', label: 'Local Budgets & Estimates', icon: BrainCircuit },
+    { id: 'security', label: 'Security & Fraud', icon: ShieldAlert, upcoming: true },
     { id: 'reports', label: 'Monthly Reports', icon: FileText },
     { id: 'profile', label: 'User Profile', icon: User },
     ...(profile?.role === 'admin' ? [{ id: 'admin', label: 'Admin View', icon: ShieldCheck }] : []),
@@ -74,15 +74,18 @@ export const Sidebar = () => {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
+              disabled={item.upcoming}
+              aria-disabled={item.upcoming || undefined}
+              aria-label={`${item.label}${item.upcoming ? ', upcoming' : ''}`}
               aria-current={isActive ? 'page' : undefined}
               className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl font-medium text-sm transition-all duration-200 group relative ${
                 isActive
                   ? item.isAi
                     ? 'bg-gradient-to-r from-indigo-600/90 via-purple-600/90 to-pink-600/90 text-white shadow-lg shadow-purple-600/25 border border-purple-400/30'
                     : 'bg-gradient-to-r from-indigo-600/25 via-purple-600/20 to-indigo-600/10 text-indigo-300 border border-indigo-500/35 shadow-md shadow-indigo-500/10 light:bg-indigo-50 light:text-indigo-600'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 light:hover:bg-slate-100 light:text-slate-600'
+                  : `text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 light:hover:bg-slate-100 light:text-slate-600 ${item.upcoming ? 'cursor-not-allowed opacity-60' : ''}`
               }`}
-              title={collapsed ? item.label : undefined}
+              title={item.upcoming ? `${item.label} — Upcoming` : collapsed ? item.label : undefined}
             >
               <Icon
                 className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${
@@ -94,6 +97,8 @@ export const Sidebar = () => {
                 }`}
               />
               {!collapsed && <span className="truncate">{item.label}</span>}
+              {!collapsed && item.upcoming && <span className="ml-auto text-[9px] uppercase tracking-wide text-amber-300">Upcoming</span>}
+              {collapsed && item.upcoming && <span aria-hidden="true" className="absolute top-1 right-1 text-[7px] font-bold text-amber-300">UP</span>}
               {!collapsed && item.badge > 0 && (
                 <span className="ml-auto px-2 py-0.5 text-xs font-bold rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse">
                   {item.badge}
@@ -114,11 +119,12 @@ export const Sidebar = () => {
           className="p-4 border border-white/[0.06] m-3 rounded-2xl bg-white/[0.025] hover:bg-white/[0.055] hover:border-white/10 light:bg-slate-50 light:border-slate-200 flex items-center gap-3 transition-all duration-200 text-left cursor-pointer group"
           title="Click to Edit User Profile"
         >
-          <img
-            src={profile.avatar}
-            alt={profile.name}
-            className="w-10 h-10 rounded-full object-cover ring-2 ring-indigo-500/30 group-hover:ring-indigo-400"
-          />
+          <span
+            aria-hidden="true"
+            className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold text-white ring-2 ring-indigo-500/30 group-hover:ring-indigo-400"
+          >
+            {(profile.name || '?').trim().charAt(0).toUpperCase()}
+          </span>
           <div className="flex flex-col min-w-0 flex-1">
             <span className="text-xs font-semibold text-slate-200 group-hover:text-indigo-300 light:text-slate-900 truncate">
               {profile.name}

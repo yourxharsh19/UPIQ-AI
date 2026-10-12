@@ -75,7 +75,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            log.error("JWT authentication failed: {}", e.getMessage());
+            Throwable cause = e;
+            while (cause.getCause() != null && cause.getCause() != cause) {
+                cause = cause.getCause();
+            }
+            // Report the validation failure category without logging the bearer token or signing key.
+            log.error("JWT authentication failed ({})", cause.getClass().getSimpleName());
         }
 
         filterChain.doFilter(request, response);

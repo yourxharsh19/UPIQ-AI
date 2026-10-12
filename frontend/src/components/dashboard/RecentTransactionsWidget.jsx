@@ -1,11 +1,11 @@
 import React from 'react';
-import { AlertTriangle, ArrowUpRight, ArrowDownLeft, ShieldAlert } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
 import { useFinancial } from '../../context/FinancialContext';
 
 export const RecentTransactionsWidget = () => {
-  const { transactions, setActiveTab, setIsFraudDrawerOpen, formatCurrency } = useFinancial();
+  const { transactions, setActiveTab, formatCurrency } = useFinancial();
   const recent = transactions.slice(0, 6);
 
   return (
@@ -15,7 +15,7 @@ export const RecentTransactionsWidget = () => {
           <h3 className="text-base font-semibold tracking-tight text-slate-100 light:text-slate-900">
             Recent activity
           </h3>
-          <p className="text-xs text-slate-400">Live ledger stream with automated anomaly detection</p>
+          <p className="text-xs text-slate-400">Recent transactions from your ledger</p>
         </div>
         <button
           onClick={() => setActiveTab('transactions')}
@@ -32,7 +32,7 @@ export const RecentTransactionsWidget = () => {
               <th className="pb-3 pl-2">Transaction</th>
               <th className="pb-3">Mode</th>
               <th className="pb-3">Category</th>
-              <th className="pb-3">AI Anomaly Status</th>
+              <th className="pb-3">Risk monitoring</th>
               <th className="pb-3 text-right pr-2">Amount</th>
             </tr>
           </thead>
@@ -71,18 +71,7 @@ export const RecentTransactionsWidget = () => {
                   <span className="text-slate-300 light:text-slate-700">{tx.category}</span>
                 </td>
                 <td className="py-3">
-                  {tx.isFraud ? (
-                    <button
-                      onClick={() => setIsFraudDrawerOpen(true)}
-                      className="cursor-pointer"
-                    >
-                      <Badge variant="fraud">HIGH RISK FRAUD</Badge>
-                    </button>
-                  ) : tx.isAnomaly ? (
-                    <Badge variant="anomaly">Unusual Spend</Badge>
-                  ) : (
-                    <Badge variant="success">Normal</Badge>
-                  )}
+                  <Badge variant="neutral">Not monitored</Badge>
                 </td>
                 <td className="py-3 text-right pr-2 font-bold">
                   <span className={tx.type === 'income' ? 'text-emerald-400' : 'text-slate-100 light:text-slate-900'}>

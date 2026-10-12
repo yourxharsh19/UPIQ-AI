@@ -29,14 +29,11 @@ export const Home = () => {
     navigateToLogin,
     navigateToApp,
     handleNeedHelpClick,
-    selectedCurrencyCode,
-    updateCurrency,
-    supportedCurrencies,
   } = useFinancial();
 
   const { theme, toggleTheme } = useTheme();
 
-  // Active Navbar Modal: null | 'features' | 'security' | 'currency'
+  // Active Navbar Modal: null | 'features' | 'security' | 'regional'
   const [activeModal, setActiveModal] = useState(null);
 
   const featureCards = [
@@ -45,36 +42,36 @@ export const Home = () => {
       icon: Zap,
       textColor: 'text-indigo-400',
       bgColor: 'bg-indigo-500/10 border-indigo-500/20',
-      title: 'Smart ML Auto-Categorization & OCR',
-      desc: 'Instant auto-tagging of UPI, credit card, and netbanking transactions + automated receipt scanner.',
-      badge: '99.4% Accuracy',
+      title: 'Smart Transaction Categorization',
+      desc: 'Deterministic merchant and description rules categorize transactions as they are added.',
+      badge: 'Deterministic rules',
     },
     {
       id: 'forecasting',
       icon: BrainCircuit,
       textColor: 'text-purple-400',
       bgColor: 'bg-purple-500/10 border-purple-500/20',
-      title: 'Predictive Budget Velocity Models',
-      desc: 'Machine learning velocity models predicting month-end spend with real-time overage Intercept alerts.',
-      badge: 'Real-time AI',
+      title: 'Budget Tracking',
+      desc: 'Set category budgets and compare them with recorded spending. Predictive forecasts are not currently available.',
+      badge: 'Budget tools',
     },
     {
       id: 'parsing',
       icon: Receipt,
       textColor: 'text-emerald-400',
       bgColor: 'bg-emerald-500/10 border-emerald-500/20',
-      title: 'Bank Statement PDF & CSV Upload',
-      desc: 'Upload bank statement PDFs or CSV files to automatically extract and verify transaction line items.',
-      badge: 'PDF / CSV',
+      title: 'Bank Statement PDF Import',
+      desc: 'Import supported PDF statements into the transaction ledger and review the parsed entries.',
+      badge: 'PDF import',
     },
     {
       id: 'reports',
       icon: FileText,
       textColor: 'text-amber-400',
       bgColor: 'bg-amber-500/10 border-amber-500/20',
-      title: 'Monthly PDF Financial Reports',
-      desc: 'Generate clean, exportable PDF summaries for income, expense category breakdowns, and audit logs.',
-      badge: 'One-Click Export',
+      title: 'Monthly Financial Reports',
+      desc: 'Review monthly income, expenses, categories, and transaction details; download PDF or CSV reports.',
+      badge: 'PDF / CSV',
     },
     {
       id: 'analytics',
@@ -90,36 +87,35 @@ export const Home = () => {
       icon: ShieldAlert,
       textColor: 'text-rose-400',
       bgColor: 'bg-rose-500/10 border-rose-500/20',
-      title: 'Guardian Fraud Intercept Radar',
-      desc: 'Geo-mismatch detection, duplicate charge intercept, and instant card freeze protection drawer.',
-      badge: '24/7 Protection',
+      title: 'Fraud Monitoring',
+      desc: 'Backend-powered fraud monitoring and transaction blocking are not currently available.',
+      badge: 'Not connected',
     },
   ];
 
   const securityPillars = [
     {
       icon: LockKeyhole,
-      title: 'Bank-Grade 256-Bit SSL & JWT',
-      desc: 'Cryptographically signed JWT tokens with 256-bit encryption ensuring secure request authentication.',
+      title: 'JWT Authentication',
+      desc: 'The backend issues and validates signed JWTs for authenticated API requests.',
     },
     {
       icon: Bot,
-      title: 'Local Ollama Data Privacy',
-      desc: 'Queries processed via local bounded Ollama LLM models, guaranteeing zero financial data leakage to external clouds.',
+      title: 'Local Ollama Integration',
+      desc: 'The Financial Assistant can use a locally configured Ollama service. Availability depends on local setup.',
     },
     {
       icon: ShieldCheck,
-      title: 'NPCI & Banking Standard Aligned',
-      desc: 'Strict transaction formatting compliance following NPCI, VPA, and international SWIFT standard data schemas.',
+      title: 'Transaction Management',
+      desc: 'Manage transaction records through the application’s authenticated backend APIs.',
     },
     {
       icon: UserCheck,
-      title: 'Role-Based Access Control (RBAC)',
-      desc: 'Protected admin views and role-gated endpoints ensuring regular users and system administrators are strictly isolated.',
+      title: 'Role-Aware Admin View',
+      desc: 'The frontend limits access to the Admin view by role. Live platform administration APIs are not connected.',
     },
   ];
 
-  const sampleConversionAmountUSD = 1250;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between relative overflow-x-hidden selection:bg-indigo-500 selection:text-white">
@@ -145,8 +141,8 @@ export const Home = () => {
               <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">
                 UPIQ AI<span className="text-indigo-400">.</span>
               </span>
-              <span className="block text-[10px] text-slate-400 font-medium tracking-wide">
-                Smart Financial OS
+                <span className="block text-[10px] text-slate-400 font-medium tracking-wide">
+                Personal Finance Dashboard
               </span>
             </div>
           </div>
@@ -183,7 +179,7 @@ export const Home = () => {
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
               }`}
             >
-              Global Currency
+              INR Formatting
             </button>
 
             <button
@@ -240,20 +236,20 @@ export const Home = () => {
           {/* Top Pill Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold shadow-inner">
             <Sparkles className="w-4 h-4 text-purple-400" />
-            <span>UPIQ AI 2.0 — Multi-Currency Personal Finance Operating System</span>
+            <span>UPIQ AI 2.0 — Personal Finance Dashboard</span>
           </div>
 
           {/* Main Title */}
           <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-tight text-slate-100">
-            Smart Finance Management for{' '}
+            Personal Finance Tools for{' '}
             <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Every Country & Currency
+              Your Transaction Ledger
             </span>
           </h1>
 
           {/* Subtitle */}
           <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-            Record transactions, upload statement PDFs, track predictive budget velocity, and query your financial health with localized AI privacy.
+            Record and review transactions, import supported PDF statements, track category budgets, and use the Financial Assistant when its local Ollama service is configured.
           </p>
 
           {/* Action Button Row */}
@@ -286,33 +282,33 @@ export const Home = () => {
             onClick={() => setActiveModal('features')}
             className="space-y-1 p-2 cursor-pointer hover:opacity-80 transition-opacity"
           >
-            <p className="text-2xl font-black text-indigo-400">Instant</p>
-            <p className="text-xs font-semibold text-slate-200">UPI & Statement Parsing</p>
-            <p className="text-[11px] text-slate-500">Auto PDF OCR Extraction &rarr;</p>
+            <p className="text-2xl font-black text-indigo-400">PDF</p>
+            <p className="text-xs font-semibold text-slate-200">Statement Import</p>
+            <p className="text-[11px] text-slate-500">Bank statement PDF import &rarr;</p>
           </div>
           <div
             onClick={() => setActiveModal('security')}
             className="space-y-1 p-2 border-l border-slate-800 cursor-pointer hover:opacity-80 transition-opacity"
           >
-            <p className="text-2xl font-black text-emerald-400">256-Bit</p>
-            <p className="text-xs font-semibold text-slate-200">Bank SSL Encryption</p>
-            <p className="text-[11px] text-slate-500">Cryptographic JWT Security &rarr;</p>
+            <p className="text-2xl font-black text-emerald-400">JWT</p>
+            <p className="text-xs font-semibold text-slate-200">API Authentication</p>
+            <p className="text-[11px] text-slate-500">Backend-signed tokens for protected requests &rarr;</p>
           </div>
           <div
             onClick={handleNeedHelpClick}
             className="space-y-1 p-2 border-l border-slate-800 cursor-pointer hover:opacity-80 transition-opacity"
           >
             <p className="text-2xl font-black text-purple-400">Private AI</p>
-            <p className="text-xs font-semibold text-slate-200">Local Ollama LLM</p>
-            <p className="text-[11px] text-slate-500">Zero Cloud Data Exposure &rarr;</p>
+            <p className="text-xs font-semibold text-slate-200">Ollama Integration</p>
+            <p className="text-[11px] text-slate-500">Available when a local service is configured &rarr;</p>
           </div>
           <div
             onClick={() => setActiveModal('currency')}
             className="space-y-1 p-2 border-l border-slate-800 cursor-pointer hover:opacity-80 transition-opacity"
           >
-            <p className="text-2xl font-black text-amber-400">4 Global</p>
-            <p className="text-xs font-semibold text-slate-200">Currencies Supported</p>
-            <p className="text-[11px] text-slate-500">INR (₹), USD ($), EUR (€), GBP (£) &rarr;</p>
+            <p className="text-2xl font-black text-amber-400">Currency</p>
+            <p className="text-xs font-semibold text-slate-200">Display Preference</p>
+            <p className="text-[11px] text-slate-500">Financial totals currently display in INR &rarr;</p>
           </div>
         </div>
       </section>
@@ -389,7 +385,7 @@ export const Home = () => {
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
                       <LockKeyhole className="w-3.5 h-3.5" /> Security & Privacy
                     </div>
-                    <h2 className="text-2xl font-extrabold text-slate-100">Bank-Grade Privacy Protocols</h2>
+                    <h2 className="text-2xl font-extrabold text-slate-100">Authentication and AI Configuration</h2>
                     <p className="text-xs text-slate-400">Localized model isolation & cryptographic token verification.</p>
                   </div>
 
@@ -425,58 +421,12 @@ export const Home = () => {
 
               {/* MODAL CONTENT: GLOBAL CURRENCY */}
               {activeModal === 'currency' && (
-                <div className="space-y-6">
-                  <div className="space-y-1">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold">
-                      <Globe className="w-3.5 h-3.5" /> Global Currency Engine
-                    </div>
-                    <h2 className="text-2xl font-extrabold text-slate-100">Multi-Currency Country Converter</h2>
-                    <p className="text-xs text-slate-400">Select display currency or convert amounts in real-time across supported global currencies.</p>
+                <div className="space-y-3">
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs font-bold text-cyan-400">
+                    <Globe className="h-3.5 w-3.5" /> Regional Formatting
                   </div>
-
-                  <div className="p-4 rounded-2xl glass-panel border border-indigo-500/20 space-y-4">
-                    <p className="text-xs font-bold text-indigo-300 uppercase tracking-wider">Select Preferred Currency:</p>
-                    <div className="flex flex-wrap gap-2.5">
-                      {supportedCurrencies.map((c) => (
-                        <button
-                          key={c.code}
-                          onClick={() => updateCurrency(c.code)}
-                          className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-2 ${
-                            selectedCurrencyCode === c.code
-                              ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg shadow-indigo-600/30'
-                              : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
-                          }`}
-                        >
-                          <span className="text-sm">{c.symbol}</span>
-                          <span>{c.code}</span>
-                          <span className="text-[10px] opacity-75">({c.country})</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                      {supportedCurrencies.map((c) => {
-                        const convertedVal = sampleConversionAmountUSD * c.rate;
-                        return (
-                          <div
-                            key={c.code}
-                            className={`p-3 rounded-xl border ${
-                              selectedCurrencyCode === c.code
-                                ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-200'
-                                : 'bg-slate-950 border-slate-800 text-slate-400'
-                            }`}
-                          >
-                            <p className="text-[10px] font-bold uppercase">{c.country}</p>
-                            <p className="text-base font-black text-slate-100">
-                              {c.symbol}
-                              {convertedVal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                            </p>
-                            <p className="text-[9px] font-mono">1 USD = {c.rate} {c.code}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <h2 className="text-2xl font-extrabold text-slate-100">Indian Rupee (INR)</h2>
+                  <p className="text-sm text-slate-400">UPIQ stores and displays transaction amounts in INR using Indian number formatting. Currency conversion is not currently supported.</p>
                 </div>
               )}
             </motion.div>
@@ -502,7 +452,7 @@ export const Home = () => {
             </button>
             <span>•</span>
             <button onClick={() => setActiveModal('currency')} className="hover:text-white transition-colors cursor-pointer">
-              Global Currency
+              INR Formatting
             </button>
             <span>•</span>
             <button onClick={handleNeedHelpClick} className="hover:text-purple-300 transition-colors flex items-center gap-1 cursor-pointer">

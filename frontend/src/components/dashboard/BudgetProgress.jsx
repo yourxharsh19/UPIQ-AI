@@ -1,23 +1,13 @@
 import { Target, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useBudget } from "../../context/BudgetContext";
-import { getCategoryExpenseBreakdown } from "../../utils/transactionUtils";
+import { buildLocalBudgetForecasts } from "../../utils/budgetForecasts.js";
 import { getCategoryDisplayProps } from "../../utils/categoryUtils";
 import clsx from "clsx";
 
 const BudgetProgress = ({ transactions }) => {
   const { getAllBudgets } = useBudget();
   const budgets = getAllBudgets();
-  const categoryExpenses = getCategoryExpenseBreakdown(transactions);
-
-  // Create a map of category expenses (case-insensitive)
-  const expenseMap = categoryExpenses.reduce((acc, item) => {
-    const normalizedName = item.name.toLowerCase();
-    acc[normalizedName] = item.amount;
-    return acc;
-  }, {});
-
-  // Get categories with budgets
-  const budgetedCategories = Object.keys(budgets).filter(cat => budgets[cat] > 0);
+  const budgetedCategories = buildLocalBudgetForecasts(budgets, transactions);
 
   if (budgetedCategories.length === 0) {
     return (
@@ -54,9 +44,10 @@ const BudgetProgress = ({ transactions }) => {
       </div>
 
       <div className="space-y-8">
-        {budgetedCategories.map((categoryName) => {
-          const budget = budgets[categoryName];
-          const spent = expenseMap[categoryName.toLowerCase()] || 0;
+        {budgetedCategories.map((forecast) => {
+          const categoryName = forecast.category;
+          const budget = forecast.budget;
+          const spent = forecast.spent;
           const percentage = Math.min((spent / budget) * 100, 100);
           const status = getBudgetStatus(spent, budget);
           const displayProps = getCategoryDisplayProps({ name: categoryName });

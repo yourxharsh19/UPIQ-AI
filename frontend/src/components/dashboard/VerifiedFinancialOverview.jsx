@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { BadgeCheck, RefreshCw } from "lucide-react";
 import FinancialDashboardService from "../../services/financial-dashboard.service";
 import Card from "../ui/Card";
+import { formatInrAmount } from "../../utils/financialDisplay";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-const numberFormat = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
-const amount = (value) => numberFormat.format(Number(value ?? 0));
+const amount = (value) => formatInrAmount(value);
 
 export default function VerifiedFinancialOverview() {
   const [dashboard, setDashboard] = useState(null);
@@ -154,7 +154,7 @@ export default function VerifiedFinancialOverview() {
           </div>
         </Card>
       </div>
-      <p className="text-xs text-[var(--text-muted)]">Financial values come from backend calculations. No currency is shown because transaction records do not specify one.</p>
+      <p className="text-xs text-[var(--text-muted)]">Financial values come from backend calculations and are displayed in INR.</p>
       </div>
     </section>
   );

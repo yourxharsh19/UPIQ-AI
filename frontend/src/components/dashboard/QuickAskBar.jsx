@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, ArrowRight, Mic } from 'lucide-react';
+import { Sparkles, ArrowRight } from 'lucide-react';
 import { useFinancial } from '../../context/FinancialContext';
 import { Button } from '../common/Button';
 

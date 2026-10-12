@@ -46,7 +46,11 @@ class OllamaExperimentGenerationBoundaryTest {
         assertTrue(List.of(resultA, resultB, resultC).stream()
                 .allMatch(result -> "shared-model:tag".equals(result.model())));
         assertTrue(List.of(resultA, resultB, resultC).stream().allMatch(result -> result.latencyMs() >= 0));
-        verify(client, times(3)).generate(anyString());
+        org.mockito.ArgumentCaptor<String> prompts = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(client, times(3)).generate(prompts.capture());
+        assertTrue(prompts.getAllValues().stream()
+                .noneMatch(prompt -> prompt.contains("Answer in 2-4 short sentences")));
+        assertTrue(prompts.getAllValues().get(2).contains("VERIFIED FINANCIAL FACTS"));
     }
 
     @Test
@@ -75,7 +79,10 @@ class OllamaExperimentGenerationBoundaryTest {
 
             assertFalse(result.succeeded());
             assertNull(result.answer());
-            assertEquals(ExperimentErrorCode.valueOf(kind.name()), result.error().code());
+            ExperimentErrorCode expectedCode = kind == OllamaClientException.Kind.CLIENT_ERROR
+                    ? ExperimentErrorCode.GENERATION_ERROR
+                    : ExperimentErrorCode.valueOf(kind.name());
+            assertEquals(expectedCode, result.error().code(), "unexpected category for " + kind);
             assertEquals("safe failure message", result.error().message());
         }
     }

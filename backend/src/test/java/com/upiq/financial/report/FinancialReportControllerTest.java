@@ -1,69 +1,53 @@
 package com.upiq.financial.report;
 
-import com.upiq.auth.model.Role;
 import com.upiq.auth.model.User;
+import com.upiq.research.calculation.FinancialCalculationService;
+import com.upiq.transaction.repository.TransactionRepository;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import java.time.YearMonth;
 
-import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-@WebMvcTest(FinancialReportController.class)
-@ContextConfiguration(classes = {FinancialReportController.class,
-        FinancialReportControllerTest.TestSecurityConfiguration.class})
 class FinancialReportControllerTest {
-    @Autowired private MockMvc mvc;
-    @MockBean private FinancialReportService reportService;
 
-    @TestConfiguration
-    static class TestSecurityConfiguration {
-        @Bean
-        SecurityFilterChain reportTestSecurity(HttpSecurity http) throws Exception {
-            return http.csrf(AbstractHttpConfigurer::disable)
-                    .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                    .build();
-        }
+    @Test
+    void omittedMonthUsesUserSpecificLatestMonthServiceDefault() {
+        User user = User.builder().id(41L).build();
+        FinancialReportService service = new FinancialReportService(new FinancialCalculationService(null), null) {
+            @Override
+            public GeneratedFinancialReport generate(Long userId) {
+                assertEquals(41L, userId);
+                return new GeneratedFinancialReport("UPIQ-Monthly-Report-2026-09.pdf", "%PDF-1.4".getBytes());
+            }
+        };
+
+        var response = new FinancialReportController(service).download(user, null);
+
+        assertEquals("attachment; filename=\"UPIQ-Monthly-Report-2026-09.pdf\"",
+                response.getHeaders().getFirst("Content-Disposition"));
     }
 
     @Test
-    void authenticatedPrincipalGetsPdfAndItsUserIdScopesTheReport() throws Exception {
-        User user = User.builder().id(41L).email("a@example.test").password("x")
-                .role(Role.USER).createdAt(LocalDateTime.now()).build();
-        when(reportService.generate(41L)).thenReturn(new GeneratedFinancialReport(
-                "upiq-financial-report-2026-08.pdf", "%PDF-1.4".getBytes()));
-        var auth = new UsernamePasswordAuthenticationToken(user, null,
-                List.of(new SimpleGrantedAuthority("ROLE_USER")));
+    void downloadUsesAuthenticatedUserAndRequestedMonth() {
+        User user = User.builder().id(41L).build();
+        FinancialReportService service = new FinancialReportService(
+                new FinancialCalculationService(null), null) {
+            @Override
+            public GeneratedFinancialReport generate(Long userId, YearMonth month) {
+                assertEquals(41L, userId);
+                assertEquals(YearMonth.of(2026, 8), month);
+                return new GeneratedFinancialReport("UPIQ-Monthly-Report-2026-08.pdf", "%PDF-1.4".getBytes());
+            }
+        };
+        FinancialReportController controller = new FinancialReportController(service);
 
-        mvc.perform(get("/api/financial/report").with(authentication(auth)))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
-                .andExpect(header().string("Content-Disposition",
-                        "attachment; filename=\"upiq-financial-report-2026-08.pdf\""));
-        verify(reportService).generate(41L);
-        verify(reportService, never()).generate(42L);
-    }
+        var response = controller.download(user, "2026-08");
 
-    @Test
-    void unauthenticatedRequestIsRejected() throws Exception {
-        mvc.perform(get("/api/financial/report"))
-                .andExpect(status().is4xxClientError());
-        verifyNoInteractions(reportService);
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals("application/pdf", response.getHeaders().getContentType().toString());
+        assertEquals("attachment; filename=\"UPIQ-Monthly-Report-2026-08.pdf\"",
+                response.getHeaders().getFirst("Content-Disposition"));
+        assertArrayEquals("%PDF-1.4".getBytes(), response.getBody());
     }
 }

@@ -50,7 +50,10 @@ public class OllamaExperimentGenerationBoundary implements ExperimentGenerationB
             return SystemResult.success(input.systemId(), response.getResponse(), model, latencyMs,
                     response.getPromptEvalCount(), response.getEvalCount(), response.getTotalDurationNs());
         } catch (OllamaClientException ex) {
-            return failure(input.systemId(), start, ExperimentErrorCode.valueOf(ex.getKind().name()),
+            ExperimentErrorCode errorCode = ex.getKind() == OllamaClientException.Kind.CLIENT_ERROR
+                    ? ExperimentErrorCode.GENERATION_ERROR
+                    : ExperimentErrorCode.valueOf(ex.getKind().name());
+            return failure(input.systemId(), start, errorCode,
                     safeMessage(ex.getMessage(), "Ollama generation failed"));
         } catch (RuntimeException ex) {
             return failure(input.systemId(), start, ExperimentErrorCode.GENERATION_ERROR,

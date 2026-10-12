@@ -1,5 +1,6 @@
 import StatCard from "./StatCard";
 import { TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { formatInrAmount } from "../../utils/financialDisplay";
 
 const OverviewCards = ({ transactions }) => {
     // Calculate totals
@@ -17,19 +18,19 @@ const OverviewCards = ({ transactions }) => {
     const stats = [
         {
             title: "Total Balance",
-            amount: `₹${balance.toLocaleString()}`,
+            amount: formatInrAmount(balance),
             icon: Wallet,
             color: "bg-blue-500"
         },
         {
             title: "Total Income",
-            amount: `₹${totalIncome.toLocaleString()}`,
+            amount: formatInrAmount(totalIncome),
             icon: TrendingUp,
             color: "bg-green-500"
         },
         {
             title: "Total Spend",
-            amount: `₹${totalExpense.toLocaleString()}`,
+            amount: formatInrAmount(totalExpense),
             icon: TrendingDown,
             color: "bg-red-500"
         },

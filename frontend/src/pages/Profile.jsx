@@ -1,35 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   User,
   Mail,
   Phone,
   Globe,
   DollarSign,
-  ShieldCheck,
-  Lock,
-  Camera,
   Save,
   CheckCircle2,
-  Sparkles,
-  RefreshCw,
-  Zap,
-  Key,
-  CreditCard,
-  Building,
   Check,
 } from 'lucide-react';
 import { useFinancial } from '../context/FinancialContext';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { Badge } from '../components/common/Badge';
-
-const AVATAR_PRESETS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-  'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=200',
-  'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=200',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-  'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=200',
-];
 
 export const Profile = () => {
   const { profile, updateProfile, supportedCurrencies, currentCurrency } = useFinancial();
@@ -38,19 +20,22 @@ export const Profile = () => {
   const [formData, setFormData] = useState({
     name: profile.name || 'User Account',
     email: profile.email || 'user@upiq.ai',
-    phone: profile.phone || '+1 (555) 234-5678',
-    bio: profile.bio || 'Fintech enthusiast & AI Product Strategist',
-    country: profile.country || 'United States',
-    currency: profile.currency || 'USD',
-    avatar: profile.avatar || AVATAR_PRESETS[0],
-    accountType: profile.accountType || 'UPIQ Pro AI',
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
+    phone: profile.phone || '',
+    bio: profile.bio || '',
+    country: profile.country || 'India',
+    currency: 'INR',
   });
 
-  const [activeTab, setActiveTab] = useState('personal'); // 'personal', 'currency', 'security', 'avatar'
+  const [activeTab, setActiveTab] = useState('personal');
   const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    setFormData((previous) => ({
+      ...previous,
+      name: profile.name || 'User Account',
+      email: profile.email || '',
+    }));
+  }, [profile.name, profile.email]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -66,7 +51,6 @@ export const Profile = () => {
       bio: formData.bio,
       country: formData.country,
       currency: formData.currency,
-      avatar: formData.avatar,
     });
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
@@ -85,24 +69,8 @@ export const Profile = () => {
             {/* Avatar Container with Pulsing Status Indicator */}
             <div className="relative group">
               <div className="w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden ring-4 ring-indigo-500/30 shadow-xl transition-all duration-300 group-hover:scale-105">
-                <img
-                  src={formData.avatar}
-                  alt={formData.name}
-                  className="w-full h-full object-cover"
-                />
+                <span className="flex h-full w-full items-center justify-center bg-indigo-600 text-3xl font-bold text-white" aria-hidden="true">{(formData.name || '?').trim().charAt(0).toUpperCase()}</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveTab('avatar')}
-                className="absolute -bottom-2 -right-2 p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg border border-indigo-400/50 transition-all hover:scale-110"
-                title="Change Profile Picture"
-              >
-                <Camera className="w-4 h-4" />
-              </button>
-              <div
-                className="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-500 ring-4 ring-slate-950 animate-pulse"
-                title="Active Session Verified"
-              />
             </div>
 
             {/* Profile Info Summary */}
@@ -111,13 +79,7 @@ export const Profile = () => {
                 <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-100">
                   {formData.name}
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-                  {formData.accountType}
-                </span>
               </div>
-              <p className="text-xs md:text-sm text-slate-400 max-w-md">
-                {formData.bio}
-              </p>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-1 text-xs text-slate-400">
                 <span className="flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-indigo-400" />
@@ -183,51 +145,17 @@ export const Profile = () => {
                 <span>Currency & Regional</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab('avatar')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-xs md:text-sm transition-all ${
-                  activeTab === 'avatar'
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
-                }`}
-              >
-                <Camera className="w-4 h-4 text-purple-400" />
-                <span>Avatar Customization</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('security')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-xs md:text-sm transition-all ${
-                  activeTab === 'security'
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
-                }`}
-              >
-                <ShieldCheck className="w-4 h-4 text-rose-400" />
-                <span>Security & Password</span>
-              </button>
             </div>
           </Card>
 
           {/* Account Identity Card Preview */}
           <Card className="p-5 bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-950 border-indigo-500/20 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> Identity Preview
-              </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                Verified User
-              </span>
+              <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Account Profile</span>
             </div>
 
             <div className="flex items-center gap-3 pt-2">
-              <img
-                src={formData.avatar}
-                alt="Preview"
-                className="w-12 h-12 rounded-xl object-cover ring-2 ring-indigo-500/40"
-              />
+              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold text-white" aria-hidden="true">{(formData.name || '?').trim().charAt(0).toUpperCase()}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold text-slate-100 truncate">{formData.name}</p>
                 <p className="text-xs text-slate-400 truncate">{formData.email}</p>
@@ -255,7 +183,7 @@ export const Profile = () => {
               <Card className="p-6 md:p-8 space-y-6">
                 <div>
                   <h3 className="text-lg font-bold text-slate-100">Personal Information</h3>
-                  <p className="text-xs text-slate-400">Update your official profile name, email, and contact details</p>
+                  <p className="text-xs text-slate-400">These display details are saved in this browser and do not change your login credentials.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -356,7 +284,7 @@ export const Profile = () => {
                 <div>
                   <h3 className="text-lg font-bold text-slate-100">Currency & Regional Preferences</h3>
                   <p className="text-xs text-slate-400">
-                    Select your preferred base display currency. All amounts, charts, and forecasts will convert automatically.
+                    UPIQ transaction amounts are stored and displayed in Indian rupees (INR). Currency conversion is unavailable.
                   </p>
                 </div>
 
@@ -380,7 +308,6 @@ export const Profile = () => {
                       </div>
                       <p className="text-xs font-bold text-slate-200">{c.name}</p>
                       <p className="text-[10px] text-slate-400 mt-1">Country: {c.country}</p>
-                      <p className="text-[10px] text-emerald-400 mt-1 font-mono">1 USD = {c.rate} {c.code}</p>
                     </button>
                   ))}
                 </div>
@@ -400,120 +327,6 @@ export const Profile = () => {
               </Card>
             )}
 
-            {/* Avatar Customization Tab */}
-            {activeTab === 'avatar' && (
-              <Card className="p-6 md:p-8 space-y-6">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-100">Avatar Customization</h3>
-                  <p className="text-xs text-slate-400">Choose from preset professional avatars or enter a custom photo URL</p>
-                </div>
-
-                <div className="space-y-4">
-                  <label className="block text-xs font-semibold text-slate-300">Preset Avatars</label>
-                  <div className="flex flex-wrap gap-4">
-                    {AVATAR_PRESETS.map((url, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setFormData((prev) => ({ ...prev, avatar: url }))}
-                        className={`relative rounded-2xl overflow-hidden ring-4 transition-all ${
-                          formData.avatar === url
-                            ? 'ring-indigo-500 scale-110 shadow-lg shadow-indigo-600/30'
-                            : 'ring-transparent hover:ring-slate-700'
-                        }`}
-                      >
-                        <img src={url} alt={`Preset ${idx}`} className="w-16 h-16 object-cover" />
-                        {formData.avatar === url && (
-                          <div className="absolute inset-0 bg-indigo-600/40 flex items-center justify-center">
-                            <CheckCircle2 className="w-6 h-6 text-white" />
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-800 space-y-2">
-                  <label className="block text-xs font-semibold text-slate-300">Or Custom Image URL</label>
-                  <input
-                    type="url"
-                    name="avatar"
-                    value={formData.avatar}
-                    onChange={handleInputChange}
-                    placeholder="https://example.com/photo.jpg"
-                    className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <Button type="submit" variant="ai" icon={Save}>
-                    Update Avatar
-                  </Button>
-                </div>
-              </Card>
-            )}
-
-            {/* Security & Password Tab */}
-            {activeTab === 'security' && (
-              <Card className="p-6 md:p-8 space-y-6">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-100">Security & Credentials</h3>
-                  <p className="text-xs text-slate-400">Manage account password, 2FA biometric verification, and active logins</p>
-                </div>
-
-                <div className="space-y-4 max-w-md">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">Current Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
-                      <input
-                        type="password"
-                        name="currentPassword"
-                        value={formData.currentPassword}
-                        onChange={handleInputChange}
-                        placeholder="••••••••••••"
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">New Password</label>
-                    <div className="relative">
-                      <Key className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
-                      <input
-                        type="password"
-                        name="newPassword"
-                        value={formData.newPassword}
-                        onChange={handleInputChange}
-                        placeholder="••••••••••••"
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2FA Status Box */}
-                <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/20 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                    <div>
-                      <p className="text-xs font-bold text-slate-200">Two-Factor Authentication (2FA)</p>
-                      <p className="text-[11px] text-slate-400">Protected by UPIQ Guardian Anomaly Radar</p>
-                    </div>
-                  </div>
-                  <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
-                    Active
-                  </span>
-                </div>
-
-                <div className="flex justify-end pt-4 border-t border-slate-800">
-                  <Button type="submit" variant="ai" icon={Save}>
-                    Save Security Settings
-                  </Button>
-                </div>
-              </Card>
-            )}
           </form>
         </div>
       </div>

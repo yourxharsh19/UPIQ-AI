@@ -29,6 +29,11 @@ class SystemCServiceTest {
         assertEquals(20, result.getPromptEvalCount());
         assertEquals(8, result.getEvalCount());
         assertEquals(99L, result.getOllamaTotalDurationNs());
+
+        org.mockito.ArgumentCaptor<String> prompt = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(client).generate(prompt.capture());
+        assertTrue(prompt.getValue().contains("VERIFIED FINANCIAL FACTS"));
+        assertFalse(prompt.getValue().contains("Answer in 2-4 short sentences"));
     }
 
     @Test
@@ -37,6 +42,25 @@ class SystemCServiceTest {
         when(client.properties()).thenReturn(properties);
         when(client.generate(anyString())).thenReturn(OllamaGenerateResponse.builder().response("Answer").build());
         assertEquals("configured-model", service.answer("Explain", FinancialContext.builder().verified(true).build()).getModel());
+    }
+
+    @Test
+    void generalEducationPromptUsesRealOllamaAndDisclaimsPersonalLedgerAccess() {
+        properties.setModel("llama3.1:8b");
+        when(client.properties()).thenReturn(properties);
+        when(client.generate(anyString())).thenReturn(OllamaGenerateResponse.builder()
+                .model("llama3.1:8b").response("Compound interest includes accumulated interest.").build());
+
+        service.answerGeneral("What is compound interest?");
+
+        org.mockito.ArgumentCaptor<String> prompt = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(client).generate(prompt.capture());
+        assertTrue(prompt.getValue().contains("What is compound interest?"));
+        assertTrue(prompt.getValue().contains("No personal transaction ledger or account data was supplied"));
+        assertTrue(prompt.getValue().contains("Do not claim to know the user's finances"));
+        assertTrue(prompt.getValue().contains("Answer in 2-4 short sentences"));
+        assertTrue(prompt.getValue().contains("Include every essential part of any named rule or framework"));
+        assertTrue(prompt.getValue().contains("finish with a complete final sentence"));
     }
 
     @Test

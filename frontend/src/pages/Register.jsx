@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useFinancial } from "../context/FinancialContext";
-import api from "../services/api";
+import { AuthService } from "../services/auth.service";
+import { submitRegistration } from "../utils/registrationFlow.js";
 import Button from "../components/ui/Button";
 import { Wallet } from "lucide-react";
 import logo from "../assets/logo.png";
@@ -24,11 +25,10 @@ const Register = () => {
     setError("");
 
     try {
-      await api.post("/auth/register", form);
-      alert("Registration Successful! Please login.");
-      navigateToLogin();
-    } catch (err) {
-      setError(err.response?.data?.message || "Registration failed. Please try again.");
+      const result = await submitRegistration({ authService: AuthService, form, navigateToLogin });
+      if (!result.success) setError(result.error);
+    } catch {
+      setError("Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -70,6 +70,8 @@ const Register = () => {
               </label>
               <input
                 name="name"
+                minLength={3}
+                maxLength={50}
                 placeholder="John Doe"
                 value={form.name}
                 onChange={handleChange}
@@ -98,6 +100,7 @@ const Register = () => {
               <input
                 name="password"
                 type="password"
+                minLength={6}
                 placeholder="••••••••"
                 value={form.password}
                 onChange={handleChange}
@@ -116,7 +119,7 @@ const Register = () => {
           </form>
 
           {error && (
-            <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-600 text-xs font-medium text-center animate-shake">
+            <div role="alert" className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-600 text-xs font-medium text-center animate-shake">
               {error}
             </div>
           )}

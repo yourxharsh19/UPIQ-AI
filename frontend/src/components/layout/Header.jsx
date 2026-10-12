@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import {
   Bell,
-  Mic,
-  MicOff,
   Plus,
   Search,
   Moon,
@@ -13,49 +11,27 @@ import {
 } from 'lucide-react';
 import { useFinancial } from '../../context/FinancialContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useVoiceInput } from '../../hooks/useVoiceInput';
 import { Button } from '../common/Button';
 import { BackendFeatureRoadmapModal } from '../common/BackendFeatureRoadmapModal';
-import { Server, Sparkles } from 'lucide-react';
+import { Server } from 'lucide-react';
 
 export const Header = ({ onOpenAddTxModal }) => {
   const [isRoadmapOpen, setIsRoadmapOpen] = useState(false);
   const {
     profile,
-    fraudAlerts,
-    setIsFraudDrawerOpen,
     triggerAiQuery,
-    supportedCurrencies,
-    selectedCurrencyCode,
-    setSelectedCurrencyCode,
+    currentCurrency,
     setActiveTab,
     logout,
   } = useFinancial();
 
   const { isDark, toggleTheme } = useTheme();
   const [searchValue, setSearchValue] = useState('');
-  const [showVoiceBanner, setShowVoiceBanner] = useState(false);
-
-  const { isListening, transcript, startListening, stopListening } = useVoiceInput((finalText) => {
-    triggerAiQuery(finalText);
-    setShowVoiceBanner(false);
-  });
-
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchValue.trim()) {
       triggerAiQuery(searchValue);
       setSearchValue('');
-    }
-  };
-
-  const handleVoiceToggle = () => {
-    if (isListening) {
-      stopListening();
-      setShowVoiceBanner(false);
-    } else {
-      setShowVoiceBanner(true);
-      startListening();
     }
   };
 
@@ -76,25 +52,6 @@ export const Header = ({ onOpenAddTxModal }) => {
         </div>
       </form>
 
-      {/* Voice Banner when active */}
-      {showVoiceBanner && (
-        <div className="absolute top-22 left-1/2 -translate-x-1/2 z-40 bg-indigo-950/95 border border-indigo-500/40 text-indigo-200 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-4 backdrop-blur-lg animate-bounce">
-          <div className="w-3 h-3 rounded-full bg-rose-500 animate-ping" />
-          <span className="text-sm font-medium">
-            {isListening ? (transcript ? `"${transcript}"` : 'Listening to your voice...') : 'Processing command...'}
-          </span>
-          <button
-            onClick={() => {
-              stopListening();
-              setShowVoiceBanner(false);
-            }}
-            className="text-xs text-indigo-400 underline hover:text-white"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
-
       {/* Header Actions */}
       <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
         {/* Backend Status & Roadmap Trigger */}
@@ -104,40 +61,14 @@ export const Header = ({ onOpenAddTxModal }) => {
           title="Backend Capabilities & Roadmap"
         >
           <Server className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-          <span>System Matrix</span>
+          <span>Feature Roadmap</span>
         </button>
 
         {/* Global Currency Switcher */}
         <div className="relative flex items-center gap-1.5 px-2 py-2 sm:px-2.5 bg-white/[0.035] border border-white/[0.07] rounded-xl light:bg-slate-100 light:border-slate-300">
           <Globe className="w-3.5 h-3.5 text-emerald-400" />
-          <select
-            value={selectedCurrencyCode}
-            onChange={(e) => setSelectedCurrencyCode(e.target.value)}
-            className="bg-transparent text-xs font-bold text-slate-200 light:text-slate-900 focus:outline-none cursor-pointer"
-            title="Switch Global Display Currency"
-          aria-label="Switch display currency"
-          >
-            {supportedCurrencies.map((c) => (
-              <option key={c.code} value={c.code} className="bg-slate-900 text-slate-100">
-                {c.symbol} {c.code}
-              </option>
-            ))}
-          </select>
+          <span className="text-xs font-bold text-slate-200 light:text-slate-900" aria-label="Financial display currency">{currentCurrency.symbol} {currentCurrency.code}</span>
         </div>
-
-        {/* Voice Command Button */}
-        <button
-          onClick={handleVoiceToggle}
-          className={`p-2.5 rounded-xl border transition-all duration-200 active:scale-95 ${
-            isListening
-              ? 'bg-rose-600 text-white border-rose-500 animate-pulse-ring'
-              : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 light:bg-slate-100 light:border-slate-300 light:text-slate-700'
-          }`}
-          title={isListening ? "Listening... click to stop" : "Voice Finance (Speak query)"}
-          aria-label={isListening ? "Stop voice input" : "Start voice input"}
-        >
-          {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-indigo-400" />}
-        </button>
 
         {/* Theme Switcher */}
         <button
@@ -149,19 +80,16 @@ export const Header = ({ onOpenAddTxModal }) => {
           {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
         </button>
 
-        {/* Fraud Notification Bell */}
         <button
-          onClick={() => setIsFraudDrawerOpen(true)}
-          className="relative p-2.5 rounded-xl bg-white/[0.035] border border-white/[0.07] text-slate-300 hover:text-white hover:border-white/15 light:bg-slate-100 light:border-slate-300 light:text-slate-700 transition-all duration-200 active:scale-95"
-          title="Suspicious Fraud Alerts Drawer"
-          aria-label={`Open fraud alerts${fraudAlerts.length ? ` (${fraudAlerts.length})` : ''}`}
+          type="button"
+          disabled
+          aria-disabled="true"
+          aria-label="Security and fraud monitoring, upcoming"
+          className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl border border-amber-500/20 bg-amber-500/5 text-[10px] font-semibold text-amber-300 cursor-not-allowed opacity-80"
+          title="Security and fraud monitoring is upcoming"
         >
-          <Bell className="w-4 h-4 text-slate-300" />
-          {fraudAlerts.length > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-600 text-[10px] font-bold text-white ring-2 ring-slate-950 animate-pulse">
-              {fraudAlerts.length}
-            </span>
-          )}
+          <Bell className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Security: Upcoming</span>
         </button>
 
         {/* Quick Add Transaction Trigger */}
@@ -186,11 +114,9 @@ export const Header = ({ onOpenAddTxModal }) => {
           title="User Profile & Settings"
           aria-label={`Open profile for ${profile.name}`}
         >
-          <img
-            src={profile.avatar}
-            alt={profile.name}
-            className="w-9 h-9 rounded-xl object-cover ring-2 ring-indigo-500/20 group-hover:ring-indigo-500 transition-all hover:scale-105"
-          />
+          <span aria-hidden="true" className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-sm font-bold text-white ring-2 ring-indigo-500/20 group-hover:ring-indigo-500 transition-all hover:scale-105">
+            {(profile.name || '?').trim().charAt(0).toUpperCase()}
+          </span>
         </button>
       </div>
 

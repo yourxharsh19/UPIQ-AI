@@ -55,7 +55,7 @@ public class ParsingUtils {
             // Ignore
         }
 
-        log.debug("Could not parse date: {}, using current date", text);
+        log.debug("Could not parse statement date; using current date");
         return LocalDateTime.now();
     }
 

@@ -6,18 +6,15 @@ import {
   FileText,
   Download,
   Bot,
-  Globe,
   FileSpreadsheet,
   ShieldAlert,
   TrendingUp,
   Cloud,
-  Mic,
   Bell,
   CheckCircle2,
   Clock,
   Sparkles,
   Server,
-  Zap,
 } from 'lucide-react';
 import { Modal } from './Modal';
 import { Badge } from './Badge';
@@ -30,12 +27,10 @@ const ICON_MAP = {
   FileText,
   Download,
   Bot,
-  Globe,
   FileSpreadsheet,
   ShieldAlert,
   TrendingUp,
   Cloud,
-  Mic,
   Bell,
 };
 
@@ -61,7 +56,7 @@ export const BackendFeatureRoadmapModal = ({ isOpen, onClose }) => {
   });
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Backend Capabilities & System Roadmap" maxWidth="max-w-4xl">
+    <Modal isOpen={isOpen} onClose={onClose} title="Feature Roadmap" maxWidth="max-w-4xl">
       <div className="space-y-6">
         {/* Connection Status Banner */}
         <div className="p-4 rounded-2xl glass-panel border border-indigo-500/20 bg-gradient-to-r from-indigo-950/40 via-purple-950/20 to-slate-900/60 flex items-center justify-between gap-4">
@@ -75,11 +70,11 @@ export const BackendFeatureRoadmapModal = ({ isOpen, onClose }) => {
                   Backend API Engine Status
                 </h4>
                 <Badge variant={backendHealth.connected ? 'success' : 'warning'} size="sm">
-                  {backendHealth.loading ? 'Checking...' : backendHealth.connected ? 'Spring Boot Active (Port 8080)' : 'Client Local Engine Active'}
+                  {backendHealth.loading ? 'Checking...' : backendHealth.connected ? 'Backend API Reachable' : 'Backend API Unavailable'}
                 </Badge>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Real-time feature verification between client interface and backend endpoints
+                Connectivity check and current feature-status overview
               </p>
             </div>
           </div>
@@ -171,7 +166,7 @@ export const BackendFeatureRoadmapModal = ({ isOpen, onClose }) => {
                 </p>
 
                 <div className="mt-3 pt-2.5 border-t border-slate-800/60 light:border-slate-200/60 flex items-center justify-between text-[11px] font-mono text-slate-400">
-                  <span>Endpoint / Contract:</span>
+                  <span>Route / Status:</span>
                   <span className={isOnline ? 'text-emerald-400' : 'text-purple-300'}>
                     {feat.endpoint}
                   </span>

@@ -2,13 +2,18 @@ import React, { lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeProvider } from './context/ThemeContext';
 import { FinancialProvider, useFinancial } from './context/FinancialContext';
+import { BudgetProvider } from './context/BudgetContext';
 import { MainLayout } from './components/layout/MainLayout';
 import { LazyPageErrorBoundary } from './components/common/LazyPageErrorBoundary.js';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
+import Register from './pages/Register';
+import { resolveAppTab } from './utils/appNavigation.js';
+import { resolveAuthView } from './utils/registrationFlow.js';
 
 const Dashboard = lazy(() => import('./pages/Dashboard').then((module) => ({ default: module.Dashboard })));
 const Transactions = lazy(() => import('./pages/Transactions').then((module) => ({ default: module.Transactions })));
+const Categories = lazy(() => import('./pages/Categories'));
 const AIAssistant = lazy(() => import('./pages/AIAssistant').then((module) => ({ default: module.AIAssistant })));
 const Insights = lazy(() => import('./pages/Insights').then((module) => ({ default: module.Insights })));
 const Reports = lazy(() => import('./pages/Reports').then((module) => ({ default: module.Reports })));
@@ -19,15 +24,16 @@ const AppContent = () => {
   const { isAuthenticated, activeTab, currentView, profile } = useFinancial();
 
   const renderPage = () => {
-    switch (activeTab) {
+    switch (resolveAppTab(activeTab)) {
       case 'dashboard':
         return <Dashboard />;
       case 'transactions':
         return <Transactions />;
+      case 'categories':
+        return <Categories />;
       case 'ai-assistant':
         return <AIAssistant />;
       case 'insights':
-      case 'security':
       case 'insights-tab':
         return <Insights />;
       case 'reports':
@@ -42,7 +48,8 @@ const AppContent = () => {
   };
 
   const renderView = () => {
-    if (currentView === 'home') {
+    const authView = resolveAuthView(currentView, isAuthenticated);
+    if (authView === 'home') {
       return (
         <motion.div
           key="home-screen-view"
@@ -57,7 +64,9 @@ const AppContent = () => {
       );
     }
 
-    if (currentView === 'login' || !isAuthenticated) {
+    if (authView === 'register') return <Register />;
+
+    if (authView === 'login') {
       return (
         <motion.div
           key="login-screen-view"
@@ -104,9 +113,11 @@ const AppContent = () => {
 export default function App() {
   return (
     <ThemeProvider>
-      <FinancialProvider>
-        <AppContent />
-      </FinancialProvider>
+      <BudgetProvider>
+        <FinancialProvider>
+          <AppContent />
+        </FinancialProvider>
+      </BudgetProvider>
     </ThemeProvider>
   );
 }

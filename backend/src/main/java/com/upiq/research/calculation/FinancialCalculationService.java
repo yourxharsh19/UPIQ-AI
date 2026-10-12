@@ -72,8 +72,7 @@ public class FinancialCalculationService {
                 .findByUserIdAndTypeIgnoreCaseAndDateBetweenOrderByDateDesc(
                         userId, TYPE_INCOME, period.getStartDate(), period.getEndDate());
         BigDecimal total = sumAmounts(txns);
-        log.debug("calculateTotalIncome userId={} period={}/{} count={} total={}",
-                userId, period.getStartDate(), period.getEndDate(), txns.size(), total);
+        log.debug("Calculated income aggregate");
         return total;
     }
 
@@ -91,8 +90,7 @@ public class FinancialCalculationService {
                 .findByUserIdAndTypeIgnoreCaseAndDateBetweenOrderByDateDesc(
                         userId, TYPE_EXPENSE, period.getStartDate(), period.getEndDate());
         BigDecimal total = sumAmounts(txns);
-        log.debug("calculateTotalExpense userId={} period={}/{} count={} total={}",
-                userId, period.getStartDate(), period.getEndDate(), txns.size(), total);
+        log.debug("Calculated expense aggregate");
         return total;
     }
 

@@ -14,7 +14,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,13 +40,13 @@ public class CSVParserService {
                         transactions.add(tx);
                     }
                 } catch (Exception e) {
-                    log.warn("Failed to parse CSV record {}: {}", record.getRecordNumber(), e.getMessage());
+                    log.warn("Failed to parse CSV record (exceptionClass={})", e.getClass().getSimpleName());
                 }
             }
 
         } catch (Exception e) {
-            log.error("Error parsing CSV file: {}", e.getMessage(), e);
-            throw new ParsingException("Failed to parse CSV file: " + e.getMessage(), e);
+            log.error("Error parsing CSV file (exceptionClass={})", e.getClass().getSimpleName());
+            throw new ParsingException("Could not parse uploaded CSV", e);
         }
 
         log.info("Successfully parsed {} transactions from CSV", transactions.size());
@@ -56,6 +55,7 @@ public class CSVParserService {
 
     private TransactionRequest parseRecord(CSVRecord record) {
         TransactionRequest tx = new TransactionRequest();
+        tx.setSourceRowIndex(Math.toIntExact(record.getRecordNumber() - 1));
 
         // Try to extract amount from various possible column names
         String amountStr = getValueIgnoreCase(record, "amount", "value", "transaction_amount", "amt", "total");
@@ -63,19 +63,19 @@ public class CSVParserService {
             try {
                 tx.setAmount(Double.parseDouble(amountStr.replaceAll("[^0-9.-]", "")));
             } catch (NumberFormatException e) {
-                log.warn("Could not parse amount: {}", amountStr);
+                log.warn("Could not parse amount in CSV record");
             }
         }
 
         // Extract type (income/expense)
         String typeStr = getValueIgnoreCase(record, "type", "transaction_type", "credit_debit", "cd");
         if (typeStr != null) {
-            tx.setType(mappingService.extractType(typeStr));
+            tx.setType(toTransactionType(mappingService.extractType(typeStr)));
         } else {
             // Infer from amount or description
             String description = getValueIgnoreCase(record, "description", "details", "narration", "remarks", "memo");
             if (description != null) {
-                tx.setType(mappingService.extractType(description));
+                tx.setType(toTransactionType(mappingService.extractType(description)));
             } else {
                 tx.setType("expense"); // default
             }
@@ -91,8 +91,6 @@ public class CSVParserService {
         String dateStr = getValueIgnoreCase(record, "date", "transaction_date", "date_time", "timestamp");
         if (dateStr != null) {
             tx.setDate(ParsingUtils.parseDate(dateStr));
-        } else {
-            tx.setDate(LocalDateTime.now());
         }
 
         // Extract payment method
@@ -127,6 +125,10 @@ public class CSVParserService {
             }
         }
         return null;
+    }
+
+    private String toTransactionType(String mappedType) {
+        return "credit".equalsIgnoreCase(mappedType) ? "income" : "expense";
     }
 }
 

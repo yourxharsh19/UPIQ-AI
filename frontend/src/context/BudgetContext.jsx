@@ -1,17 +1,15 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { readStoredBudgets, writeStoredBudgets } from '../utils/budgetStorage.js';
 
 const BudgetContext = createContext(null);
 
 export const BudgetProvider = ({ children }) => {
   // Budgets stored in localStorage (frontend-only)
-  const [budgets, setBudgets] = useState(() => {
-    const stored = localStorage.getItem('upiq_budgets');
-    return stored ? JSON.parse(stored) : {};
-  });
+  const [budgets, setBudgets] = useState(readStoredBudgets);
 
   // Save to localStorage whenever budgets change
   useEffect(() => {
-    localStorage.setItem('upiq_budgets', JSON.stringify(budgets));
+    writeStoredBudgets(budgets);
   }, [budgets]);
 
   const setBudget = (categoryName, amount) => {

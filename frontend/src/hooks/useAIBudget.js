@@ -1,21 +1,23 @@
 import { useMemo } from 'react';
 import { useFinancial } from '../context/FinancialContext';
+import { useBudget } from '../context/BudgetContext';
+import { buildLocalBudgetForecasts } from '../utils/budgetForecasts.js';
 
 export const useAIBudget = () => {
-  const { budgets, kpi, transactions, fraudAlerts, investments } = useFinancial();
+  const { kpi, transactions } = useFinancial();
+  const { budgets } = useBudget();
 
   const metrics = useMemo(() => {
-    const totalBudgeted = budgets.reduce((acc, b) => acc + b.budget, 0);
-    const totalSpent = budgets.reduce((acc, b) => acc + b.spent, 0);
-    const totalPredicted = budgets.reduce((acc, b) => acc + b.predicted, 0);
-    
-    const overBudgetCount = budgets.filter(b => b.spent > b.budget).length;
-    const warningCount = budgets.filter(b => b.warning).length;
+    const forecasts = buildLocalBudgetForecasts(budgets, transactions);
+    const totalBudgeted = forecasts.reduce((acc, forecast) => acc + forecast.budget, 0);
+    const totalSpent = forecasts.reduce((acc, forecast) => acc + forecast.spent, 0);
+    const totalPredicted = forecasts.reduce((acc, forecast) => acc + forecast.predicted, 0);
+
+    const overBudgetCount = forecasts.filter((forecast) => forecast.spent > forecast.budget).length;
+    const warningCount = forecasts.filter((forecast) => forecast.spent / forecast.budget >= 0.85
+      && forecast.spent <= forecast.budget).length;
 
     const idleCash = Math.max(0, kpi.totalBalance - totalBudgeted);
-
-    const anomaliesCount = transactions.filter(t => t.isAnomaly).length;
-    const highRiskFraudCount = fraudAlerts.filter(f => f.riskScore >= 85).length;
 
     return {
       totalBudgeted,
@@ -24,12 +26,9 @@ export const useAIBudget = () => {
       overBudgetCount,
       warningCount,
       idleCash,
-      anomaliesCount,
-      highRiskFraudCount,
-      budgets,
-      investments,
+      budgets: forecasts,
     };
-  }, [budgets, kpi, transactions, fraudAlerts, investments]);
+  }, [budgets, kpi, transactions]);
 
   return metrics;
 };

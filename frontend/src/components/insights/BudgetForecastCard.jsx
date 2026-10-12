@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react';
+import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
 import { useFinancial } from '../../context/FinancialContext';
@@ -54,7 +54,7 @@ export const BudgetForecastCard = ({ forecast }) => {
           </span>
         </div>
         <div>
-          <span className="text-slate-400 block">AI Month-End Forecast:</span>
+          <span className="text-slate-400 block">Frontend Month-End Estimate:</span>
           <span className={`font-extrabold text-sm ${forecast.predicted > forecast.budget ? 'text-rose-400' : 'text-indigo-400'}`}>
             {formatCurrency(forecast.predicted)}
           </span>
@@ -65,7 +65,7 @@ export const BudgetForecastCard = ({ forecast }) => {
       <div className="mt-4 space-y-2">
         <div className="flex items-center justify-between text-[11px] font-semibold">
           <span className="text-slate-300">Spent: {percentSpent}%</span>
-          <span className="text-slate-400">AI Predicts: {percentPredicted}%</span>
+          <span className="text-slate-400">Estimated: {percentPredicted}%</span>
         </div>
         <div className="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative">
           {/* Actual spent bar */}

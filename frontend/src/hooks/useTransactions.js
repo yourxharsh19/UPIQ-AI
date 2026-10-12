@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useFinancial } from '../context/FinancialContext';
+import { createDateRangePreset, filterTransactionsByDateRange } from '../utils/transactionFilters';
 
 export const useTransactions = () => {
   const { transactions, addTransaction, updateTransaction, deleteTransaction, predictCategory } = useFinancial();
@@ -8,9 +9,15 @@ export const useTransactions = () => {
   const [selectedMode, setSelectedMode] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
   const [sortBy, setSortBy] = useState('date-desc');
+  const [dateRange, setDateRange] = useState(() => createDateRangePreset('this-month'));
+
+  const dateFilteredTransactions = useMemo(
+    () => filterTransactionsByDateRange(transactions, dateRange),
+    [transactions, dateRange],
+  );
 
   const filteredTransactions = useMemo(() => {
-    return transactions
+    return dateFilteredTransactions
       .filter((tx) => {
         const matchesSearch =
           tx.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -30,11 +37,13 @@ export const useTransactions = () => {
         if (sortBy === 'amount-asc') return a.amount - b.amount;
         return 0;
       });
-  }, [transactions, searchTerm, selectedCategory, selectedMode, selectedType, sortBy]);
+  }, [dateFilteredTransactions, searchTerm, selectedCategory, selectedMode, selectedType, sortBy]);
 
   return {
     transactions: filteredTransactions,
-    rawTransactions: transactions,
+    rawTransactions: dateFilteredTransactions,
+    dateRange,
+    setDateRange,
     searchTerm,
     setSearchTerm,
     selectedCategory,

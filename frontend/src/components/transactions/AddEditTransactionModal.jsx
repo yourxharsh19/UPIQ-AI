@@ -4,6 +4,7 @@ import { useFinancial } from '../../context/FinancialContext';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { Badge } from '../common/Badge';
+import { submitTransactionForm } from '../../utils/transactionOperations.js';
 
 export const AddEditTransactionModal = ({ isOpen, onClose, transactionToEdit }) => {
   const { addTransaction, updateTransaction, predictCategory, currentCurrency } = useFinancial();
@@ -15,6 +16,7 @@ export const AddEditTransactionModal = ({ isOpen, onClose, transactionToEdit }) 
   const [mode, setMode] = useState('UPI');
   const [merchant, setMerchant] = useState('');
   const [autoPredicted, setAutoPredicted] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (transactionToEdit) {
@@ -45,31 +47,35 @@ export const AddEditTransactionModal = ({ isOpen, onClose, transactionToEdit }) 
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title || !amount) return;
+    if (!title || !amount || isSaving) return;
 
-    if (transactionToEdit) {
-      updateTransaction(transactionToEdit.id, {
-        title,
-        amount: parseFloat(amount),
-        type,
-        category,
-        mode,
-        merchant: merchant || title,
+    setIsSaving(true);
+    try {
+      await submitTransactionForm({
+        save: () => transactionToEdit
+          ? updateTransaction(transactionToEdit.id, {
+            title,
+            amount: parseFloat(amount),
+            type,
+            category,
+            mode,
+            merchant: merchant || title,
+          })
+          : addTransaction({
+            title,
+            amount: parseFloat(amount),
+            type,
+            category,
+            mode,
+            merchant: merchant || title,
+          }),
+        close: onClose,
       });
-    } else {
-      addTransaction({
-        title,
-        amount: parseFloat(amount),
-        type,
-        category,
-        mode,
-        merchant: merchant || title,
-      });
+    } finally {
+      setIsSaving(false);
     }
-
-    onClose();
   };
 
   const categories = [
@@ -212,11 +218,11 @@ export const AddEditTransactionModal = ({ isOpen, onClose, transactionToEdit }) 
 
         {/* Actions */}
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>
-          <Button type="submit" variant={type === 'expense' ? 'rose' : 'emerald'}>
-            {transactionToEdit ? 'Save Changes' : 'Record Transaction'}
+          <Button type="submit" variant={type === 'expense' ? 'rose' : 'emerald'} disabled={isSaving}>
+            {isSaving ? 'Saving…' : transactionToEdit ? 'Save Changes' : 'Record Transaction'}
           </Button>
         </div>
       </form>

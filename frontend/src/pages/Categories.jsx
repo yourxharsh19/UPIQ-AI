@@ -10,6 +10,7 @@ import Card from "../components/ui/Card";
 import { Plus } from "lucide-react";
 import clsx from "clsx";
 import { useBudget } from "../context/BudgetContext";
+import { categoryListFromResponse } from "../utils/categoryData.js";
 
 const Categories = () => {
     const [categories, setCategories] = useState([]);
@@ -29,13 +30,8 @@ const Categories = () => {
         setLoading(true);
         try {
             const response = await CategoryService.getAll();
-            if (response.data && response.data.data) {
-                setCategories(response.data.data);
-                console.log("=== CATEGORIES FETCHED ===");
-                console.log("Category names:", response.data.data.map(c => c.name));
-            }
+            setCategories(categoryListFromResponse(response));
         } catch (error) {
-            console.error("Failed to fetch categories", error);
             const status = error.response?.status;
             if (status && status !== 401 && status !== 403 && status !== 404) {
                 alert("Failed to load categories. Please try again.");
@@ -47,14 +43,12 @@ const Categories = () => {
     };
 
     const fetchTransactionCounts = async () => {
-        console.log("=== FETCHING TRANSACTIONS ===");
         try {
             const response = await TransactionService.getAll();
-            console.log("Transaction API response:", response);
 
             // The API returns { success: true, data: [...], message: "..." }
             // So transactions are in response.data, not response.data.data
-            if (response.data) {
+            if (Array.isArray(response.data)) {
                 const transactions = response.data;
                 setAllTransactions(transactions);
 
@@ -65,24 +59,9 @@ const Categories = () => {
                     counts[category] = (counts[category] || 0) + 1;
                 });
 
-                // Debug logging
-                console.log("=== CATEGORY DEBUG ===");
-                console.log("Total transactions:", transactions.length);
-                console.log("Unique categories in transactions:", Object.keys(counts));
-                console.log("Transaction counts by category:", counts);
-                console.log("Sample transactions:", transactions.slice(0, 3).map(t => ({
-                    description: t.description,
-                    category: t.category,
-                    type: t.type
-                })));
-
                 setTransactionCounts(counts);
-            } else {
-                console.warn("Unexpected response structure:", response);
             }
-        } catch (error) {
-            console.error("Failed to fetch transaction counts", error);
-            console.error("Error details:", error.response);
+        } catch {
             setTransactionCounts({});
             setAllTransactions([]);
         }
@@ -109,23 +88,18 @@ const Categories = () => {
     };
 
     const handleSave = async (id, formData) => {
-        try {
-            const payload = {
-                ...formData,
-                type: formData.type.toLowerCase()
-            };
+        const payload = {
+            ...formData,
+            type: formData.type.toLowerCase()
+        };
 
-            if (id) {
-                await CategoryService.update(id, payload);
-            } else {
-                await CategoryService.create(payload);
-            }
-            fetchCategories();
-            setIsModalOpen(false);
-        } catch (error) {
-            console.error("Save failed", error);
-            throw error;
+        if (id) {
+            await CategoryService.update(id, payload);
+        } else {
+            await CategoryService.create(payload);
         }
+        fetchCategories();
+        setIsModalOpen(false);
     };
 
     const handleDelete = async (id) => {
@@ -138,7 +112,6 @@ const Categories = () => {
                 }
                 setCategories(categories.filter(c => c.id !== id));
             } catch (error) {
-                console.error("Delete failed", error);
                 alert("Failed to delete category: " + (error.response?.data?.message || error.message));
             }
         }

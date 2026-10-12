@@ -28,6 +28,11 @@ public class FinancialChatIntentResolver {
             "\\b(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|"
                     + "september|sept|sep|october|oct|november|nov|december|dec)\\b(?:\\s+(20\\d{2}))?",
             Pattern.CASE_INSENSITIVE);
+    private static final List<String> GENERAL_TERMS = List.of("budget", "compound interest", "inflation",
+            "credit score", "emergency fund", "savings", "investment", "tax", "loan", "interest rate",
+            "diversification", "mutual fund", "index fund", "fixed deposit", "credit card",
+            "credit utilization", "stock market", "retirement", "mortgage", "insurance", "dividend",
+            "asset allocation", "personal finance", "save money", "50/30/20");
     private static final Map<String, Month> MONTHS = Map.ofEntries(
             Map.entry("jan", Month.JANUARY), Map.entry("january", Month.JANUARY),
             Map.entry("feb", Month.FEBRUARY), Map.entry("february", Month.FEBRUARY),
@@ -43,6 +48,22 @@ public class FinancialChatIntentResolver {
 
     public Optional<BenchmarkQuestionDefinition> resolve(String question, YearMonth latestAvailableMonth,
                                                            LocalDate earliestTransactionDate) {
+        return resolve(question, latestAvailableMonth, earliestTransactionDate, YearMonth.now());
+    }
+
+    public boolean isGeneralEducationalQuestion(String question) {
+        if (question == null || question.isBlank()) return false;
+        String normalized = question.toLowerCase(Locale.ROOT);
+        boolean educationalForm = containsAny(normalized, "what is", "what are", "explain", "define",
+                "meaning of", "how does", "how do ", "difference between", "differentiate between");
+        boolean personalLedgerRequest = containsAny(normalized, " my ", " i spent", " i earned", "my spending",
+                "my income", "my expense", "my transaction", "my balance", "my account");
+        return educationalForm && !personalLedgerRequest
+                && GENERAL_TERMS.stream().anyMatch(normalized::contains);
+    }
+
+    Optional<BenchmarkQuestionDefinition> resolve(String question, YearMonth latestAvailableMonth,
+                                                   LocalDate earliestTransactionDate, YearMonth calendarMonth) {
         if (question == null || question.isBlank() || latestAvailableMonth == null) {
             return Optional.empty();
         }
@@ -50,13 +71,12 @@ public class FinancialChatIntentResolver {
         List<String> categories = categoriesMentioned(normalized);
         boolean comparison = containsAny(normalized, "compare", "versus", " vs ", " than ",
                 "change", "trend", "increased", "decreased", "more", "less");
-        List<YearMonth> mentionedMonths = resolveMonths(question, latestAvailableMonth);
+        List<YearMonth> mentionedMonths = resolveMonths(question, calendarMonth);
 
         if (containsAny(normalized, "largest", "biggest", "highest")
                 && containsAny(normalized, "expense", "transaction", "spend")) {
             YearMonth namedPeriod = requestedExplicitPeriod(normalized, mentionedMonths);
-            LocalDate first = namedPeriod != null ? namedPeriod.atDay(1)
-                    : earliestTransactionDate == null ? latestAvailableMonth.atDay(1) : earliestTransactionDate;
+            LocalDate first = namedPeriod != null ? namedPeriod.atDay(1) : latestAvailableMonth.atDay(1);
             LocalDate end = namedPeriod != null ? namedPeriod.atEndOfMonth() : latestAvailableMonth.atEndOfMonth();
             return Optional.of(definition("LARGEST_TRANSACTION", question, null, null, "expense",
                     first, end, null, null, 1));
@@ -88,6 +108,10 @@ public class FinancialChatIntentResolver {
         }
 
         YearMonth period = requestedPeriod(normalized, mentionedMonths, latestAvailableMonth);
+        if (isSummaryQuestion(normalized)) {
+            return Optional.of(definition("NET_BALANCE", question, null, null, null,
+                    period.atDay(1), period.atEndOfMonth(), null, null, null));
+        }
         if (containsAny(normalized, "net balance", "savings rate")) {
             return Optional.of(definition("NET_BALANCE", question, null, null, null,
                     period.atDay(1), period.atEndOfMonth(), null, null, null));
@@ -96,7 +120,7 @@ public class FinancialChatIntentResolver {
             return Optional.of(definition("TOTAL_INCOME", question, null, null, "income",
                     period.atDay(1), period.atEndOfMonth(), null, null, null));
         }
-        if (isAmountQuestion(normalized)
+        if ((isAmountQuestion(normalized) || containsAny(normalized, "analyze", "analyse"))
                 && containsAny(normalized, "expense", "spend", "spent", "spending", "paid")) {
             return Optional.of(definition("TOTAL_EXPENSE", question, null, null, "expense",
                     period.atDay(1), period.atEndOfMonth(), null, null, null));
@@ -138,13 +162,12 @@ public class FinancialChatIntentResolver {
                 .map(CategoryMention::name).toList();
     }
 
-    private static List<YearMonth> resolveMonths(String question, YearMonth latest) {
+    private static List<YearMonth> resolveMonths(String question, YearMonth calendarMonth) {
         List<YearMonth> months = new ArrayList<>();
         Matcher matcher = MONTH_PATTERN.matcher(question);
         while (matcher.find()) {
             Month month = MONTHS.get(matcher.group(1).toLowerCase(Locale.ROOT));
-            int year = matcher.group(2) == null ? latest.getYear() : Integer.parseInt(matcher.group(2));
-            if (matcher.group(2) == null && month.getValue() > latest.getMonthValue()) year--;
+            int year = matcher.group(2) == null ? calendarMonth.getYear() : Integer.parseInt(matcher.group(2));
             months.add(YearMonth.of(year, month));
         }
         months.sort(Comparator.naturalOrder());
@@ -160,7 +183,10 @@ public class FinancialChatIntentResolver {
     }
 
     private static YearMonth requestedExplicitPeriod(String normalized, List<YearMonth> months) {
-        boolean explicitlyPlacedMonth = normalized.matches(".*\\b(in|during|for)\\s+"
+        boolean explicitlyPlacedMonth = normalized.matches(".*\\b(in|during|for|about)\\s+"
+                + "(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|"
+                + "september|sept|sep|october|oct|november|nov|december|dec)\\b.*")
+                || normalized.matches(".*\\b(analyze|analyse)\\s+(?:my\\s+)?"
                 + "(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|"
                 + "september|sept|sep|october|oct|november|nov|december|dec)\\b.*");
         return explicitlyPlacedMonth && !months.isEmpty() ? months.get(0) : null;
@@ -168,6 +194,13 @@ public class FinancialChatIntentResolver {
 
     private static boolean isAmountQuestion(String normalized) {
         return normalized.matches(".*\\b(how much|what was|what is|what's|show me|total)\\b.*");
+    }
+
+    private static boolean isSummaryQuestion(String normalized) {
+        boolean summaryForm = containsAny(normalized, "summarize", "summarise", "summary", "overview");
+        boolean financialScope = containsAny(normalized, "spend", "expense", "income", "cash flow",
+                "transaction", "financial", "net balance");
+        return summaryForm && financialScope;
     }
 
     private static boolean containsAny(String value, String... signals) {

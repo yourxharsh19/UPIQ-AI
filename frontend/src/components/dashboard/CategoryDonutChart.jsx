@@ -2,9 +2,12 @@ import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { Card } from '../common/Card';
 import { useFinancial } from '../../context/FinancialContext';
+import { getTransactionCategorySpending } from '../../utils/dashboardAnalytics.js';
 
 export const CategoryDonutChart = () => {
-  const { categories, formatCurrency } = useFinancial();
+  const { transactions, transactionsError, loading, formatCurrency } = useFinancial();
+  const categories = getTransactionCategorySpending(transactions);
+  const totalSpent = categories.reduce((acc, category) => acc + category.value, 0);
 
   const CustomPieTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -27,9 +30,17 @@ export const CategoryDonutChart = () => {
         <h3 className="text-base font-semibold tracking-tight text-slate-100 light:text-slate-900">
           Spending mix
         </h3>
-        <p className="text-xs text-slate-400">Where your monthly spend is going</p>
+      <p className="text-xs text-slate-400">Expense categories for your latest transaction month</p>
       </div>
 
+      {loading ? (
+        <div className="flex h-56 items-center justify-center text-sm text-[var(--text-muted)]" role="status">Loading transactions…</div>
+      ) : transactionsError ? (
+        <div className="flex h-56 items-center justify-center text-center text-sm text-rose-400" role="alert">{transactionsError}</div>
+      ) : categories.length === 0 ? (
+        <div className="flex h-56 items-center justify-center text-center text-sm text-[var(--text-muted)]">No categorized expenses yet.</div>
+      ) : (
+      <>
       <div className="h-56 w-full relative">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -53,23 +64,31 @@ export const CategoryDonutChart = () => {
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400">Total Spent</span>
           <span className="text-base font-extrabold text-slate-100 light:text-slate-900">
-            {formatCurrency(categories.reduce((acc, c) => acc + c.value, 0))}
+            {formatCurrency(totalSpent)}
           </span>
         </div>
       </div>
 
-      {/* Category legend grid */}
-      <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-800/80 light:border-slate-200">
-        {categories.slice(0, 6).map((cat) => (
-          <div key={cat.name} className="flex items-center justify-between text-xs p-1.5 rounded-lg hover:bg-slate-800/40">
-            <div className="flex items-center gap-2 truncate">
-              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
-              <span className="text-slate-300 light:text-slate-700 truncate">{cat.name}</span>
-            </div>
-            <span className="font-semibold text-slate-200 light:text-slate-900 ml-2">{cat.percentage}%</span>
-          </div>
-        ))}
+      <div className="mt-3 overflow-x-auto border-t border-slate-800/80 light:border-slate-200 pt-3">
+        <table className="w-full text-left text-xs">
+          <caption className="sr-only">Spending totals by transaction category</caption>
+          <thead className="text-[var(--text-muted)]">
+            <tr><th scope="col" className="pb-2 font-medium">Category</th><th scope="col" className="pb-2 text-right font-medium">Transactions</th><th scope="col" className="pb-2 text-right font-medium">Total</th></tr>
+          </thead>
+          <tbody>
+            {categories.map((category) => (
+              <tr key={category.name} className="border-t border-slate-800/50 light:border-slate-200">
+                <th scope="row" className="py-2 pr-2 font-medium text-[var(--text-main)]"><span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: category.color }} />{category.name}</th>
+                <td className="py-2 text-right text-[var(--text-muted)]">{category.count}</td>
+                <td className="py-2 text-right font-semibold text-[var(--text-main)]">{formatCurrency(category.value)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot><tr className="border-t border-slate-700 light:border-slate-300"><th scope="row" colSpan="2" className="pt-2 text-[var(--text-main)]">Total expenses</th><td className="pt-2 text-right font-bold text-[var(--text-main)]">{formatCurrency(totalSpent)}</td></tr></tfoot>
+        </table>
       </div>
+      </>
+      )}
     </Card>
   );
 };

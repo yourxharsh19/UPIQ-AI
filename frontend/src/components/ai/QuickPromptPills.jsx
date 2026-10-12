@@ -1,14 +1,9 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
+import { getFinancialChatPrompts } from '../../utils/financialChatPrompts.js';
 
-export const QuickPromptPills = ({ onSelectPrompt }) => {
-  const prompts = [
-    "Summarize this week's expenses",
-    "Am I on track for my budget?",
-    "Show irregular spending & anomalies",
-    "How much idle cash can I invest?",
-    "Compare August vs September dining spend",
-  ];
+export const QuickPromptPills = ({ onSelectPrompt, transactions = [] }) => {
+  const prompts = getFinancialChatPrompts(transactions);
 
   return (
     <div className="flex flex-wrap gap-2">

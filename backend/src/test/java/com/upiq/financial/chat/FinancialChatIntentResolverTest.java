@@ -53,6 +53,53 @@ class FinancialChatIntentResolverTest {
         assertTrue(resolver.resolve("Should I spend more on travel?", latestMonth, null).isEmpty());
     }
 
+    @Test
+    void explicitMonthUsesCalendarYearInsteadOfLatestTransactionMonth() {
+        var october = resolver.resolve("How much did I spend in October?", YearMonth.of(2026, 9),
+                LocalDate.of(2026, 7, 1), YearMonth.of(2026, 10)).orElseThrow();
+        assertEquals("2026-10-01", october.getStartDate());
+        assertEquals("2026-10-31", october.getEndDate());
+        var latestDefault = resolver.resolve("How much did I spend this month?", YearMonth.of(2026, 9),
+                LocalDate.of(2026, 7, 1), YearMonth.of(2026, 10)).orElseThrow();
+        assertEquals("2026-09-01", latestDefault.getStartDate());
+    }
+
+    @Test
+    void onlyClearlyGeneralEducationalFinanceQuestionsUseGeneralKnowledgeRoute() {
+        assertTrue(resolver.isGeneralEducationalQuestion("What is compound interest?"));
+        assertTrue(resolver.isGeneralEducationalQuestion("Explain how a budget works"));
+        assertTrue(resolver.isGeneralEducationalQuestion("How do credit cards work?"));
+        assertTrue(resolver.isGeneralEducationalQuestion(
+                "What is the difference between a savings account and a fixed deposit?"));
+        assertTrue(resolver.isGeneralEducationalQuestion("Explain the difference between fixed deposits and savings accounts"));
+        assertTrue(!resolver.isGeneralEducationalQuestion("What is my budget?"));
+        assertTrue(!resolver.isGeneralEducationalQuestion("What was my total expense?"));
+    }
+
+    @Test
+    void recognizesLatestMonthSummariesExplicitMonthAnalysisAndLatestMonthLargestExpense() {
+        LocalDate earliest = LocalDate.of(2026, 1, 4);
+        var summary = resolver.resolve("Summarize my spending for my latest available transaction month.",
+                YearMonth.of(2026, 9), earliest, YearMonth.of(2026, 10)).orElseThrow();
+        assertEquals("NET_BALANCE", summary.getCalculationType());
+        assertEquals("2026-09-01", summary.getStartDate());
+        assertEquals("2026-09-30", summary.getEndDate());
+
+        var analysis = resolver.resolve("Analyze my October 2026 spending.", YearMonth.of(2026, 9),
+                earliest, YearMonth.of(2026, 10)).orElseThrow();
+        assertEquals("TOTAL_EXPENSE", analysis.getCalculationType());
+        assertEquals("2026-10-01", analysis.getStartDate());
+        assertEquals("2026-10-31", analysis.getEndDate());
+
+        var largest = resolver.resolve("What was my largest expense in my latest available transaction month?",
+                YearMonth.of(2026, 9), earliest, YearMonth.of(2026, 10)).orElseThrow();
+        assertEquals("LARGEST_TRANSACTION", largest.getCalculationType());
+        assertEquals("expense", largest.getTransactionType());
+        assertEquals(1, largest.getLimit());
+        assertEquals("2026-09-01", largest.getStartDate());
+        assertEquals("2026-09-30", largest.getEndDate());
+    }
+
     private void assertType(String text, String calculationType) {
         var question = resolver.resolve(text, latestMonth, LocalDate.of(2026, 1, 5)).orElseThrow();
         assertEquals(calculationType, mapper.map(question, 19L).getCalculationType().name());

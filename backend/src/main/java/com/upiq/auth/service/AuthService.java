@@ -31,20 +31,14 @@ public class AuthService {
             }
         }
 
-        // Parse role from request, default to USER if not provided or invalid
+        // Public self-registration can never grant elevated privileges.
         Role userRole = Role.USER;
-        if (request.getRole() != null && !request.getRole().trim().isEmpty()) {
-            try {
-                userRole = Role.valueOf(request.getRole().trim().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                return "Invalid role! Role must be either 'USER' or 'ADMIN'.";
-            }
-        }
 
         // Build user - explicitly set role in the chain to override @Builder.Default
         User user = User.builder()
                 .email(request.getEmail())
                 .username(request.getUserName() != null ? request.getUserName() : request.getEmail().split("@")[0])
+                .fullName(request.getUserName())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(userRole) // Must be set explicitly to override @Builder.Default
                 .active(true)
@@ -55,12 +49,6 @@ public class AuthService {
         user.setRole(userRole);
 
         User savedUser = userService.saveUser(user);
-
-        // Verify the role was saved correctly
-        if (!savedUser.getRole().equals(userRole)) {
-            savedUser.setRole(userRole);
-            userService.saveUser(savedUser);
-        }
 
         return "User registered successfully!";
     }

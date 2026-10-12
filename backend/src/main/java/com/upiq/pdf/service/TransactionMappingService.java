@@ -134,7 +134,7 @@ public class TransactionMappingService {
             }
 
         } catch (Exception e) {
-            log.debug("Could not extract amount from: {}", text);
+            log.debug("Could not extract amount from parsed transaction text");
         }
 
         return 0.0;
@@ -199,7 +199,7 @@ public class TransactionMappingService {
                 return LocalDateTime.of(year, month, day, 0, 0);
 
             } catch (Exception e) {
-                log.debug("Could not parse date from: {}", text);
+                log.debug("Could not parse date from parsed transaction text");
             }
         }
 

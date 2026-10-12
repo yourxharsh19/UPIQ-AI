@@ -2,9 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   Search,
   Plus,
-  UploadCloud,
   FileText,
-  Receipt,
   Filter,
   Trash2,
   Edit2,
@@ -24,10 +22,11 @@ import { useTransactions } from '../hooks/useTransactions';
 import { useFinancial } from '../context/FinancialContext';
 import { CategoryChip } from '../components/transactions/CategoryChip';
 import { AddEditTransactionModal } from '../components/transactions/AddEditTransactionModal';
-import { ReceiptScannerModal } from '../components/transactions/ReceiptScannerModal';
 import { StatementUploadModal } from '../components/transactions/StatementUploadModal';
+import { TransactionDateFilter } from '../components/transactions/TransactionDateFilter';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
+import { runAfterDeleteAllConfirmation } from '../utils/transactionOperations';
 
 export const Transactions = () => {
   const {
@@ -42,14 +41,33 @@ export const Transactions = () => {
     sortBy,
     setSortBy,
     deleteTransaction,
+    dateRange,
+    setDateRange,
   } = useTransactions();
 
-  const { setIsFraudDrawerOpen, formatCurrency } = useFinancial();
+  const { formatCurrency, deleteAllTransactions, addToast } = useFinancial();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
   const [txToEdit, setTxToEdit] = useState(null);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+  const handleDeleteAll = async () => {
+    if (isDeletingAll) return;
+
+    setIsDeletingAll(true);
+    try {
+      const result = await runAfterDeleteAllConfirmation({
+        confirm: (message) => window.confirm(message),
+        action: deleteAllTransactions,
+      });
+      if (result.cancelled) return;
+    } catch (error) {
+      addToast('Could not delete transactions', error?.message || 'The server could not delete your transactions.', 'danger');
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
 
   // Category Configuration with icons & colors
   const categoryConfigs = [
@@ -108,7 +126,7 @@ export const Transactions = () => {
             Automated Transaction Ledger
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Real-time categorized records, receipt uploads, and risk scores
+            Categorized records, bank statement imports, and transaction history
           </p>
         </div>
 
@@ -121,13 +139,6 @@ export const Transactions = () => {
             Upload Bank Statement
           </Button>
           <Button
-            onClick={() => setIsReceiptModalOpen(true)}
-            variant="secondary"
-            icon={Receipt}
-          >
-            Scan Bill / Receipt
-          </Button>
-          <Button
             onClick={() => {
               setTxToEdit(null);
               setIsAddModalOpen(true);
@@ -136,6 +147,15 @@ export const Transactions = () => {
             icon={Plus}
           >
             New Transaction
+          </Button>
+          <Button
+            onClick={handleDeleteAll}
+            variant="secondary"
+            icon={Trash2}
+            disabled={isDeletingAll}
+            className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
+          >
+            {isDeletingAll ? 'Deleting…' : 'Delete All Transactions'}
           </Button>
         </div>
       </div>
@@ -225,7 +245,7 @@ export const Transactions = () => {
         </div>
 
         {/* Category Pill Filters */}
-        <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto pb-1 md:pb-0">
           <span className="text-xs text-slate-400 font-semibold flex items-center gap-1 flex-shrink-0">
             <Filter className="w-3.5 h-3.5" /> Filter:
           </span>
@@ -241,6 +261,8 @@ export const Transactions = () => {
               </option>
             ))}
           </select>
+
+          <TransactionDateFilter dateRange={dateRange} setDateRange={setDateRange} />
 
           <select
             value={selectedMode}
@@ -285,14 +307,14 @@ export const Transactions = () => {
               {transactions.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-slate-400">
-                    No transactions match your current search and category filters.
+                    No transactions match your current date, search, category, or payment filters.
                   </td>
                 </tr>
               ) : (
                 transactions.map((tx) => (
                   <tr key={tx.id} className="hover:bg-slate-800/40 light:hover:bg-slate-100 transition-colors">
                     <td className="py-4 px-4 text-slate-400 font-mono text-[11px]">
-                      {new Date(tx.date).toLocaleDateString('en-US', {
+                      {new Date(tx.date).toLocaleDateString('en-IN', {
                         month: 'short',
                         day: 'numeric',
                         hour: '2-digit',
@@ -327,15 +349,7 @@ export const Transactions = () => {
                       </span>
                     </td>
                     <td className="py-4 px-4">
-                      {tx.isFraud ? (
-                        <button onClick={() => setIsFraudDrawerOpen(true)} className="cursor-pointer">
-                          <Badge variant="fraud">Flagged Fraud</Badge>
-                        </button>
-                      ) : tx.isAnomaly ? (
-                        <Badge variant="anomaly">High Anomaly</Badge>
-                      ) : (
-                        <Badge variant="success">Normal</Badge>
-                      )}
+                      <Badge variant="neutral">Not monitored</Badge>
                     </td>
                     <td className="py-4 px-4 text-right font-extrabold text-sm">
                       <span className={tx.type === 'income' ? 'text-emerald-400' : 'text-slate-100 light:text-slate-900'}>
@@ -373,10 +387,6 @@ export const Transactions = () => {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         transactionToEdit={txToEdit}
-      />
-      <ReceiptScannerModal
-        isOpen={isReceiptModalOpen}
-        onClose={() => setIsReceiptModalOpen(false)}
       />
       <StatementUploadModal
         isOpen={isStatementModalOpen}

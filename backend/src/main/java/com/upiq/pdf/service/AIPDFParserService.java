@@ -66,7 +66,7 @@ public class AIPDFParserService {
             createFormatter("dd MMM yyyy"), createFormatter("dd MMM, yyyy"));
 
     public List<TransactionRequest> parsePDF(MultipartFile file) {
-        log.info("Starting PDF parsing for file: {}", file.getOriginalFilename());
+        log.info("Starting PDF parsing");
         try (InputStream inputStream = file.getInputStream();
                 PDDocument document = Loader.loadPDF(inputStream.readAllBytes())) {
 
@@ -78,8 +78,8 @@ public class AIPDFParserService {
             log.debug("Extracted text length: {}", text.length());
             return parseTransactions(text);
         } catch (IOException e) {
-            log.error("Error reading PDF", e);
-            throw new ParsingException("Error reading PDF: " + e.getMessage(), e);
+            log.error("Error reading PDF (exceptionClass={})", e.getClass().getSimpleName());
+            throw new ParsingException("Could not read uploaded PDF", e);
         }
     }
 
@@ -95,6 +95,7 @@ public class AIPDFParserService {
         List<TransactionRequest> transactions = new ArrayList<>();
         List<String> currentBlock = new ArrayList<>();
         LocalDateTime lastSeenDate = null;
+        int sourceRowIndex = 0;
 
         for (String line : lines) {
             // "Sticky Date" logic: if a line is a date, remember it for subsequent blocks
@@ -112,24 +113,25 @@ public class AIPDFParserService {
                     || lower.contains("payment to");
 
             if (isStart && !currentBlock.isEmpty()) {
-                addTx(transactions, currentBlock, lastSeenDate);
+                addTx(transactions, currentBlock, lastSeenDate, sourceRowIndex++);
                 currentBlock.clear();
             }
             currentBlock.add(line);
         }
-        addTx(transactions, currentBlock, lastSeenDate);
+        addTx(transactions, currentBlock, lastSeenDate, sourceRowIndex);
 
         log.info("Parsed {} transactions", transactions.size());
         return transactions;
     }
 
-    private void addTx(List<TransactionRequest> transactions, List<String> block, LocalDateTime lastSeenDate) {
+    private void addTx(List<TransactionRequest> transactions, List<String> block, LocalDateTime lastSeenDate, int sourceRowIndex) {
         TransactionRequest tx = parseBlock(block, lastSeenDate);
         if (tx != null) {
+            tx.setSourceRowIndex(sourceRowIndex);
             if (isValid(tx)) {
                 transactions.add(tx);
             } else {
-                log.info("Dropping invalid transaction: Amount={}, Desc='{}'", tx.getAmount(), tx.getDescription());
+                log.info("Dropping invalid parsed transaction");
             }
         }
     }
@@ -168,7 +170,7 @@ public class AIPDFParserService {
         tx.setDate(extractedDate);
 
         if (extractedDate == null) {
-            log.warn("Transaction parsed without date - Amount: {}, Type: {}", amount, finalType);
+            log.warn("Transaction parsed without a date");
         }
 
         tx.setDescription(extractDescription(block, type));
@@ -349,7 +351,7 @@ public class AIPDFParserService {
                     String s = m.group(3);
                     // Normalize: remove dots, commas, extra spaces -> "01 Oct 2025"
                     s = s.replaceAll("[,\\.\\-]", " ").replaceAll("\\s+", " ").trim();
-                    log.debug("Normalized Text-Month Date: '{}'", s);
+                    log.debug("Normalized text-month date");
 
                     List<DateTimeFormatter> textFormatters = Arrays.asList(
                             createFormatter("d MMM yyyy"),
@@ -371,7 +373,7 @@ public class AIPDFParserService {
                     String s = m.group(1);
                     // Normalize: replace . - with / -> "26/10/2023"
                     s = s.replaceAll("[\\.\\-]", "/").replaceAll("\\s+", "");
-                    log.debug("Normalized Numeric Date: '{}'", s);
+                    log.debug("Normalized numeric date");
 
                     List<DateTimeFormatter> numericFormatters = Arrays.asList(
                             createFormatter("d/M/yyyy"),
@@ -385,10 +387,11 @@ public class AIPDFParserService {
                     }
                 }
             } catch (Exception e) {
-                log.error("Error parsing date group: {}", e.getMessage());
+                log.warn("Could not parse extracted statement date (exceptionClass={})",
+                        e.getClass().getSimpleName());
             }
         }
-        log.warn("Failed to find date pattern in text: {}", text.substring(0, Math.min(100, text.length())));
+        log.warn("Could not find a date in parsed statement text");
         return null;
     }
 

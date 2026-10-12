@@ -27,5 +27,8 @@ public class TransactionRequest {
     private LocalDateTime date;
 
     private String paymentMethod; // UPI, Cash, Card, Net Banking
+
+    /** Stable zero-based parser row/block position; preserved when invalid rows are filtered. */
+    private Integer sourceRowIndex;
 }
 

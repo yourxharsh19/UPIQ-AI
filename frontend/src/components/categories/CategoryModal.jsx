@@ -198,7 +198,7 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
                         {formData.type === "expense" && (
                             <div>
                                 <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2">
-                                    Monthly Budget
+                                    Monthly Budget (this browser)
                                 </label>
                                 <div className="relative">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] font-bold">₹</span>
@@ -212,6 +212,7 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
                                         step="0.01"
                                     />
                                 </div>
+                                <p className="mt-1 text-[11px] text-[var(--text-muted)]">Saved locally in this browser; cross-device budget sync is Coming Soon.</p>
                             </div>
                         )}
                     </div>

@@ -7,8 +7,8 @@ import { IncomeExpenseChart } from '../components/dashboard/IncomeExpenseChart';
 import { CategoryDonutChart } from '../components/dashboard/CategoryDonutChart';
 import { RecentTransactionsWidget } from '../components/dashboard/RecentTransactionsWidget';
 import { QuickAskBar } from '../components/dashboard/QuickAskBar';
-import { UPIPaymentHub } from '../components/dashboard/UPIPaymentHub';
 import { UpcomingFeaturesSection } from '../components/dashboard/UpcomingFeaturesSection';
+import { formatSavingsRate } from '../utils/financialDisplay';
 
 export const Dashboard = () => {
   const { kpi, profile } = useFinancial();
@@ -123,24 +123,19 @@ export const Dashboard = () => {
         </div>
       </motion.section>
 
-      {/* UPI Payment Hub Section */}
-      <motion.div variants={itemVariants}>
-        <UPIPaymentHub />
-      </motion.div>
-
       {/* KPI Stat Cards Summary Grid */}
       <motion.section
         variants={itemVariants}
         aria-label="Financial summary"
         className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5"
       >
-        <StatCard title="Total Net Worth" value={kpi.totalBalance} change={kpi.balanceChange} isPositive icon={Wallet} color="indigo" featured className="sm:col-span-2" />
+        <StatCard title="Monthly Net Balance" value={kpi.totalBalance} change={kpi.balanceChange} isPositive icon={Wallet} color="indigo" featured className="sm:col-span-2" />
         <StatCard title="Monthly Income" value={kpi.monthlyIncome} change={kpi.incomeChange} isPositive icon={TrendingUp} color="emerald" />
         <StatCard title="Monthly Expenses" value={kpi.monthlyExpense} change={kpi.expenseChange} isPositive icon={TrendingDown} color="rose" />
-        <StatCard title="Projected Savings" value={kpi.projectedSavings} change={kpi.savingsChange} isPositive icon={PiggyBank} color="purple" />
+        <StatCard title="Savings Rate" value={formatSavingsRate(kpi.savingsRate)} change={kpi.savingsChange} isPositive icon={PiggyBank} color="purple" />
       </motion.section>
 
-      {/* Quick AI Voice / Query Prompt Bar */}
+      {/* Quick financial query prompt */}
       <motion.div variants={itemVariants}>
         <QuickAskBar />
       </motion.div>
@@ -160,7 +155,7 @@ export const Dashboard = () => {
         <RecentTransactionsWidget />
       </motion.div>
 
-      {/* Backend Capabilities & System Roadmap */}
+      {/* Backend Feature Roadmap */}
       <motion.div variants={itemVariants}>
         <UpcomingFeaturesSection />
       </motion.div>

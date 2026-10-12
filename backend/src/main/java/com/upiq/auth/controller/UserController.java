@@ -6,6 +6,7 @@ import com.upiq.auth.model.User;
 import com.upiq.auth.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -38,6 +39,7 @@ public class UserController {
 
     // 🔹 Get all users
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<UserDTO>>> getAllUsers() {
         List<User> users = userService.getAllUsers();
         List<UserDTO> userDTOs = users.stream()
@@ -53,6 +55,7 @@ public class UserController {
 
     // 🔹 Get user by email
     @GetMapping("/email/{email}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserDTO>> getUserByEmail(@PathVariable String email) {
         Optional<User> userOpt = userService.getUserByEmail(email);
         if (userOpt.isPresent()) {
@@ -73,6 +76,7 @@ public class UserController {
 
     // 🔹 Get user by username
     @GetMapping("/username/{username}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserDTO>> getUserByUsername(@PathVariable String username) {
         Optional<User> userOpt = userService.getUserByUsername(username);
         if (userOpt.isPresent()) {
