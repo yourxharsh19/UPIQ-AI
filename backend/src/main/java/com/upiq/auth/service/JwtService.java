@@ -3,7 +3,12 @@ package com.upiq.auth.service;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -14,13 +19,44 @@ import java.util.Map;
 import java.util.function.Function;
 
 @Service
+@Slf4j
 public class JwtService {
+
+    private static final String LOCAL_DEVELOPMENT_SECRET =
+            "local_dev_secret_key_minimum_256_bits_for_upiq_2_0_local_development_only";
+    private static final int MIN_HMAC_KEY_BYTES = 32;
 
     @Value("${jwt.secret}")
     private String secretKey;
 
+    @Autowired
+    private Environment environment;
+
     @Value("${jwt.expiration:3600000}")
     private long expiration;
+
+    @PostConstruct
+    void validateSigningKeyConfiguration() {
+        boolean production = environment.acceptsProfiles(Profiles.of("prod"));
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException("JWT signing secret must not be blank");
+        }
+        if (production && LOCAL_DEVELOPMENT_SECRET.equals(secretKey)) {
+            throw new IllegalStateException("Production requires an externally supplied JWT signing secret");
+        }
+        if (secretKey.getBytes(StandardCharsets.UTF_8).length < MIN_HMAC_KEY_BYTES) {
+            throw new IllegalStateException("JWT signing secret must be at least 256 bits for HMAC signing");
+        }
+        try {
+            // Validate at startup using the same key construction and algorithm selection as JJWT.
+            Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalStateException("JWT signing secret is not valid for HMAC signing");
+        }
+        if (production) {
+            log.info("Production JWT signing key configuration validated");
+        }
+    }
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));

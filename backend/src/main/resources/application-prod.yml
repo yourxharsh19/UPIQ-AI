@@ -7,6 +7,10 @@ spring:
     init:
       mode: never
 
+jwt:
+  # Production must receive its signing key from the deployment environment.
+  secret: ${JWT_SECRET}
+
 logging:
   level:
     root: WARN
