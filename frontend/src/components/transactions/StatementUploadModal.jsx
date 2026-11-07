@@ -34,12 +34,12 @@ export const StatementUploadModal = ({ isOpen, onClose }) => {
         throw new Error(response?.message || 'The parser did not return a successful result.');
       }
 
-      const { transactions, rejectedCount } = normalizeParsedTransactions(response.data.transactions);
-      if (transactions.length === 0) {
+      const { transactions, rejectedCount, rejectedRows } = normalizeParsedTransactions(response.data.transactions, response.data.rows);
+      if (transactions.length === 0 && rejectedRows.length === 0) {
         throw new Error('No valid transactions with an amount, type, description, and date were found. No transactions were imported.');
       }
 
-      setStatementData({ fileName: file.name, file, transactions, rejectedCount });
+      setStatementData({ fileName: file.name, file, transactions, rejectedCount, rejectedRows });
       if (rejectedCount > 0) {
         setImportMessage(`${rejectedCount} parsed row${rejectedCount === 1 ? '' : 's'} omitted because required transaction details were missing or invalid.`);
       }
@@ -158,9 +158,18 @@ export const StatementUploadModal = ({ isOpen, onClose }) => {
               </div>
             </div>
 
+            {statementData.rejectedRows?.length > 0 && <div className="space-y-2">
+              <span className="block text-xs font-bold text-amber-300">Rows requiring correction</span>
+              <ul className="max-h-32 space-y-1 overflow-y-auto text-xs text-amber-100">
+                {statementData.rejectedRows.map((row, index) => <li key={`${row.sourceRowIndex ?? 'unknown'}-${index}`}>
+                  Row {row.sourceRowIndex == null ? 'unknown' : row.sourceRowIndex + 1}: {row.reasons.join(', ')}
+                </li>)}
+              </ul>
+            </div>}
+
             <div className="flex items-center gap-3 pt-1">
               <Button variant="secondary" onClick={resetPreview} disabled={isImporting} className="flex-1">Upload Another Statement</Button>
-              <Button variant="emerald" onClick={handleImportAll} disabled={isImporting || (importResult !== null && importResult.failedCount === 0)} className="flex-1" icon={ArrowRight}>
+              <Button variant="emerald" onClick={handleImportAll} disabled={isImporting || statementData.transactions.length === 0 || (importResult !== null && importResult.failedCount === 0)} className="flex-1" icon={ArrowRight}>
                 {isImporting ? 'Importing…' : importResult?.failedCount > 0 ? 'Retry failed rows' : `Import ${statementData.transactions.length} to Ledger`}
               </Button>
             </div>

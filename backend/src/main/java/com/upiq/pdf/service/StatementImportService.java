@@ -3,6 +3,8 @@ package com.upiq.pdf.service;
 import com.upiq.pdf.dto.ParsingResponse;
 import com.upiq.pdf.dto.StatementImportResult;
 import com.upiq.pdf.dto.TransactionRequest;
+import com.upiq.pdf.dto.StatementRow;
+import com.upiq.pdf.dto.StatementRowValidationReason;
 import com.upiq.transaction.dto.CreateTransactionRequest;
 import com.upiq.transaction.service.TransactionService;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.format.DateTimeFormatter;
 import java.util.HexFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 @Service
@@ -31,9 +35,37 @@ public class StatementImportService {
         int rejected = 0;
         int failed = 0;
 
-        for (TransactionRequest row : parsed.getTransactions()) {
-            if (!isImportable(row)) {
+        List<StatementRow> rows = parsed.getRows();
+        boolean rowDetailsProvided = rows != null && !rows.isEmpty();
+        if (!rowDetailsProvided) {
+            rows = new ArrayList<>();
+            if (parsed.getTransactions() != null) {
+                for (TransactionRequest tx : parsed.getTransactions()) rows.add(StatementRow.builder()
+                        .sourceRowIndex(tx == null ? null : tx.getSourceRowIndex()).transaction(tx)
+                        .validationReasons(StatementRowValidator.validate(tx)).build());
+            }
+        }
+        List<StatementRow> rejectedRows = new ArrayList<>();
+        List<StatementRow> failedRows = new ArrayList<>();
+
+        for (StatementRow statementRow : rows) {
+            TransactionRequest row = statementRow.getTransaction();
+            List<StatementRowValidationReason> rowReasons;
+            if (rowDetailsProvided) {
+                // ParserService supplies the canonical reasons used by preview; preserve them verbatim.
+                rowReasons = statementRow.getValidationReasons() == null
+                        ? List.of(StatementRowValidationReason.PARSING_FAILURE)
+                        : statementRow.getValidationReasons();
+            } else {
+                rowReasons = StatementRowValidator.validate(row);
+            }
+            if (!rowReasons.isEmpty() || !isImportable(row)) {
+                if (rowReasons.isEmpty()) {
+                    rowReasons = List.of(StatementRowValidationReason.PARSING_FAILURE);
+                    statementRow.setValidationReasons(rowReasons);
+                }
                 rejected++;
+                rejectedRows.add(statementRow);
                 continue;
             }
             try {
@@ -51,15 +83,25 @@ public class StatementImportService {
             } catch (RuntimeException e) {
                 // Continue importing other rows; retries remain safe because successful rows have identities.
                 failed++;
+                statementRow.setValidationReasons(List.of(StatementRowValidationReason.PERSISTENCE_FAILURE));
+                failedRows.add(statementRow);
             }
         }
 
-        rejected += Math.max(0, parsed.getFailedParses());
+        // Legacy parsers may report failed records without enough source information to construct a row.
+        int unidentifiedFailures = rowDetailsProvided ? 0 : Math.max(0, parsed.getFailedParses());
+        for (int i = 0; i < unidentifiedFailures; i++) {
+            rejectedRows.add(StatementRow.builder().sourceRowIndex(null).transaction(null)
+                    .validationReasons(List.of(StatementRowValidationReason.UNIDENTIFIED_PARSE_FAILURE)).build());
+            rejected++;
+        }
         return StatementImportResult.builder()
                 .importedCount(imported)
                 .duplicateCount(duplicates)
                 .rejectedCount(rejected)
                 .failedCount(failed)
+                .rejectedRows(rejectedRows)
+                .failedRows(failedRows)
                 .build();
     }
 

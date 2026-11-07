@@ -14,22 +14,50 @@ const normalizeStatementDate = (value) => {
   return dateOnly ? `${value}T00:00:00` : value;
 };
 
-export const normalizeParsedTransactions = (transactions) => {
+export const normalizeParsedTransactions = (transactions, rows = null) => {
+  const hasRowValidation = Array.isArray(rows)
+    && rows.length > 0
+    && rows.every((row) => Array.isArray(row?.validationReasons));
+  if (hasRowValidation) {
+    const validRows = rows.filter((row) => row?.validationReasons?.length === 0 && row?.transaction)
+      .map((row) => row.transaction);
+    const rejectedRows = rows.filter((row) => row?.validationReasons?.length > 0).map((row) => ({
+      sourceRowIndex: row.sourceRowIndex,
+      reasons: row.validationReasons,
+    }));
+    const normalized = normalizeParsedTransactions(validRows);
+    return {
+      transactions: normalized.transactions,
+      rejectedCount: rejectedRows.length + normalized.rejectedCount,
+      rejectedRows: [...rejectedRows, ...normalized.rejectedRows],
+    };
+  }
   if (!Array.isArray(transactions) || transactions.length === 0) {
-    return { transactions: [], rejectedCount: 0 };
+    return { transactions: [], rejectedCount: 0, rejectedRows: [] };
   }
 
   const normalized = [];
   let rejectedCount = 0;
+  const rejectedRows = [];
 
   transactions.forEach((transaction, index) => {
     const amount = transaction?.amount;
     const type = typeof transaction?.type === 'string' ? transaction.type.toLowerCase() : '';
     const description = typeof transaction?.description === 'string' ? transaction.description.trim() : '';
-    const date = normalizeStatementDate(transaction?.date);
+    const rawDate = transaction?.date;
+    const date = normalizeStatementDate(rawDate);
 
     if (!Number.isFinite(amount) || amount <= 0 || !['income', 'expense'].includes(type) || !description || !date) {
       rejectedCount += 1;
+      rejectedRows.push({
+        sourceRowIndex: Number.isInteger(transaction?.sourceRowIndex) ? transaction.sourceRowIndex : index,
+        reasons: [
+          !date ? (rawDate == null || (typeof rawDate === 'string' && !rawDate.trim()) ? 'missing_date' : 'invalid_date') : null,
+          amount == null ? 'missing_amount' : !Number.isFinite(amount) ? 'invalid_amount' : amount <= 0 ? 'non_positive_amount' : null,
+          !description ? 'missing_description' : null,
+          !['income', 'expense'].includes(type) ? 'invalid_transaction_type' : null,
+        ].filter(Boolean),
+      });
       return;
     }
 
@@ -49,6 +77,6 @@ export const normalizeParsedTransactions = (transactions) => {
     });
   });
 
-  return { transactions: normalized, rejectedCount };
+  return { transactions: normalized, rejectedCount, rejectedRows };
 };
 

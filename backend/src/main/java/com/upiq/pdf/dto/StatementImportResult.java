@@ -14,4 +14,6 @@ public class StatementImportResult {
     private int duplicateCount;
     private int rejectedCount;
     private int failedCount;
+    private java.util.List<StatementRow> rejectedRows;
+    private java.util.List<StatementRow> failedRows;
 }

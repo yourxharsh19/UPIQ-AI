@@ -9,6 +9,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import com.upiq.pdf.exceptions.ParsingException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -53,6 +54,12 @@ public class GlobalExceptionHandler {
         log.warn("Invalid request argument (exceptionClass={})", ex.getClass().getSimpleName());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(ParsingException.class)
+    public ResponseEntity<ApiResponse<String>> handleParsingException(ParsingException ex) {
+        log.warn("Statement file rejected (exceptionClass={})", ex.getClass().getSimpleName());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)

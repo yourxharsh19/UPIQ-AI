@@ -2,13 +2,14 @@ package com.upiq.pdf.service;
 
 import com.upiq.pdf.dto.ParsingResponse;
 import com.upiq.pdf.dto.TransactionRequest;
+import com.upiq.pdf.dto.StatementRow;
+import com.upiq.pdf.dto.StatementRowValidationReason;
 import com.upiq.pdf.exceptions.ParsingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -24,38 +25,20 @@ public class ParserService {
         // Validate file first
         validationService.validateFile(file);
 
-        List<TransactionRequest> transactions;
-        List<String> errors = new ArrayList<>();
-        int successfulParses = 0;
-        int failedParses = 0;
-        int totalTransactions = 0;
+        List<StatementRow> rows;
 
         try {
             if (validationService.isPDF(file)) {
                 log.info("Parsing uploaded PDF");
-                transactions = pdfParserService.parsePDF(file);
+                rows = pdfParserService.parsePDF(file).stream()
+                        .map(tx -> StatementRow.builder().sourceRowIndex(tx.getSourceRowIndex()).transaction(tx)
+                                .validationReasons(StatementRowValidator.validate(tx)).build()).toList();
             } else if (validationService.isCSV(file)) {
                 log.info("Parsing uploaded CSV");
-                transactions = csvParserService.parseCSV(file);
+                rows = csvParserService.parseCSVRows(file);
             } else {
                 throw new ParsingException("Unsupported file type. Only PDF and CSV files are allowed");
             }
-
-            // Store total count BEFORE filtering
-            totalTransactions = transactions.size();
-
-            // Count successful and failed parses
-            for (TransactionRequest tx : transactions) {
-                if (tx != null && tx.getAmount() != null && tx.getAmount() > 0) {
-                    successfulParses++;
-                } else {
-                    failedParses++;
-                    errors.add("Invalid transaction: " + (tx != null ? tx.getDescription() : "null"));
-                }
-            }
-
-            // Filter out invalid transactions
-            transactions.removeIf(tx -> tx == null || tx.getAmount() == null || tx.getAmount() <= 0);
 
         } catch (ParsingException e) {
             log.warn("Statement parsing failed (exceptionClass={})", e.getClass().getSimpleName());
@@ -65,6 +48,13 @@ public class ParserService {
             throw new ParsingException("Could not parse uploaded statement", e);
         }
 
+        List<TransactionRequest> transactions = rows.stream().filter(StatementRow::isValid)
+                .map(StatementRow::getTransaction).toList();
+        int successfulParses = transactions.size();
+        int failedParses = rows.size() - successfulParses;
+        List<String> errors = rows.stream().filter(row -> !row.isValid())
+                .flatMap(row -> row.getValidationReasons().stream())
+                .map(StatementRowValidationReason::getCode).distinct().toList();
         String message = String.format(
                 "Successfully parsed %d transactions from %s",
                 successfulParses,
@@ -72,10 +62,11 @@ public class ParserService {
         );
 
         return ParsingResponse.builder()
-                .totalTransactions(totalTransactions)
+                .totalTransactions(rows.size())
                 .successfulParses(successfulParses)
                 .failedParses(failedParses)
                 .transactions(transactions)
+                .rows(rows)
                 .errors(errors)
                 .message(message)
                 .build();
