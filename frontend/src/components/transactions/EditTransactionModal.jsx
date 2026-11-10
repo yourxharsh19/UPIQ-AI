@@ -3,6 +3,7 @@ import Button from "../ui/Button";
 import CategoryService from "../../services/category.service";
 import { Plus, X } from "lucide-react";
 import clsx from "clsx";
+import { normalizeApiError } from "../../services/safeApiError.js";
 
 const EditTransactionModal = ({ isOpen, onClose, transaction, onSave }) => {
     const [formData, setFormData] = useState({
@@ -51,7 +52,7 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, onSave }) => {
                 setCategories(filtered);
             }
         } catch (error) {
-            console.error("Failed to fetch categories", error);
+            console.warn("Failed to fetch categories", { status: error.response?.status || null, code: error.code || null });
             setCategories([]);
         } finally {
             setLoadingCategories(false);
@@ -84,8 +85,8 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, onSave }) => {
             await fetchCategories();
             alert(`✅ Category "${categoryName}" created successfully!`);
         } catch (error) {
-            console.error("Failed to create category", error);
-            alert("❌ Failed to create category: " + (error.response?.data?.message || error.message));
+            console.warn("Failed to create category", { status: error.response?.status || null, code: error.code || null });
+            alert("❌ Failed to create category: " + normalizeApiError(error).message);
         } finally {
             setCreatingCategory(false);
         }
@@ -103,8 +104,8 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, onSave }) => {
             });
             onClose();
         } catch (error) {
-            console.error("Failed to save", error);
-            alert("Failed to save transaction: " + (error.response?.data?.message || error.message));
+            console.warn("Failed to save transaction", { status: error.response?.status || null, code: error.code || null });
+            alert("Failed to save transaction: " + normalizeApiError(error).message);
         } finally {
             setSaving(false);
         }

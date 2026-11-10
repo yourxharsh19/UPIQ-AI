@@ -1,8 +1,10 @@
 package com.upiq.pdf.service;
 
 import com.upiq.pdf.dto.TransactionRequest;
+import com.upiq.pdf.dto.StatementRow;
+import com.upiq.pdf.dto.StatementRowValidationReason;
+import com.upiq.pdf.service.StatementRowValidator;
 import com.upiq.pdf.exceptions.ParsingException;
-import com.upiq.pdf.utils.ParsingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -27,6 +29,8 @@ public class AIPDFParserService {
 
     private static final Pattern CURRENCY_PATTERN = Pattern.compile("(?:₹|rs\\.?|inr)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern MALFORMED_AMOUNT_PATTERN = Pattern.compile(
+            "(?:₹|\\brs\\.?|\\binr\\b|\\bamount\\b)\\s*(?:[:=]\\s*)?\\S+", Pattern.CASE_INSENSITIVE);
     private static final Pattern DATE_PATTERN = Pattern.compile(
             // Matches: dd/mm/yyyy, dd-mm-yyyy, dd.mm.yyyy, yyyy-mm-dd (with optional
             // spaces)
@@ -66,6 +70,15 @@ public class AIPDFParserService {
             createFormatter("dd MMM yyyy"), createFormatter("dd MMM, yyyy"));
 
     public List<TransactionRequest> parsePDF(MultipartFile file) {
+        return parsePDFRows(file).stream()
+                .map(StatementRow::getTransaction)
+                .filter(transaction -> transaction != null && transaction.getAmount() != null
+                        && Double.isFinite(transaction.getAmount()) && transaction.getAmount() > 0)
+                .toList();
+    }
+
+    /** Returns every recognizable transaction block, including rejected rows for preview/import accounting. */
+    public List<StatementRow> parsePDFRows(MultipartFile file) {
         log.info("Starting PDF parsing");
         try (InputStream inputStream = file.getInputStream();
                 PDDocument document = Loader.loadPDF(inputStream.readAllBytes())) {
@@ -76,14 +89,14 @@ public class AIPDFParserService {
                 throw new ParsingException("Empty PDF");
             }
             log.debug("Extracted text length: {}", text.length());
-            return parseTransactions(text);
+            return parseTransactionRows(text);
         } catch (IOException e) {
             log.error("Error reading PDF (exceptionClass={})", e.getClass().getSimpleName());
             throw new ParsingException("Could not read uploaded PDF", e);
         }
     }
 
-    private List<TransactionRequest> parseTransactions(String text) {
+    private List<StatementRow> parseTransactionRows(String text) {
         // Pre-process: Normalize spaces to ensure regex matching works reliably
         List<String> lines = Arrays.stream(text.split("\\r?\\n"))
                 .map(line -> line.replaceAll("[\\u00A0\\s]+", " ").trim())
@@ -92,7 +105,7 @@ public class AIPDFParserService {
 
         log.info("Processing {} lines after filtering", lines.size());
 
-        List<TransactionRequest> transactions = new ArrayList<>();
+        List<StatementRow> rows = new ArrayList<>();
         List<String> currentBlock = new ArrayList<>();
         LocalDateTime lastSeenDate = null;
         int sourceRowIndex = 0;
@@ -113,34 +126,40 @@ public class AIPDFParserService {
                     || lower.contains("payment to");
 
             if (isStart && !currentBlock.isEmpty()) {
-                addTx(transactions, currentBlock, lastSeenDate, sourceRowIndex++);
+                addRow(rows, currentBlock, lastSeenDate, sourceRowIndex++);
                 currentBlock.clear();
             }
             currentBlock.add(line);
         }
-        addTx(transactions, currentBlock, lastSeenDate, sourceRowIndex);
+        addRow(rows, currentBlock, lastSeenDate, sourceRowIndex);
 
-        log.info("Parsed {} transactions", transactions.size());
-        return transactions;
+        log.info("Identified {} PDF transaction rows", rows.size());
+        return rows;
     }
 
-    private void addTx(List<TransactionRequest> transactions, List<String> block, LocalDateTime lastSeenDate, int sourceRowIndex) {
-        TransactionRequest tx = parseBlock(block, lastSeenDate);
-        if (tx != null) {
-            tx.setSourceRowIndex(sourceRowIndex);
-            if (isValid(tx)) {
-                transactions.add(tx);
-            } else {
-                log.info("Dropping invalid parsed transaction");
+    private void addRow(List<StatementRow> rows, List<String> block, LocalDateTime lastSeenDate, int sourceRowIndex) {
+        StatementRow row = parseBlock(block, lastSeenDate);
+        if (row != null) {
+            row.setSourceRowIndex(sourceRowIndex);
+            TransactionRequest transaction = row.getTransaction();
+            transaction.setSourceRowIndex(sourceRowIndex);
+            boolean malformedAmount = row.getValidationReasons().contains(StatementRowValidationReason.INVALID_AMOUNT);
+            List<StatementRowValidationReason> reasons = new ArrayList<>(StatementRowValidator.validate(transaction));
+            if (malformedAmount) {
+                reasons.remove(StatementRowValidationReason.MISSING_AMOUNT);
+                reasons.add(StatementRowValidationReason.INVALID_AMOUNT);
             }
+            row.setValidationReasons(reasons);
+            rows.add(row);
         }
     }
 
     TransactionRequest parseBlock(List<String> block) {
-        return parseBlock(block, null);
+        StatementRow row = parseBlock(block, null);
+        return row == null ? null : row.getTransaction();
     }
 
-    TransactionRequest parseBlock(List<String> block, LocalDateTime lastSeenDate) {
+    private StatementRow parseBlock(List<String> block, LocalDateTime lastSeenDate) {
         if (block == null || block.isEmpty())
             return null;
         String combined = String.join(" ", block);
@@ -155,8 +174,6 @@ public class AIPDFParserService {
 
         String finalType = "CREDIT".equals(type) ? "income" : "expense";
         Double amount = extractAmount(combined);
-        if (amount == null)
-            return null;
 
         TransactionRequest tx = new TransactionRequest();
         tx.setType(finalType);
@@ -176,7 +193,12 @@ public class AIPDFParserService {
         tx.setDescription(extractDescription(block, type));
         tx.setPaymentMethod(lower.contains("cash") ? "CASH" : "UPI");
 
-        return tx;
+        List<StatementRowValidationReason> reasons = new ArrayList<>(StatementRowValidator.validate(tx));
+        if (amount == null && MALFORMED_AMOUNT_PATTERN.matcher(combined).find()) {
+            reasons.remove(StatementRowValidationReason.MISSING_AMOUNT);
+            reasons.add(StatementRowValidationReason.INVALID_AMOUNT);
+        }
+        return StatementRow.builder().transaction(tx).validationReasons(reasons).build();
     }
 
     String determineTransactionType(String text) {
@@ -330,7 +352,7 @@ public class AIPDFParserService {
             try {
                 String val = m.group(1).replace(",", "");
                 double d = Double.parseDouble(val);
-                if (d > 0 && d < 1000000)
+                if (Double.isFinite(d))
                     return d;
             } catch (Exception e) {
                 /* ignore */ }
@@ -395,7 +417,4 @@ public class AIPDFParserService {
         return null;
     }
 
-    private boolean isValid(TransactionRequest tx) {
-        return tx.getAmount() != null;
-    }
 }

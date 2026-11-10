@@ -85,7 +85,7 @@ describe('Unified API and Axios Client', () => {
         assert.strictEqual(storage.get('token'), undefined, 'token should be removed from localStorage');
         assert.strictEqual(storage.get('upiq_auth'), undefined, 'upiq_auth should be removed from localStorage');
         assert.strictEqual(storage.get('upiq_demo'), undefined, 'upiq_demo should be removed from localStorage');
-        assert.strictEqual(err.userFriendlyMessage, 'Session expired');
+        assert.strictEqual(err.userFriendlyMessage, 'Your session has expired. Please sign in again.');
         assert.ok(eventDispatched, 'upiq:session-expired event should be dispatched');
         return true;
       }
@@ -110,8 +110,7 @@ describe('Unified API and Axios Client', () => {
     await assert.rejects(
       async () => errorHandler(loginError401),
       (err) => {
-        // Must preserve error message for UI without clearing or redirecting
-        assert.strictEqual(err.userFriendlyMessage, 'Invalid credentials');
+        assert.strictEqual(err.userFriendlyMessage, 'Invalid email or password.');
         assert.strictEqual(storage.get('token'), 'prior-token', 'token should not be cleared on login 401');
         assert.strictEqual(storage.get('upiq_auth'), 'true', 'upiq_auth should not be cleared on login 401');
         assert.strictEqual(window.location.href, 'http://localhost:5173/', 'should not redirect away from page on login 401');
@@ -136,7 +135,7 @@ describe('Unified API and Axios Client', () => {
     await assert.rejects(
       async () => errorHandler(registerError401),
       (err) => {
-        assert.strictEqual(err.userFriendlyMessage, 'Registration not allowed');
+        assert.strictEqual(err.userFriendlyMessage, 'Registration could not be completed. Please try again.');
         assert.strictEqual(window.location.href, 'http://localhost:5173/', 'should not redirect');
         return true;
       }

@@ -40,27 +40,39 @@ class AuthServiceRegistrationTest {
         assertRegistrationRole("ADMIN");
     }
 
+    @Test
+    void duplicateRegistrationHasSamePublicOutcomeWithoutCreatingAnAccount() {
+        userService.existingEmail = "person@example.com";
+        RegisterRequest request = RegisterRequest.builder().email("person@example.com")
+                .userName("Person").password("a sufficiently long password").build();
+        assertEquals("Registration request processed. You may try signing in.", authService.registerUser(request));
+        assertEquals(0, userService.savedUsers.size());
+    }
+
     private void assertRegistrationRole(String requestedRole) {
         RegisterRequest request = RegisterRequest.builder()
                 .email("person@example.com")
                 .userName("Person")
-                .password("password123")
+                .password("password12345")
                 .role(requestedRole)
                 .build();
 
-        assertEquals("User registered successfully!", authService.registerUser(request));
+        assertEquals("Registration request processed. You may try signing in.", authService.registerUser(request));
 
         User savedUser = userService.savedUsers.get(0);
         assertEquals(Role.USER, savedUser.getRole());
-        org.junit.jupiter.api.Assertions.assertTrue(new BCryptPasswordEncoder().matches("password123", savedUser.getPassword()));
+        org.junit.jupiter.api.Assertions.assertTrue(new BCryptPasswordEncoder().matches("password12345", savedUser.getPassword()));
         assertEquals("Person", savedUser.getFullName());
     }
 
     private static final class CapturingUserService implements UserService {
         private final List<User> savedUsers = new ArrayList<>();
+        private String existingEmail;
 
         @Override public User saveUser(User user) { savedUsers.add(user); return user; }
-        @Override public Optional<User> getUserByEmail(String email) { return Optional.empty(); }
+        @Override public Optional<User> getUserByEmail(String email) {
+            return email.equals(existingEmail) ? Optional.of(User.builder().email(email).build()) : Optional.empty();
+        }
         @Override public Optional<User> getUserByUsername(String username) { return Optional.empty(); }
         @Override public List<User> getAllUsers() { return List.of(); }
         @Override public org.springframework.security.core.userdetails.UserDetails loadUserByUsername(String username) {

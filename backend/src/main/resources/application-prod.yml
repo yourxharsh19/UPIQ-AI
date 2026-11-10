@@ -7,6 +7,14 @@ spring:
     init:
       mode: never
 
+jwt:
+  # Production must receive its signing key from the deployment environment.
+  secret: ${JWT_SECRET}
+
+upiq:
+  cors:
+    allowed-origins: ${UPIQ_CORS_ALLOWED_ORIGINS:}
+
 logging:
   level:
     root: WARN

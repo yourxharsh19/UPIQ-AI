@@ -26,6 +26,15 @@ jwt:
   secret: ${JWT_SECRET:local_dev_secret_key_minimum_256_bits_for_upiq_2_0_local_development_only}
   expiration: 86400000 # 24 hours
 
+upiq:
+  cors:
+    allowed-origins: ${UPIQ_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  auth:
+    rate-limit:
+      window-seconds: ${AUTH_RATE_LIMIT_WINDOW_SECONDS:60}
+      login-attempts: ${AUTH_LOGIN_RATE_LIMIT:10}
+      registration-attempts: ${AUTH_REGISTRATION_RATE_LIMIT:5}
+
 logging:
   level:
     root: INFO

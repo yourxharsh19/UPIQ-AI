@@ -2,6 +2,7 @@ package com.upiq.pdf.service;
 
 import com.upiq.pdf.dto.ParsingResponse;
 import com.upiq.pdf.dto.StatementImportResult;
+import com.upiq.pdf.dto.StatementRow;
 import com.upiq.pdf.dto.TransactionRequest;
 import com.upiq.transaction.dto.CreateTransactionRequest;
 import com.upiq.transaction.dto.TransactionResponse;
@@ -53,6 +54,82 @@ class StatementImportServiceTest {
         assertEquals(0, result.getDuplicateCount());
         assertEquals(2, result.getRejectedCount());
         assertEquals(1, result.getFailedCount());
+        assertEquals(1, transactions.attempts);
+    }
+
+    @Test
+    void previewAndImportUseSameCsvValidationAndAccountForEveryRow() {
+        String csv = "date,amount,type,description\n"
+                + "05/09/2026,25,debit,Coffee\n"
+                + "   ,30,credit,Blank date\n"
+                + "not-a-date,30,credit,Bad date\n"
+                + "05/09/2026,0,credit,Zero amount\n";
+        MockMultipartFile file = new MockMultipartFile("file", "statement.csv", "text/csv", csv.getBytes());
+        FileValidationService fileValidation = new FileValidationService();
+        org.springframework.test.util.ReflectionTestUtils.setField(fileValidation, "maxFileSize", 10 * 1024 * 1024L);
+        ParserService parser = new ParserService(fileValidation, null,
+                new CSVParserService(new TransactionMappingService()));
+        ParsingResponse preview = parser.parseFile(file);
+        FakeTransactionService transactions = new FakeTransactionService(true);
+
+        StatementImportResult result = new StatementImportService(parser, transactions).importStatement(file, 5L);
+
+        assertEquals(4, preview.getTotalTransactions());
+        assertEquals(1, preview.getSuccessfulParses());
+        assertEquals(3, preview.getFailedParses());
+        assertEquals(1, preview.getTransactions().size());
+        assertEquals(4, preview.getRows().size());
+        assertEquals(1, result.getImportedCount());
+        assertEquals(3, result.getRejectedCount());
+        assertEquals(0, result.getFailedCount());
+        assertEquals(List.of(1, 2, 3), result.getRejectedRows().stream().map(StatementRow::getSourceRowIndex).toList());
+        for (StatementRow rejected : result.getRejectedRows()) {
+            assertEquals(preview.getRows().get(rejected.getSourceRowIndex()).getValidationReasons(), rejected.getValidationReasons());
+        }
+        assertEquals(List.of("missing_date"), result.getRejectedRows().get(0).getValidationReasons().stream().map(r -> r.getCode()).toList());
+        assertEquals(List.of("invalid_date"), result.getRejectedRows().get(1).getValidationReasons().stream().map(r -> r.getCode()).toList());
+        assertEquals(1, transactions.attempts);
+    }
+
+    @Test
+    void fallsBackToTransactionsWhenRowsMetadataIsNull() {
+        assertLegacyRowsFallback(null);
+    }
+
+    @Test
+    void fallsBackToTransactionsWhenRowsMetadataIsEmpty() {
+        assertLegacyRowsFallback(List.of());
+    }
+
+    @Test
+    void preservesReasonsWhenNonEmptyRowsMetadataIsProvided() {
+        TransactionRequest invalidDate = row(4);
+        invalidDate.setDate(null);
+        StatementRow parsedRow = StatementRow.builder().sourceRowIndex(4).transaction(invalidDate)
+                .validationReasons(List.of(com.upiq.pdf.dto.StatementRowValidationReason.INVALID_DATE)).build();
+        ParsingResponse parsed = ParsingResponse.builder().transactions(List.of(row(4))).rows(List.of(parsedRow)).build();
+        FakeTransactionService transactions = new FakeTransactionService();
+
+        StatementImportResult result = new StatementImportService(new FixedParserService(parsed), transactions)
+                .importStatement(file("row metadata"), 5L);
+
+        assertEquals(1, result.getRejectedCount());
+        assertEquals(0, result.getImportedCount());
+        assertEquals(0, transactions.attempts);
+        assertEquals(List.of(com.upiq.pdf.dto.StatementRowValidationReason.INVALID_DATE),
+                result.getRejectedRows().get(0).getValidationReasons());
+    }
+
+    private static void assertLegacyRowsFallback(List<StatementRow> rows) {
+        TransactionRequest valid = row(2);
+        ParsingResponse parsed = ParsingResponse.builder().transactions(List.of(valid)).rows(rows).build();
+        FakeTransactionService transactions = new FakeTransactionService(true);
+
+        StatementImportResult result = new StatementImportService(new FixedParserService(parsed), transactions)
+                .importStatement(file("legacy rows"), 5L);
+
+        assertEquals(1, result.getImportedCount());
+        assertEquals(0, result.getRejectedCount());
         assertEquals(1, transactions.attempts);
     }
 

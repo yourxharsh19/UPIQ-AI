@@ -46,7 +46,8 @@ public class FileValidationService {
             throw new ParsingException("Filename is empty");
         }
 
-        String extension = filename.substring(filename.lastIndexOf('.')).toLowerCase();
+        int extensionSeparator = filename.lastIndexOf('.');
+        String extension = extensionSeparator >= 0 ? filename.substring(extensionSeparator).toLowerCase() : "";
 
         // Validate PDF
         if (extension.equals(".pdf")) {

@@ -16,6 +16,8 @@ public class ParsingResponse {
     private int successfulParses;
     private int failedParses;
     private List<TransactionRequest> transactions;
+    /** Every identified source row, including validation rejections. */
+    private List<StatementRow> rows;
     private List<String> errors;
     private String message;
 }

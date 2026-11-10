@@ -1,6 +1,8 @@
 package com.upiq.pdf.service;
 
 import com.upiq.pdf.dto.TransactionRequest;
+import com.upiq.pdf.dto.StatementRow;
+import com.upiq.pdf.dto.StatementRowValidationReason;
 import com.upiq.pdf.exceptions.ParsingException;
 import com.upiq.pdf.utils.ParsingUtils;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +27,14 @@ public class CSVParserService {
     private final TransactionMappingService mappingService;
 
     public List<TransactionRequest> parseCSV(MultipartFile file) {
-        List<TransactionRequest> transactions = new ArrayList<>();
+        return parseCSVRows(file).stream()
+                .map(StatementRow::getTransaction)
+                .filter(tx -> tx != null && tx.getAmount() != null && tx.getAmount() > 0)
+                .toList();
+    }
+
+    public List<StatementRow> parseCSVRows(MultipartFile file) {
+        List<StatementRow> rows = new ArrayList<>();
 
         try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
              CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader().withIgnoreHeaderCase().withTrim())) {
@@ -35,11 +44,12 @@ public class CSVParserService {
 
             for (CSVRecord record : records) {
                 try {
-                    TransactionRequest tx = parseRecord(record);
-                    if (tx != null && tx.getAmount() != null && tx.getAmount() > 0) {
-                        transactions.add(tx);
-                    }
+                    rows.add(parseRecord(record));
                 } catch (Exception e) {
+                    int sourceIndex = Math.toIntExact(record.getRecordNumber() - 1);
+                    TransactionRequest tx = TransactionRequest.builder().sourceRowIndex(sourceIndex).build();
+                    rows.add(StatementRow.builder().sourceRowIndex(sourceIndex).transaction(tx)
+                            .validationReasons(List.of(StatementRowValidationReason.PARSING_FAILURE)).build());
                     log.warn("Failed to parse CSV record (exceptionClass={})", e.getClass().getSimpleName());
                 }
             }
@@ -49,28 +59,43 @@ public class CSVParserService {
             throw new ParsingException("Could not parse uploaded CSV", e);
         }
 
-        log.info("Successfully parsed {} transactions from CSV", transactions.size());
-        return transactions;
+        log.info("Parsed {} CSV data rows", rows.size());
+        return rows;
     }
 
-    private TransactionRequest parseRecord(CSVRecord record) {
+    private StatementRow parseRecord(CSVRecord record) {
         TransactionRequest tx = new TransactionRequest();
-        tx.setSourceRowIndex(Math.toIntExact(record.getRecordNumber() - 1));
+        int sourceRowIndex = Math.toIntExact(record.getRecordNumber() - 1);
+        tx.setSourceRowIndex(sourceRowIndex);
+        List<StatementRowValidationReason> reasons = new ArrayList<>();
 
         // Try to extract amount from various possible column names
         String amountStr = getValueIgnoreCase(record, "amount", "value", "transaction_amount", "amt", "total");
-        if (amountStr != null && !amountStr.isEmpty()) {
+        if (amountStr != null) {
             try {
-                tx.setAmount(Double.parseDouble(amountStr.replaceAll("[^0-9.-]", "")));
+                String normalizedAmount = amountStr.replaceAll("(?i)\\b(?:inr|rs\\.?)\\s*", "")
+                        .replace("₹", "").replace(",", "").trim();
+                if (!normalizedAmount.matches("[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)")) throw new NumberFormatException();
+                tx.setAmount(Double.parseDouble(normalizedAmount));
             } catch (NumberFormatException e) {
-                log.warn("Could not parse amount in CSV record");
+                reasons.add(StatementRowValidationReason.INVALID_AMOUNT);
             }
         }
+        if (amountStr == null) reasons.add(StatementRowValidationReason.MISSING_AMOUNT);
+        else if (tx.getAmount() == null && !reasons.contains(StatementRowValidationReason.INVALID_AMOUNT)) reasons.add(StatementRowValidationReason.INVALID_AMOUNT);
+        else if (tx.getAmount() != null && !Double.isFinite(tx.getAmount())) reasons.add(StatementRowValidationReason.INVALID_AMOUNT);
+        else if (tx.getAmount() != null && tx.getAmount() <= 0) reasons.add(StatementRowValidationReason.NON_POSITIVE_AMOUNT);
 
         // Extract type (income/expense)
         String typeStr = getValueIgnoreCase(record, "type", "transaction_type", "credit_debit", "cd");
         if (typeStr != null) {
-            tx.setType(toTransactionType(mappingService.extractType(typeStr)));
+            String normalizedType = typeStr.trim().toLowerCase(java.util.Locale.ROOT);
+            if (List.of("income", "expense", "credit", "debit", "cr", "dr").contains(normalizedType)) {
+                tx.setType(toTransactionType(mappingService.extractType(typeStr)));
+            } else {
+                tx.setType(typeStr.trim());
+                reasons.add(StatementRowValidationReason.INVALID_TRANSACTION_TYPE);
+            }
         } else {
             // Infer from amount or description
             String description = getValueIgnoreCase(record, "description", "details", "narration", "remarks", "memo");
@@ -86,11 +111,15 @@ public class CSVParserService {
         if (description != null) {
             tx.setDescription(description.trim());
         }
+        if (description == null || description.isBlank()) reasons.add(StatementRowValidationReason.MISSING_DESCRIPTION);
 
         // Extract date
         String dateStr = getValueIgnoreCase(record, "date", "transaction_date", "date_time", "timestamp");
-        if (dateStr != null) {
+        if (dateStr != null && !dateStr.isBlank()) {
             tx.setDate(ParsingUtils.parseDate(dateStr));
+            if (tx.getDate() == null) reasons.add(StatementRowValidationReason.INVALID_DATE);
+        } else {
+            reasons.add(StatementRowValidationReason.MISSING_DATE);
         }
 
         // Extract payment method
@@ -105,7 +134,7 @@ public class CSVParserService {
             tx.setCategory(category.trim());
         }
 
-        return tx;
+        return StatementRow.builder().sourceRowIndex(sourceRowIndex).transaction(tx).validationReasons(reasons).build();
     }
 
     private String getValueIgnoreCase(CSVRecord record, String... possibleKeys) {

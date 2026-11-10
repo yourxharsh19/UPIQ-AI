@@ -404,6 +404,15 @@ export const StatementUploadModal = ({ isOpen, onClose }) => {
               </div>
             </div>
 
+            {statementData.rejectedRows?.length > 0 && <div className="space-y-2">
+              <span className="block text-xs font-bold text-amber-300">Rows requiring correction</span>
+              <ul className="max-h-32 space-y-1 overflow-y-auto text-xs text-amber-100">
+                {statementData.rejectedRows.map((row, index) => <li key={`${row.sourceRowIndex ?? 'unknown'}-${index}`}>
+                  Row {row.sourceRowIndex == null ? 'unknown' : row.sourceRowIndex + 1}: {row.reasons.join(', ')}
+                </li>)}
+              </ul>
+            </div>}
+
             <div className="flex items-center gap-3 pt-1">
               <Button
                 variant="secondary"

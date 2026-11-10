@@ -39,8 +39,33 @@ describe('statement import mapping', () => {
   });
 
   test('rejects empty parser output without creating a placeholder row', () => {
-    assert.deepEqual(normalizeParsedTransactions([]), { transactions: [], rejectedCount: 0 });
-    assert.deepEqual(normalizeParsedTransactions(null), { transactions: [], rejectedCount: 0 });
+    assert.deepEqual(normalizeParsedTransactions([]), { transactions: [], rejectedCount: 0, rejectedRows: [] });
+    assert.deepEqual(normalizeParsedTransactions(null), { transactions: [], rejectedCount: 0, rejectedRows: [] });
+  });
+
+  test('legacy fallback works when rows metadata is missing, null, or empty', () => {
+    const transactions = [{ amount: 5, type: 'expense', description: 'Coffee', date: '2026-09-12' }];
+    for (const rows of [undefined, null, []]) {
+      const result = normalizeParsedTransactions(transactions, rows);
+      assert.equal(result.transactions.length, 1);
+      assert.equal(result.rejectedCount, 0);
+      assert.deepEqual(result.rejectedRows, []);
+    }
+    const empty = normalizeParsedTransactions(null, []);
+    assert.deepEqual(empty, { transactions: [], rejectedCount: 0, rejectedRows: [] });
+  });
+
+  test('server row reasons take precedence without double-counting legacy transaction rows', () => {
+    const valid = { amount: 5, type: 'expense', description: 'Coffee', date: '2026-09-12', sourceRowIndex: 0 };
+    const rejected = { amount: 8, type: 'income', description: 'Bad date', date: null, sourceRowIndex: 1 };
+    const result = normalizeParsedTransactions([valid, rejected], [
+      { sourceRowIndex: 0, transaction: valid, validationReasons: [] },
+      { sourceRowIndex: 1, transaction: rejected, validationReasons: ['invalid_date'] },
+    ]);
+
+    assert.equal(result.transactions.length, 1);
+    assert.equal(result.rejectedCount, 1);
+    assert.deepEqual(result.rejectedRows, [{ sourceRowIndex: 1, reasons: ['invalid_date'] }]);
   });
 
   test('rejects invalid amount, type, description, or missing/invalid date', () => {

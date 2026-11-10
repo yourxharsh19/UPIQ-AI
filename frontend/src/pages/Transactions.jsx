@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useTransactions } from '../hooks/useTransactions';
 import { useFinancial } from '../context/FinancialContext';
+import { normalizeApiError } from '../services/safeApiError.js';
 import { CategoryChip } from '../components/transactions/CategoryChip';
 import { AddEditTransactionModal } from '../components/transactions/AddEditTransactionModal';
 import { StatementUploadModal } from '../components/transactions/StatementUploadModal';
@@ -61,7 +62,7 @@ export const Transactions = () => {
       });
       if (result.cancelled) return;
     } catch (error) {
-      addToast('Could not delete transactions', error?.message || 'The server could not delete your transactions.', 'danger');
+      addToast('Could not delete transactions', normalizeApiError(error).message, 'danger');
     } finally {
       setIsDeletingAll(false);
     }

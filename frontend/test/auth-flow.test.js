@@ -134,7 +134,7 @@ describe('auth startup and stale-session cleanup', () => {
     const error = { config: { url: '/auth/login' }, response: { status: 401, data: { message: 'Invalid credentials' } } };
 
     await assert.rejects(errorHandler(error), (err) => {
-      assert.equal(err.userFriendlyMessage, 'Invalid credentials');
+      assert.equal(err.userFriendlyMessage, 'Invalid email or password.');
       return true;
     });
     assert.equal(values.get('token'), 'prior-token');

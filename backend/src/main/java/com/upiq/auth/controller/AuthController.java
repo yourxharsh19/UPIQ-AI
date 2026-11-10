@@ -25,23 +25,12 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> registerUser(@Valid @RequestBody RegisterRequest request) {
         String result = authService.registerUser(request);
 
-        if (result.equals("User registered successfully!")) {
-            Map<String, Object> data = new HashMap<>();
-            data.put("message", result);
-            ApiResponse<Map<String, Object>> response = ApiResponse.<Map<String, Object>>builder()
-                    .success(true)
-                    .data(data)
-                    .message("User registered successfully")
-                    .build();
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        }
-
         ApiResponse<Map<String, Object>> response = ApiResponse.<Map<String, Object>>builder()
-                .success(false)
-                .data(null)
+                .success(true)
+                .data(Map.of("message", result))
                 .message(result)
                 .build();
-        return ResponseEntity.badRequest().body(response);
+        return ResponseEntity.ok(response);
     }
 
     // 🔑 Login existing user

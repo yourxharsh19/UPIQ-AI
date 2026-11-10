@@ -92,8 +92,9 @@ const Register = () => {
               <input
                 name="password"
                 type="password"
-                minLength={6}
-                placeholder="••••••••"
+                minLength={12}
+                maxLength={72}
+                placeholder="At least 12 characters"
                 value={form.password}
                 onChange={handleChange}
                 className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-xs transition-colors text-[var(--text-main)] placeholder:text-[var(--text-muted)]"

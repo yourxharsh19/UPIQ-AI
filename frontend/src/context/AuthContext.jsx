@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
                 throw new Error("Invalid response structure from login API");
             }
         } catch (error) {
-            console.error("AuthContext: Login request failed:", error.userFriendlyMessage || error.message);
+            console.warn("Login request failed", { status: error.response?.status || null, code: error.code || null });
             throw error;
         }
     };

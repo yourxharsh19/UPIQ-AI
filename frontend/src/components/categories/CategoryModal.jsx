@@ -4,6 +4,7 @@ import { useBudget } from "../../context/BudgetContext";
 import { CATEGORY_COLORS, CATEGORY_ICONS, getCategoryColor, getCategoryIcon } from "../../utils/categoryUtils";
 import { X } from "lucide-react";
 import clsx from "clsx";
+import { normalizeApiError } from "../../services/safeApiError.js";
 
 const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
     const { getBudget, setBudget, deleteBudget } = useBudget();

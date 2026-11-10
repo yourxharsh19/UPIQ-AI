@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { clearAuthSession } from '../utils/authFlow.js';
+import { normalizeApiError } from './safeApiError.js';
 
 const api = axios.create({
   baseURL: (import.meta.env?.VITE_API_BASE_URL) || 'http://localhost:8080/api',
@@ -59,9 +60,7 @@ api.interceptors.response.use(
     }
 
     // Extract user-friendly error message without leaking sensitive data
-    const errorMessage =
-      error.response?.data?.message || error.message || 'An unexpected error occurred';
-    error.userFriendlyMessage = errorMessage;
+    error.userFriendlyMessage = normalizeApiError(error).message;
 
     return Promise.reject(error);
   }

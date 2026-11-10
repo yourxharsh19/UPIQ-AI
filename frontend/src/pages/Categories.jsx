@@ -12,6 +12,7 @@ import clsx from "clsx";
 import { useBudget } from "../context/BudgetContext";
 import { useFinancial } from "../context/FinancialContext";
 import { categoryListFromResponse } from "../utils/categoryData.js";
+import { normalizeApiError } from "../services/safeApiError.js";
 
 const DEFAULT_DEMO_CATEGORIES = [
     { id: 101, name: 'Food & Dining', type: 'expense', color: '#ef4444', icon: '🍔', description: 'Restaurants, cafes, delivery' },
