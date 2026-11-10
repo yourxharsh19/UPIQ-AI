@@ -6,9 +6,9 @@ import { Button } from '../common/Button';
 import { useFinancial } from '../../context/FinancialContext';
 import { PDFService } from '../../services/pdf.service';
 import { normalizeParsedTransactions } from '../../utils/statementImport';
+import { normalizeApiError } from '../../services/safeApiError.js';
 
-const getErrorMessage = (error) =>
-  error?.response?.data?.message || error?.userFriendlyMessage || error?.message || 'The statement could not be processed.';
+const getErrorMessage = (error) => normalizeApiError(error).message;
 
 export const StatementUploadModal = ({ isOpen, onClose }) => {
   const { formatCurrency, refreshTransactions, refreshDashboard } = useFinancial();

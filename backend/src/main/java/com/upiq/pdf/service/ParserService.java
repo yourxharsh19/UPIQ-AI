@@ -30,9 +30,7 @@ public class ParserService {
         try {
             if (validationService.isPDF(file)) {
                 log.info("Parsing uploaded PDF");
-                rows = pdfParserService.parsePDF(file).stream()
-                        .map(tx -> StatementRow.builder().sourceRowIndex(tx.getSourceRowIndex()).transaction(tx)
-                                .validationReasons(StatementRowValidator.validate(tx)).build()).toList();
+                rows = pdfParserService.parsePDFRows(file);
             } else if (validationService.isCSV(file)) {
                 log.info("Parsing uploaded CSV");
                 rows = csvParserService.parseCSVRows(file);

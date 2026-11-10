@@ -16,23 +16,23 @@ describe('active registration flow', () => {
     api.post = async (url, data) => { request = { url, data }; return { data: { success: true } }; };
     const result = await submitRegistration({
       authService: AuthService,
-      form: { name: 'Harsh Kumar', email: 'harsh@example.test', password: 'secure1' },
+      form: { name: 'Harsh Kumar', email: 'harsh@example.test', password: 'secure-enough-password' },
       navigateToLogin: () => { view = 'login'; },
     });
     api.post = originalPost;
-    assert.deepEqual(request, { url: '/auth/register', data: { email: 'harsh@example.test', password: 'secure1', userName: 'Harsh Kumar', role: 'USER' } });
+    assert.deepEqual(request, { url: '/auth/register', data: { email: 'harsh@example.test', password: 'secure-enough-password', userName: 'Harsh Kumar', role: 'USER' } });
     assert.deepEqual(result, { success: true });
     assert.equal(resolveAuthView(view, false), 'login');
   });
 
-  test('registration shows backend errors and does not navigate on failure', async () => {
+  test('registration failures show a safe generic message and do not navigate', async () => {
     let navigated = false;
     const result = await submitRegistration({
-      authService: { register: async () => { throw { response: { data: { message: 'Email is already registered.' } } }; } },
-      form: { name: 'Harsh Kumar', email: 'harsh@example.test', password: 'secure1' },
+      authService: { register: async () => { throw { response: { status: 409, data: { message: 'private backend detail' } } }; } },
+      form: { name: 'Harsh Kumar', email: 'harsh@example.test', password: 'secure-enough-password' },
       navigateToLogin: () => { navigated = true; },
     });
-    assert.equal(result.error, 'Email is already registered.');
+    assert.equal(result.error, 'An unexpected error occurred.');
     assert.equal(navigated, false);
   });
 
@@ -40,10 +40,10 @@ describe('active registration flow', () => {
     let navigated = false;
     const result = await submitRegistration({
       authService: { register: async () => ({ success: false, message: 'Registration rejected.' }) },
-      form: { name: 'Harsh Kumar', email: 'harsh@example.test', password: 'secure1' },
+      form: { name: 'Harsh Kumar', email: 'harsh@example.test', password: 'secure-enough-password' },
       navigateToLogin: () => { navigated = true; },
     });
-    assert.deepEqual(result, { success: false, error: 'Registration rejected.' });
+    assert.deepEqual(result, { success: false, error: 'Registration could not be completed. Please try again.' });
     assert.equal(navigated, false);
   });
 

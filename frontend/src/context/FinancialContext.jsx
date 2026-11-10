@@ -169,7 +169,7 @@ export const FinancialProvider = ({ children }) => {
       }
     } catch (err) {
       setTransactionsError('Transactions could not be loaded. Check your connection and retry.');
-      console.error('Failed to load backend transactions:', err);
+      console.warn('Failed to load backend transactions', { status: err.response?.status || null, code: err.code || null });
     } finally {
       setLoading(false);
     }
@@ -193,7 +193,7 @@ export const FinancialProvider = ({ children }) => {
         }
       }
     } catch (err) {
-      console.error('Failed to fetch dashboard summary:', err);
+      console.warn('Failed to fetch dashboard summary', { status: err.response?.status || null, code: err.code || null });
     }
   }, []);
 
@@ -437,7 +437,7 @@ export const FinancialProvider = ({ children }) => {
         });
         createdTx = mapBackendTxToFrontend(res.data);
       } catch (err) {
-        console.error('Failed to create transaction on backend:', err);
+        console.warn('Failed to create transaction on backend', { status: err.response?.status || null, code: err.code || null });
         addToast('Transaction Not Saved', 'The server could not save this transaction. Please retry.', 'danger');
         return false;
       }
@@ -481,7 +481,7 @@ export const FinancialProvider = ({ children }) => {
           refreshDashboard,
         });
       } catch (err) {
-        console.error('Failed to update transaction:', err);
+        console.warn('Failed to update transaction', { status: err.response?.status || null, code: err.code || null });
         addToast('Transaction Not Updated', 'The server could not save these changes. Please retry.', 'danger');
         return false;
       }
@@ -502,7 +502,7 @@ export const FinancialProvider = ({ children }) => {
           refreshDashboard,
         });
       } catch (err) {
-        console.error('Failed to delete transaction on backend:', err);
+        console.warn('Failed to delete transaction on backend', { status: err.response?.status || null, code: err.code || null });
         addToast('Transaction Not Deleted', 'The server could not delete this transaction. Please retry.', 'danger');
         return false;
       }

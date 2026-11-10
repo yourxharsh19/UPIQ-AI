@@ -8,10 +8,10 @@ UPIQ is a React/Vite single-page application backed by one Spring Boot REST appl
 
 | Area | Current status | Main modules |
 |---|---|---|
-| JWT login, registration, role checks, session cleanup | Implemented; registration creates `USER`; directory endpoints are admin-only | `backend/src/main/java/com/upiq/auth/`, `backend/src/main/java/com/upiq/config/`, `frontend/src/context/FinancialContext.jsx`, `frontend/src/services/api.js` |
+| JWT login, registration, role checks, session cleanup | Implemented; registration creates `USER` and returns a generic HTTP 200 response for success and duplicates; login/register have process-local throttling; directory endpoints are admin-only. Timing and disabled-account disclosure remain. | `backend/src/main/java/com/upiq/auth/`, `backend/src/main/java/com/upiq/config/`, `frontend/src/context/FinancialContext.jsx`, `frontend/src/services/api.js` |
 | Transaction CRUD, owner scoping, deterministic categorization | Implemented | `backend/src/main/java/com/upiq/transaction/`, `backend/src/main/java/com/upiq/category/`, `frontend/src/pages/Transactions.jsx`, `frontend/src/context/FinancialContext.jsx` |
 | Category management and browser-local monthly budgets | Partially implemented; budgets are localStorage-only | `frontend/src/pages/Categories.jsx`, `frontend/src/context/BudgetContext.jsx`, `frontend/src/hooks/useAIBudget.js` |
-| PDF and backend CSV parsing/import | Partially implemented; browser accepts PDF only, text parsing is heuristic, no OCR | `backend/src/main/java/com/upiq/pdf/`, `frontend/src/pages/UploadPDF.jsx`, `frontend/src/utils/statementImport.js` |
+| PDF and backend CSV parsing/import | Partially implemented; active browser upload supports PDF and CSV, text parsing is heuristic, no OCR; generated-PDF amount fixtures cover the former 1,000,000 boundary and malformed amounts, while real-template/layout coverage remains limited | `backend/src/main/java/com/upiq/pdf/`, `frontend/src/components/transactions/StatementUploadModal.jsx`, `frontend/src/utils/statementImport.js` |
 | Dashboard, calculated report PDF, monthly CSV | Implemented with data-provenance/currency limitations | `backend/src/main/java/com/upiq/financial/dashboard/`, `backend/src/main/java/com/upiq/financial/report/`, `frontend/src/pages/Reports.jsx`, `frontend/src/utils/monthlyReport.js` |
 | Financial Chat | Partially implemented: bounded intents, deterministic calculation, grounded Ollama explanation; not general advice | `backend/src/main/java/com/upiq/financial/chat/`, `backend/src/main/java/com/upiq/research/llm/`, `frontend/src/pages/AIAssistant.jsx`, `frontend/src/utils/financialChat.js` |
 | Budget estimate | Implemented as a simple frontend run-rate estimate; not an AI prediction | `frontend/src/utils/budgetForecasts.js`, `frontend/src/hooks/useAIBudget.js`, `frontend/src/pages/Insights.jsx` |
@@ -25,9 +25,9 @@ UPIQ is a React/Vite single-page application backed by one Spring Boot REST appl
 
 **Purpose:** Ensure production cannot start with known local credentials or silently mutate schema without a controlled rollout.
 
-**Existing evidence:** `backend/src/main/resources/application.yml` contains local defaults for JWT/database settings; `application-prod.yml` still has `ddl-auto: update`; no migration tool is configured. Compose environment comes from the root template, while the frontend template is limited to Vite variables.
+**Existing evidence:** production JWT configuration is required and validated at startup, but entropy and secret-manager provisioning are operator responsibilities. Production CORS origins are explicitly configured and validated as explicit HTTP(S) origins at startup. Hibernate still uses `ddl-auto: update`; no migration tool is configured. Compose environment comes from the root template, while the frontend template is limited to Vite variables.
 
-**Steps:** require a nonempty high-entropy JWT signing secret and database credentials under the production profile; add versioned migrations for schema changes; use a migration-first validation mode only after checking the real schema; document origin allowlisting for `SecurityConfig`.
+**Steps:** generate JWT signing keys with a cryptographically secure generator and provision through a deployment secret manager; add versioned migrations for schema changes; use a migration-first validation mode only after checking the real schema; provide explicit production origins through `UPIQ_CORS_ALLOWED_ORIGINS`.
 
 **Acceptance:** a production-profile startup without required credentials fails closed; migration tests cover a clean schema and upgrade from a representative prior schema; no secret values enter frontend bundles or logs; configured browser origins are explicit and tested.
 
@@ -49,15 +49,15 @@ UPIQ is a React/Vite single-page application backed by one Spring Boot REST appl
 
 ### Browser CSV statement import
 
-**Status:** backend parser/import path exists; browser selection currently accepts PDF only.
+**Status:** backend parser/import path exists; active browser selection accepts PDF and CSV.
 
 **Purpose/behavior:** let users upload a supported CSV, preview parsed rows, correct/reject candidates, and persist only explicit user-approved rows.
 
-**Relevant modules:** `ParserController`, `CSVParserService`, `StatementImportService`, `frontend/src/pages/UploadPDF.jsx`, `frontend/src/services/pdf.service.js`, `frontend/src/utils/statementImport.js`.
+**Relevant modules:** `ParserController`, `CSVParserService`, `AIPDFParserService`, `StatementImportService`, `frontend/src/components/transactions/StatementUploadModal.jsx`, `frontend/src/services/pdf.service.js`, `frontend/src/utils/statementImport.js`.
 
-**Steps:** define supported headers and size limits; expose CSV in the UI; reuse the preview/correction flow; retain per-row duplicate/rejection/import results; keep user scoping and idempotent row identity; sanitize parser logs.
+**Steps:** keep supported headers and size limits documented; retain the preview/correction flow, per-row duplicate/rejection/import results, user scoping, idempotent row identity, and sanitized parser logs; add PDF-specific fixtures independently of CSV validation.
 
-**Tests/acceptance:** header aliases, quoted delimiters, malformed rows, date/amount edge cases, duplicate upload, user isolation, preview edits, partial failures, and no import before confirmation. No parser row may silently become a current-date transaction.
+**Tests/acceptance:** header aliases, quoted delimiters, malformed rows, date/amount edge cases, duplicate upload, user isolation, preview edits, partial failures, and no import before confirmation. Generated PDF fixtures currently cover basic extraction, missing dates, and malformed-amount rejection; broaden real-template, multi-page, mixed-row, duplicate, and persistence-failure coverage independently of CSV tests. No parser row may silently become a current-date transaction. The undocumented 1,000,000 PDF amount ceiling has been removed; no business rule justified retaining it.
 
 ### Parser accuracy and OCR
 

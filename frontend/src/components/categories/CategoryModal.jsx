@@ -4,6 +4,7 @@ import { useBudget } from "../../context/BudgetContext";
 import { CATEGORY_COLORS, CATEGORY_ICONS, getCategoryColor, getCategoryIcon } from "../../utils/categoryUtils";
 import { X } from "lucide-react";
 import clsx from "clsx";
+import { normalizeApiError } from "../../services/safeApiError.js";
 
 const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
     const { getBudget, setBudget, deleteBudget } = useBudget();
@@ -75,8 +76,8 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
 
             onClose();
         } catch (error) {
-            console.error("Failed to save category", error);
-            alert("❌ Failed to save category: " + (error.response?.data?.message || error.message));
+            console.warn("Failed to save category", { status: error.response?.status || null, code: error.code || null });
+            alert("❌ Failed to save category: " + normalizeApiError(error).message);
         } finally {
             setSaving(false);
         }

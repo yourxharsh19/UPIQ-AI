@@ -11,6 +11,7 @@ import { Plus } from "lucide-react";
 import clsx from "clsx";
 import { useBudget } from "../context/BudgetContext";
 import { categoryListFromResponse } from "../utils/categoryData.js";
+import { normalizeApiError } from "../services/safeApiError.js";
 
 const Categories = () => {
     const [categories, setCategories] = useState([]);
@@ -112,7 +113,7 @@ const Categories = () => {
                 }
                 setCategories(categories.filter(c => c.id !== id));
             } catch (error) {
-                alert("Failed to delete category: " + (error.response?.data?.message || error.message));
+                alert("Failed to delete category: " + normalizeApiError(error).message);
             }
         }
     };

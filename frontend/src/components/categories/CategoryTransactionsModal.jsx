@@ -12,11 +12,6 @@ const CategoryTransactionsModal = ({ isOpen, onClose, category, transactions }) 
         return transactionCategory === targetCategory;
     });
 
-    console.log("Category:", category.name);
-    console.log("Total transactions:", transactions.length);
-    console.log("Filtered transactions:", categoryTransactions.length);
-    console.log("Sample transaction categories:", transactions.slice(0, 5).map(t => t.category));
-
     const totalAmount = categoryTransactions.reduce(
         (sum, t) => sum + (t.amount || 0),
         0

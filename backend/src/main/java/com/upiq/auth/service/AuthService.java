@@ -21,13 +21,13 @@ public class AuthService {
     public String registerUser(RegisterRequest request) {
         // Check if email already exists
         if (userService.getUserByEmail(request.getEmail()).isPresent()) {
-            return "User already exists with this email!";
+            return "Registration request processed. You may try signing in.";
         }
 
         // Check if username already exists (if provided)
         if (request.getUserName() != null && !request.getUserName().isEmpty()) {
             if (userService.getUserByUsername(request.getUserName()).isPresent()) {
-                return "Username already taken!";
+                return "Registration request processed. You may try signing in.";
             }
         }
 
@@ -50,7 +50,7 @@ public class AuthService {
 
         User savedUser = userService.saveUser(user);
 
-        return "User registered successfully!";
+        return "Registration request processed. You may try signing in.";
     }
 
     public String loginUser(LoginRequest request) {

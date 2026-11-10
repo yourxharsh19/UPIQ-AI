@@ -5,6 +5,7 @@ import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
+import { normalizeApiError } from "../services/safeApiError.js";
 
 const UploadPDF = () => {
     const navigate = useNavigate();
@@ -45,13 +46,8 @@ const UploadPDF = () => {
                 setError(response.message || "Failed to parse PDF.");
             }
         } catch (err) {
-            console.error("Upload Error:", err);
-            const errorMessage = err.response?.data?.message
-                || err.response?.statusText
-                || err.message
-                || "An unknown error occurred";
-            const status = err.response?.status ? ` (Status: ${err.response.status})` : "";
-            setError(`Upload failed: ${errorMessage}${status}`);
+            const normalized = normalizeApiError(err);
+            setError(`Upload failed: ${normalized.message}${normalized.status ? ` (Status: ${normalized.status})` : ""}`);
         } finally {
             setLoading(false);
         }
@@ -71,7 +67,7 @@ const UploadPDF = () => {
             alert(`Imported ${result.importedCount ?? 0} new rows; skipped ${result.duplicateCount ?? 0} duplicates; omitted ${result.rejectedCount ?? 0} invalid rows; ${result.failedCount ?? 0} failed.`);
             if ((result.failedCount ?? 0) === 0) navigate("/transactions");
         } catch (err) {
-            setError(err.response?.data?.message || err.message || "Failed to import the statement. Please retry.");
+            setError(normalizeApiError(err).message);
         } finally {
             setSaving(false);
         }

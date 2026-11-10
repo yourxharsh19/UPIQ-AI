@@ -3,6 +3,8 @@ package com.upiq.auth.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.AssertTrue;
+import java.nio.charset.StandardCharsets;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,8 +24,13 @@ public class RegisterRequest {
     private String userName;
     
     @NotBlank(message = "Password is required")
-    @Size(min = 6, message = "Password must be at least 6 characters")
+    @Size(min = 12, max = 72, message = "Password must be between 12 and 72 characters")
     private String password;
+
+    @AssertTrue(message = "Password must not exceed 72 UTF-8 bytes")
+    public boolean isPasswordWithinBcryptLimit() {
+        return password == null || password.getBytes(StandardCharsets.UTF_8).length <= 72;
+    }
     
     private String role; // Optional: "USER" or "ADMIN", defaults to "USER" if not provided
 }
