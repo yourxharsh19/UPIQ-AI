@@ -5,85 +5,104 @@ import { Badge } from '../common/Badge';
 import { useFinancial } from '../../context/FinancialContext';
 
 export const RecentTransactionsWidget = () => {
-  const { transactions, setActiveTab, formatCurrency } = useFinancial();
+  const { transactions, setActiveTab, formatCurrency, openStatementModal } = useFinancial();
   const recent = transactions.slice(0, 6);
 
   return (
     <Card className="flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-base font-semibold tracking-tight text-slate-100 light:text-slate-900">
-            Recent activity
+          <h3 className="text-sm font-semibold tracking-tight text-[var(--text-main)]">
+            Recent Ledger Activity
           </h3>
-          <p className="text-xs text-slate-400">Recent transactions from your ledger</p>
+          <p className="text-xs text-[var(--text-muted)]">Latest transactions recorded in your account</p>
         </div>
         <button
           onClick={() => setActiveTab('transactions')}
-          className="rounded-lg px-2 py-1 text-xs font-semibold text-indigo-300 transition-colors hover:bg-indigo-400/10 hover:text-indigo-200 light:text-indigo-600"
+          className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
         >
-          View All Ledger &rarr;
+          View All Transactions &rarr;
         </button>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-          <thead>
-            <tr className="border-b border-slate-800 light:border-slate-200 text-slate-400 uppercase font-semibold">
-              <th className="pb-3 pl-2">Transaction</th>
-              <th className="pb-3">Mode</th>
-              <th className="pb-3">Category</th>
-              <th className="pb-3">Risk monitoring</th>
-              <th className="pb-3 text-right pr-2">Amount</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/60 light:divide-slate-200">
-            {recent.map((tx) => (
-              <tr key={tx.id} className="hover:bg-slate-800/40 light:hover:bg-slate-100 transition-colors">
-                <td className="py-3 pl-2">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        tx.type === 'income'
-                          ? 'bg-emerald-500/10 text-emerald-400'
-                          : 'bg-rose-500/10 text-rose-400'
-                      }`}
-                    >
-                      {tx.type === 'income' ? (
-                        <ArrowDownLeft className="w-4 h-4" />
-                      ) : (
-                        <ArrowUpRight className="w-4 h-4" />
-                      )}
-                    </div>
-                    <div>
-                      <span className="font-semibold text-slate-100 light:text-slate-900 block truncate max-w-[150px]">
-                        {tx.title}
-                      </span>
-                      <span className="text-[10px] text-slate-400">{tx.merchant}</span>
-                    </div>
-                  </div>
-                </td>
-                <td className="py-3">
-                  <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800 light:bg-slate-200 light:text-slate-800 font-mono text-[10px]">
-                    {tx.mode}
-                  </span>
-                </td>
-                <td className="py-3">
-                  <span className="text-slate-300 light:text-slate-700">{tx.category}</span>
-                </td>
-                <td className="py-3">
-                  <Badge variant="neutral">Not monitored</Badge>
-                </td>
-                <td className="py-3 text-right pr-2 font-bold">
-                  <span className={tx.type === 'income' ? 'text-emerald-400' : 'text-slate-100 light:text-slate-900'}>
-                    {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
-                  </span>
-                </td>
-
+      {recent.length === 0 ? (
+        <div className="py-8 text-center space-y-2.5">
+          <p className="text-xs text-[var(--text-muted)] font-medium">No transactions recorded in your ledger yet.</p>
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={openStatementModal}
+              className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium transition-colors cursor-pointer"
+            >
+              Upload Statement
+            </button>
+            <button
+              onClick={() => setActiveTab('transactions')}
+              className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border-base)] bg-[var(--bg-surface)] text-[var(--text-main)] hover:bg-[var(--bg-card)] font-medium transition-colors cursor-pointer"
+            >
+              Go to Ledger
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-[var(--border-base)] text-[var(--text-muted)] font-medium">
+                <th className="pb-2.5 pl-1">Description</th>
+                <th className="pb-2.5">Mode</th>
+                <th className="pb-2.5">Category</th>
+                <th className="pb-2.5">Status</th>
+                <th className="pb-2.5 text-right pr-1">Amount</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-base)]">
+              {recent.map((tx) => (
+                <tr key={tx.id} className="hover:bg-[var(--bg-surface)] transition-colors">
+                  <td className="py-2.5 pl-1">
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${
+                          tx.type === 'income'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-slate-500/10 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        {tx.type === 'income' ? (
+                          <ArrowDownLeft className="w-3.5 h-3.5" />
+                        ) : (
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        )}
+                      </div>
+                      <div>
+                        <span className="font-medium text-[var(--text-main)] block truncate max-w-[180px]">
+                          {tx.title}
+                        </span>
+                        <span className="text-[11px] text-[var(--text-muted)]">{tx.merchant}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-2.5">
+                    <span className="px-1.5 py-0.5 rounded bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-base)] font-mono text-[10px]">
+                      {tx.mode}
+                    </span>
+                  </td>
+                  <td className="py-2.5">
+                    <span className="text-[var(--text-muted)]">{tx.category}</span>
+                  </td>
+                  <td className="py-2.5">
+                    <Badge variant="neutral">Not monitored</Badge>
+                  </td>
+                  <td className="py-2.5 text-right pr-1 font-semibold tabular-nums">
+                    <span className={tx.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--text-main)]'}>
+                      {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </Card>
   );
 };

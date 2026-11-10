@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useDateFilter } from "../../context/DateFilterContext";
 
 const DateRangeFilter = () => {
-  const { startDate, endDate, setDateRange, resetToCurrentMonth, resetToLastMonth, resetToLast30Days, resetToLast90Days, resetToThisYear, resetToAllTime } = useDateFilter();
+  const { startDate, endDate, resetToCurrentMonth, resetToLastMonth, resetToLast30Days, resetToLast90Days, resetToThisYear, resetToAllTime } = useDateFilter();
   const [isOpen, setIsOpen] = useState(false);
 
   const formatDate = (date) => {
@@ -28,13 +28,13 @@ const DateRangeFilter = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all shadow-sm hover:shadow-md"
+        className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border-base)] rounded-lg hover:bg-[var(--bg-surface)] transition-colors shadow-sm"
       >
-        <Calendar size={18} className="text-gray-600" />
-        <span className="text-sm font-medium text-gray-700">
+        <Calendar size={15} className="text-[var(--text-muted)]" />
+        <span className="text-xs font-medium text-[var(--text-main)]">
           {formatDate(startDate)} - {formatDate(endDate)}
         </span>
-        <ChevronDown size={16} className={`text-gray-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown size={14} className={`text-[var(--text-muted)] transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
@@ -43,53 +43,53 @@ const DateRangeFilter = () => {
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 z-20 overflow-hidden">
-            <div className="p-2">
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100">
+          <div className="absolute right-0 mt-1.5 w-56 bg-[var(--bg-card)] rounded-xl shadow-lg border border-[var(--border-base)] z-20 overflow-hidden">
+            <div className="p-1.5">
+              <div className="px-2.5 py-1 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider border-b border-[var(--border-base)] mb-1">
                 Quick Filters
               </div>
               <button
                 onClick={() => handlePresetClick(resetToCurrentMonth)}
-                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                className="w-full text-left px-2.5 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-md transition-colors"
               >
                 This Month
               </button>
               <button
                 onClick={() => handlePresetClick(resetToLastMonth)}
-                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                className="w-full text-left px-2.5 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-md transition-colors"
               >
                 Last Month
               </button>
               <button
                 onClick={() => handlePresetClick(resetToLast30Days)}
-                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                className="w-full text-left px-2.5 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-md transition-colors"
               >
                 Last 30 Days
               </button>
               <button
                 onClick={() => handlePresetClick(resetToLast90Days)}
-                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                className="w-full text-left px-2.5 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-md transition-colors"
               >
                 Last 90 Days
               </button>
               <button
                 onClick={() => handlePresetClick(resetToThisYear)}
-                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                className="w-full text-left px-2.5 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-md transition-colors"
               >
                 This Year
               </button>
               <button
                 onClick={() => handlePresetClick(resetToAllTime)}
-                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition border-t border-gray-100 mt-1 pt-2"
+                className="w-full text-left px-2.5 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-md transition-colors border-t border-[var(--border-base)] mt-1 pt-1.5"
               >
                 All Time
               </button>
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-t border-gray-100 mt-2">
+              <div className="px-2.5 py-1 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider border-t border-[var(--border-base)] mt-1">
                 Custom Range
               </div>
               <button
                 onClick={handleCustomRange}
-                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                className="w-full text-left px-2.5 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--bg-surface)] rounded-md transition-colors"
               >
                 Select Dates...
               </button>

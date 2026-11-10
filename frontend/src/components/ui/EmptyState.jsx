@@ -1,6 +1,6 @@
-import { Link } from "react-router-dom";
 import { Upload, FileText, TrendingUp, ArrowRight } from "lucide-react";
 import Button from "./Button";
+import { useFinancial } from "../../context/FinancialContext";
 
 const EmptyState = ({
   type = "transactions",
@@ -11,6 +11,15 @@ const EmptyState = ({
   onAction,
   icon: CustomIcon
 }) => {
+  let financial = null;
+  try {
+    financial = useFinancial();
+  } catch {
+    financial = null;
+  }
+  const setActiveTab = financial?.setActiveTab;
+  const openStatementModal = financial?.openStatementModal;
+
   const configs = {
     transactions: {
       icon: FileText,
@@ -45,35 +54,44 @@ const EmptyState = ({
 
   const Icon = config.icon;
 
+  const handleAction = () => {
+    if (onAction) {
+      onAction();
+    } else if (config.actionPath) {
+      const tab = config.actionPath.replace(/^\//, '').toLowerCase();
+      if (tab === 'upload') {
+        if (openStatementModal) {
+          openStatementModal();
+        } else if (setActiveTab) {
+          setActiveTab('transactions');
+        }
+      } else if (setActiveTab) {
+        setActiveTab(tab);
+      }
+    }
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center py-24 px-6">
-      <div className="relative mb-8">
-        <div className="absolute inset-0 bg-primary-500/10 blur-3xl rounded-full"></div>
-        <div className="relative bg-[var(--bg-surface)] border border-[var(--border-base)] p-8 rounded-3xl shadow-premium group-hover:scale-105 transition-transform duration-500">
-          <Icon size={48} className="text-primary-600 dark:text-primary-400" />
+    <div className="flex flex-col items-center justify-center py-16 px-4">
+      <div className="mb-4">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-base)] p-4 rounded-xl">
+          <Icon size={28} className="text-[var(--text-muted)]" />
         </div>
       </div>
 
-      <h3 className="text-2xl font-bold text-[var(--text-main)] mb-3 text-center tracking-tight">
+      <h3 className="text-base font-semibold text-[var(--text-main)] mb-1 text-center tracking-tight">
         {config.title}
       </h3>
-      <p className="text-[var(--text-muted)] text-center max-w-sm mb-10 leading-relaxed">
+      <p className="text-xs text-[var(--text-muted)] text-center max-w-sm mb-6 leading-relaxed">
         {config.description}
       </p>
 
-      {config.actionPath ? (
-        <Link to={config.actionPath}>
-          <Button size="lg" className="group">
-            {config.actionLabel}
-            <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
-          </Button>
-        </Link>
-      ) : onAction ? (
-        <Button size="lg" onClick={onAction} className="group">
+      {(onAction || config.actionPath || config.actionLabel) && (
+        <Button size="sm" onClick={handleAction}>
           {config.actionLabel}
-          <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+          <ArrowRight size={14} className="ml-1.5" />
         </Button>
-      ) : null}
+      )}
     </div>
   );
 };

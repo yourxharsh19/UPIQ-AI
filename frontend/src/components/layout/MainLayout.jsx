@@ -4,10 +4,8 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { BottomNav } from './BottomNav';
 import { AddEditTransactionModal } from '../transactions/AddEditTransactionModal';
-import { ToastContainer } from '../common/Toast';
+import { StatementUploadModal } from '../transactions/StatementUploadModal';
 import { useFinancial } from '../../context/FinancialContext';
-
-import { GradientTransition } from '../common/GradientTransition';
 
 const TAB_INDEX_MAP = {
   dashboard: 0,
@@ -22,7 +20,7 @@ const TAB_INDEX_MAP = {
 };
 
 export const MainLayout = ({ children }) => {
-  const { activeTab } = useFinancial();
+  const { activeTab, isStatementModalOpen, closeStatementModal } = useFinancial();
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
   const prevTabRef = useRef(activeTab);
   const rightViewportRef = useRef(null);
@@ -34,73 +32,53 @@ export const MainLayout = ({ children }) => {
   useEffect(() => {
     prevTabRef.current = activeTab;
     if (rightViewportRef.current) {
-      rightViewportRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      rightViewportRef.current.scrollTo({ top: 0, behavior: 'instant' });
     }
   }, [activeTab]);
 
-  // Framer Motion vertical fade-out when moving up & fade-in when back to top
+  // Clean, subtle fade transition - fast, responsive, and purposeful (like Linear / Stripe)
   const rightContentVariants = {
-    initial: (dir) => ({
-      y: dir > 0 ? 60 : -60,
+    initial: {
       opacity: 0,
-      scale: 0.98,
-      filter: 'blur(10px)',
-    }),
+      y: 4,
+    },
     animate: {
-      y: 0,
       opacity: 1,
-      scale: 1,
-      filter: 'blur(0px)',
+      y: 0,
       transition: {
-        type: 'spring',
-        stiffness: 240,
-        damping: 24,
-        mass: 0.7,
+        duration: 0.16,
+        ease: 'easeOut',
       },
     },
-    exit: (dir) => ({
-      y: dir > 0 ? -60 : 60,
+    exit: {
       opacity: 0,
-      scale: 0.98,
-      filter: 'blur(10px)',
       transition: {
-        duration: 0.28,
-        ease: [0.16, 1, 0.3, 1],
+        duration: 0.1,
+        ease: 'easeIn',
       },
-    }),
+    },
   };
 
   return (
-    <div className="min-h-screen flex bg-transparent text-slate-100 light:text-slate-900 selection:bg-indigo-500 selection:text-white transition-colors overflow-hidden relative">
-      {/* Background ambient glowing gradient mesh orbs */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute top-[-10%] right-[-5%] w-[550px] h-[550px] rounded-full bg-gradient-to-br from-indigo-600/15 via-purple-600/12 to-transparent blur-[130px] light:from-indigo-400/25 light:via-purple-400/20" />
-        <div className="absolute bottom-[-10%] left-[10%] w-[650px] h-[650px] rounded-full bg-gradient-to-tr from-pink-600/12 via-rose-500/10 to-transparent blur-[140px] light:from-pink-400/20 light:via-rose-400/15" />
-        <div className="absolute top-[40%] right-[25%] w-[450px] h-[450px] rounded-full bg-gradient-to-r from-cyan-500/10 via-emerald-500/10 to-transparent blur-[130px] light:from-cyan-400/20 light:via-emerald-400/15" />
-      </div>
-
-      {/* Modern Gradient Aura Overlay on tab switch */}
-      <GradientTransition activeKey={activeTab} />
-
+    <div className="min-h-screen flex bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors overflow-hidden relative">
       {/* FIXED LEFT SIDEBAR: Never moves during tab transitions */}
       <Sidebar />
 
       {/* RIGHT SIDE AREA: Header and animated page content container */}
-      <div ref={rightViewportRef} className="flex-1 flex flex-col min-w-0 pb-20 md:pb-8 h-screen overflow-y-auto scroll-smooth">
+      <div ref={rightViewportRef} className="flex-1 flex flex-col min-w-0 pb-20 md:pb-8 h-screen overflow-y-auto">
         {/* Fixed Header */}
         <Header onOpenAddTxModal={() => setIsAddTxModalOpen(true)} />
 
-        {/* ONLY RIGHT CONTENT AREA ANIMATES (Fades out going up, fades in back to top) */}
-        <main className="relative flex-1 p-4 sm:p-6 xl:p-9 max-w-[1600px] w-full mx-auto space-y-8">
+        {/* MAIN CONTENT AREA */}
+        <main className="relative flex-1 p-4 sm:p-6 lg:p-8 max-w-[1500px] w-full mx-auto space-y-6">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={activeTab}
-              custom={direction}
               variants={rightContentVariants}
               initial="initial"
               animate="animate"
               exit="exit"
-              className="w-full space-y-8"
+              className="w-full space-y-6"
             >
               {children}
             </motion.div>
@@ -117,8 +95,11 @@ export const MainLayout = ({ children }) => {
         onClose={() => setIsAddTxModalOpen(false)}
       />
 
-      {/* Toast Notification Container */}
-      <ToastContainer />
+      {/* Global Statement Upload Modal */}
+      <StatementUploadModal
+        isOpen={isStatementModalOpen}
+        onClose={closeStatementModal}
+      />
     </div>
   );
 };

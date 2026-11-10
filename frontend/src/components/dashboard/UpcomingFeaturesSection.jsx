@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Clock, Server } from 'lucide-react';
+import { Clock, Server } from 'lucide-react';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
 import { BackendFeatureRoadmapModal } from '../common/BackendFeatureRoadmapModal';
@@ -13,23 +13,20 @@ export const UpcomingFeaturesSection = () => {
 
   return (
     <>
-      <section className="space-y-4">
+      <section className="space-y-3.5">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="p-1 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                <Sparkles className="w-4 h-4 animate-pulse" />
-              </span>
-              <h3 className="text-lg font-bold text-slate-100 light:text-slate-900">
-                UPIQ Feature Roadmap
+              <h3 className="text-sm font-semibold tracking-tight text-[var(--text-main)]">
+                Product Roadmap & Capabilities
               </h3>
-              <Badge variant="ai" size="sm">
-                Backend Status Verified
+              <Badge variant="info" size="sm">
+                Verified
               </Badge>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Active microservices: <span className="text-emerald-400 font-bold">{onlineCount} Endpoints Online</span> • Phase 2 Upgrades in Progress
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              Current services: <span className="text-emerald-600 dark:text-emerald-400 font-medium">{onlineCount} Endpoints Online</span> • Phase 2 Upgrades in Progress
             </p>
           </div>
 
@@ -39,33 +36,31 @@ export const UpcomingFeaturesSection = () => {
         </div>
 
         {/* Feature Cards Showcase */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {upcomingFeatures.slice(0, 3).map((feat) => (
             <div
               key={feat.id}
-              className="p-5 rounded-2xl glass-panel border border-purple-500/20 bg-gradient-to-b from-purple-950/20 via-slate-900/40 to-slate-950/60 hover:border-purple-500/40 transition-all duration-300 group relative overflow-hidden"
+              className="p-4 rounded-xl border border-[var(--border-base)] bg-[var(--bg-card)] hover:border-slate-400 dark:hover:border-slate-700 transition-colors shadow-xs"
             >
-              <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all" />
-
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                   {feat.badgeText}
                 </span>
-                <span className="text-[10px] text-slate-400 font-mono">
+                <span className="text-[10px] text-[var(--text-muted)] font-mono">
                   Phase 2
                 </span>
               </div>
 
-              <h4 className="text-sm font-bold text-slate-100 light:text-slate-900 group-hover:text-purple-300 transition-colors">
+              <h4 className="text-xs font-semibold text-[var(--text-main)]">
                 {feat.name}
               </h4>
-              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+              <p className="text-xs text-[var(--text-muted)] mt-1.5 leading-relaxed">
                 {feat.description}
               </p>
 
-              <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-                <span className="text-slate-500 font-medium">Target availability:</span>
-                <span className="text-purple-400 font-semibold flex items-center gap-1">
+              <div className="mt-3 pt-2.5 border-t border-[var(--border-base)] flex items-center justify-between text-[11px]">
+                <span className="text-[var(--text-muted)]">Target availability:</span>
+                <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
                   <Clock className="w-3 h-3" /> Coming Soon
                 </span>
               </div>

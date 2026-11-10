@@ -16,8 +16,10 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
     });
     const [budgetAmount, setBudgetAmount] = useState("");
     const [saving, setSaving] = useState(false);
+    const [errorMsg, setErrorMsg] = useState("");
 
     useEffect(() => {
+        setErrorMsg("");
         if (category) {
             // Get proper color object even for custom colors
             const categoryColor = getCategoryColor(category.name, category.color);
@@ -26,7 +28,7 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
                 type: category.type || "expense",
                 description: category.description || "",
                 color: category.color || categoryColor.value,
-                icon: category.icon || ""
+                icon: category.icon || getCategoryIcon(category.name)
             });
             const existingBudget = getBudget(category.name);
             setBudgetAmount(existingBudget ? existingBudget.toString() : "");
@@ -37,7 +39,7 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
                 type: "expense",
                 description: "",
                 color: defaultColor,
-                icon: ""
+                icon: "🍔"
             });
             setBudgetAmount("");
         }
@@ -48,6 +50,7 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
+        setErrorMsg("");
         try {
             await onSave(category?.id, formData);
 
@@ -76,7 +79,7 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
             onClose();
         } catch (error) {
             console.error("Failed to save category", error);
-            alert("❌ Failed to save category: " + (error.response?.data?.message || error.message));
+            setErrorMsg(error.response?.data?.message || error.message || "Failed to save category. Please try again.");
         } finally {
             setSaving(false);
         }
@@ -84,7 +87,7 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div className="bg-[var(--bg-card)] rounded-3xl shadow-premium w-full max-w-md overflow-hidden animate-zoom-in">
+            <div className="bg-[var(--bg-card)] rounded-xl shadow-xl border border-[var(--border-base)] w-full max-w-md overflow-hidden animate-zoom-in">
                 <div className="px-6 py-5 border-b border-[var(--border-base)] flex justify-between items-center">
                     <h2 className="text-xl font-bold text-[var(--text-main)] tracking-tight">
                         {category ? "Edit Category" : "Add New Category"}
@@ -94,33 +97,38 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                    {errorMsg && (
+                        <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium">
+                            {errorMsg}
+                        </div>
+                    )}
                     <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
                         <div>
-                            <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2">
+                            <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
                                 Category Name
                             </label>
                             <input
                                 type="text"
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm transition-all text-[var(--text-main)]"
+                                className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs transition-colors text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
                                 placeholder="e.g., Food, Rent, Salary"
                                 required
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3">
+                            <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
                                 Type
                             </label>
-                            <div className="flex bg-[var(--bg-surface)] p-1 rounded-xl border border-[var(--border-base)] w-fit">
+                            <div className="flex bg-[var(--bg-surface)] p-1 rounded-lg border border-[var(--border-base)] w-fit">
                                 <button
                                     type="button"
                                     onClick={() => setFormData({ ...formData, type: "expense" })}
                                     className={clsx(
-                                        "px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                                        formData.type === "expense" ? "bg-[var(--bg-card)] text-rose-600 shadow-sm border border-[var(--border-base)]" : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                                        "px-4 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer",
+                                        formData.type === "expense" ? "bg-[var(--bg-card)] text-rose-600 dark:text-rose-400 shadow-xs border border-[var(--border-base)] font-semibold" : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
                                     )}
                                 >
                                     Expense
@@ -129,8 +137,8 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
                                     type="button"
                                     onClick={() => setFormData({ ...formData, type: "income" })}
                                     className={clsx(
-                                        "px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                                        formData.type === "income" ? "bg-[var(--bg-card)] text-emerald-600 shadow-sm border border-[var(--border-base)]" : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                                        "px-4 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer",
+                                        formData.type === "income" ? "bg-[var(--bg-card)] text-emerald-600 dark:text-emerald-400 shadow-xs border border-[var(--border-base)] font-semibold" : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
                                     )}
                                 >
                                     Income
@@ -139,31 +147,31 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2">
+                            <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
                                 Description
                             </label>
                             <textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm transition-all text-[var(--text-main)] resize-none"
+                                className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs transition-colors text-[var(--text-main)] placeholder:text-[var(--text-muted)] resize-none"
                                 placeholder="Add a description..."
-                                rows="3"
+                                rows="2"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3">
+                            <label className="block text-xs font-semibold text-[var(--text-main)] mb-2">
                                 Category Color
                             </label>
-                            <div className="grid grid-cols-5 gap-3">
+                            <div className="grid grid-cols-5 gap-2.5">
                                 {CATEGORY_COLORS.map((color) => (
                                     <button
                                         key={color.value}
                                         type="button"
                                         onClick={() => setFormData({ ...formData, color: color.value })}
                                         className={clsx(
-                                            "w-full h-10 rounded-xl transition-all duration-300 relative border border-black/5",
-                                            formData.color === color.value ? "ring-2 ring-primary-500 ring-offset-4 ring-offset-[var(--bg-card)] scale-90" : "hover:scale-105"
+                                            "w-full h-8 rounded-lg transition-transform relative border border-black/10 cursor-pointer",
+                                            formData.color === color.value ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-[var(--bg-card)] scale-95" : "hover:opacity-85"
                                         )}
                                         style={{ backgroundColor: color.value }}
                                         title={color.name}
@@ -173,20 +181,20 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3">
+                            <label className="block text-xs font-semibold text-[var(--text-main)] mb-2">
                                 Category Icon
                             </label>
-                            <div className="grid grid-cols-6 gap-3 p-3 bg-[var(--bg-surface)] rounded-2xl border border-[var(--border-base)]">
+                            <div className="grid grid-cols-6 gap-2 p-2.5 bg-[var(--bg-surface)] rounded-xl border border-[var(--border-base)]">
                                 {CATEGORY_ICONS.map((icon) => (
                                     <button
                                         key={icon}
                                         type="button"
                                         onClick={() => setFormData({ ...formData, icon })}
                                         className={clsx(
-                                            "w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all",
-                                            getCategoryIcon(formData.name, formData.icon) === icon
-                                                ? "bg-[var(--bg-card)] text-[var(--text-main)] shadow-premium border border-[var(--border-base)] scale-110"
-                                                : "text-[var(--text-muted)] hover:bg-[var(--bg-card)]/50 hover:text-[var(--text-main)]"
+                                            "w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all cursor-pointer",
+                                            (formData.icon || getCategoryIcon(formData.name)) === icon
+                                                ? "bg-[var(--bg-card)] text-[var(--text-main)] shadow-xs border-2 border-blue-500 scale-105"
+                                                : "text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-main)]"
                                         )}
                                     >
                                         {icon}
@@ -197,22 +205,22 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
 
                         {formData.type === "expense" && (
                             <div>
-                                <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2">
+                                <label className="block text-xs font-semibold text-[var(--text-main)] mb-1.5">
                                     Monthly Budget (this browser)
                                 </label>
                                 <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] font-bold">₹</span>
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-xs font-bold">₹</span>
                                     <input
                                         type="number"
                                         value={budgetAmount}
                                         onChange={(e) => setBudgetAmount(e.target.value)}
-                                        className="w-full pl-8 pr-4 py-3 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm transition-all text-[var(--text-main)] font-bold"
+                                        className="w-full pl-7 pr-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs transition-colors text-[var(--text-main)] font-semibold tabular-nums"
                                         placeholder="0.00"
                                         min="0"
                                         step="0.01"
                                     />
                                 </div>
-                                <p className="mt-1 text-[11px] text-[var(--text-muted)]">Saved locally in this browser; cross-device budget sync is Coming Soon.</p>
+                                <p className="mt-1 text-[11px] text-[var(--text-muted)]">Budgets are saved on this device only. Use Export/Import on Categories to transfer.</p>
                             </div>
                         )}
                     </div>

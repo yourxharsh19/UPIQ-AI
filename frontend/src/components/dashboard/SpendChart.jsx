@@ -25,8 +25,8 @@ const SpendChart = ({ transactions }) => {
     }
 
     return (
-        <div className="bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-base)] h-80 shadow-premium">
-            <h3 className="text-[var(--text-muted)] text-sm font-medium mb-6 tracking-tight">Category Spend</h3>
+        <div className="bg-[var(--bg-card)] p-6 rounded-xl border border-[var(--border-base)] h-80 shadow-sm">
+            <h3 className="text-[var(--text-main)] text-sm font-semibold mb-6 tracking-tight">Category Spend</h3>
             <ResponsiveContainer width="100%" height="85%">
                 <BarChart data={data}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-base)" />
@@ -45,12 +45,12 @@ const SpendChart = ({ transactions }) => {
                         cursor={{ fill: 'var(--bg-surface)', opacity: 0.4 }}
                         contentStyle={{
                             backgroundColor: 'var(--bg-card)',
-                            borderRadius: '12px',
+                            borderRadius: '8px',
                             border: '1px solid var(--border-base)',
-                            boxShadow: 'var(--shadow-premium-hover)'
+                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                         }}
                     />
-                    <Bar dataKey="amount" fill="var(--primary-accent)" radius={[6, 6, 0, 0]} barSize={24} />
+                    <Bar dataKey="amount" fill="var(--primary-accent)" radius={[4, 4, 0, 0]} barSize={24} />
                 </BarChart>
             </ResponsiveContainer>
         </div>

@@ -10,6 +10,7 @@ import { Login } from './pages/Login';
 import Register from './pages/Register';
 import { resolveAppTab } from './utils/appNavigation.js';
 import { resolveAuthView } from './utils/registrationFlow.js';
+import { ToastContainer } from './components/common/Toast';
 
 const Dashboard = lazy(() => import('./pages/Dashboard').then((module) => ({ default: module.Dashboard })));
 const Transactions = lazy(() => import('./pages/Transactions').then((module) => ({ default: module.Transactions })));
@@ -106,6 +107,7 @@ const AppContent = () => {
       <AnimatePresence mode="wait">
         {renderView()}
       </AnimatePresence>
+      <ToastContainer />
     </div>
   );
 };
@@ -113,11 +115,11 @@ const AppContent = () => {
 export default function App() {
   return (
     <ThemeProvider>
-      <BudgetProvider>
-        <FinancialProvider>
+      <FinancialProvider>
+        <BudgetProvider>
           <AppContent />
-        </FinancialProvider>
-      </BudgetProvider>
+        </BudgetProvider>
+      </FinancialProvider>
     </ThemeProvider>
   );
 }

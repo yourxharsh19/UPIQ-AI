@@ -3,11 +3,19 @@ import { Upload, FileText, X, AlertCircle, Save } from "lucide-react";
 import PDFService from "../services/pdf.service";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
-import { useNavigate } from "react-router-dom";
+import { useFinancial } from "../context/FinancialContext";
 import clsx from "clsx";
 
+import { validateStatementFile } from "../utils/fileValidation";
+
 const UploadPDF = () => {
-    const navigate = useNavigate();
+    let financial = null;
+    try {
+        financial = useFinancial();
+    } catch {
+        financial = null;
+    }
+    const setActiveTab = financial?.setActiveTab;
     const fileInputRef = useRef(null);
     const [file, setFile] = useState(null);
 
@@ -18,13 +26,15 @@ const UploadPDF = () => {
     const [importResult, setImportResult] = useState(null);
 
     const handleFileChange = (e) => {
-        const selectedFile = e.target.files[0];
-        if (selectedFile && selectedFile.type === "application/pdf") {
+        const selectedFile = e.target.files?.[0];
+        if (!selectedFile) return;
+        const validation = validateStatementFile(selectedFile);
+        if (validation.valid) {
             setFile(selectedFile);
             setError(null);
         } else {
             setFile(null);
-            setError("Please upload a valid PDF file.");
+            setError(validation.error);
         }
     };
 
@@ -69,7 +79,7 @@ const UploadPDF = () => {
             const result = response.data;
             setImportResult(result);
             alert(`Imported ${result.importedCount ?? 0} new rows; skipped ${result.duplicateCount ?? 0} duplicates; omitted ${result.rejectedCount ?? 0} invalid rows; ${result.failedCount ?? 0} failed.`);
-            if ((result.failedCount ?? 0) === 0) navigate("/transactions");
+            if ((result.failedCount ?? 0) === 0 && setActiveTab) setActiveTab("transactions");
         } catch (err) {
             setError(err.response?.data?.message || err.message || "Failed to import the statement. Please retry.");
         } finally {
@@ -78,115 +88,118 @@ const UploadPDF = () => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto">
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-[var(--text-main)]">Upload Statement</h1>
-                <p className="text-[var(--text-muted)]">Upload your bank statement PDF to automatically extract transactions.</p>
+        <div className="max-w-4xl mx-auto space-y-6">
+            <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-main)] tracking-tight">Upload Statement</h1>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">Upload your bank statement (PDF or CSV) to extract and review transactions.</p>
             </div>
 
             {!parsedData ? (
-                <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed border-[var(--border-base)] hover:border-primary-500 transition-all duration-300 group bg-[var(--bg-card)]">
-                    <div className="bg-primary-500/10 p-5 rounded-2xl mb-6 group-hover:scale-110 transition-transform duration-300 border border-primary-500/20">
-                        <Upload className="w-10 h-10 text-primary-600 dark:text-primary-400" />
+                <Card className="p-8 sm:p-12 flex flex-col items-center justify-center border-2 border-dashed border-[var(--border-base)] hover:border-blue-500 transition-colors bg-[var(--bg-card)]">
+                    <div className="bg-blue-500/10 text-blue-600 dark:text-blue-400 p-4 rounded-xl mb-4 border border-blue-500/20">
+                        <Upload className="w-8 h-8" />
                     </div>
-                    <h3 className="text-xl font-bold text-[var(--text-main)] mb-2 tracking-tight transition-colors">Upload Bank Statement</h3>
-                    <p className="text-[var(--text-muted)] text-sm mb-10 max-w-xs text-center leading-relaxed">
-                        Drag and drop your PDF here, or click to browse.
+                    <h3 className="text-base font-bold text-[var(--text-main)] mb-1">Select Bank Statement</h3>
+                    <p className="text-[var(--text-muted)] text-xs mb-1 max-w-xs text-center">
+                        Drag and drop your PDF or CSV file here, or click to browse. Max 10MB.
+                    </p>
+                    <p className="text-[var(--text-muted)] text-[11px] mb-6 max-w-sm text-center">
+                        Supports digital text PDFs and CSV statements. Scanned / image-only PDFs (OCR) are Coming soon.
                     </p>
 
                     <input
                         type="file"
-                        accept="application/pdf"
+                        accept=".pdf,.csv,.txt"
                         onChange={handleFileChange}
                         className="hidden"
                         ref={fileInputRef}
                     />
 
-                    <Button variant="outline" onClick={handleBrowseClick}>
-                        Select PDF
+                    <Button variant="secondary" onClick={handleBrowseClick}>
+                        Select File (.pdf, .csv)
                     </Button>
 
                     {file && (
-                        <div className="mt-8 flex items-center gap-4 bg-[var(--bg-surface)] px-6 py-3 rounded-2xl border border-[var(--border-base)] animate-fade-in">
-                            <FileText className="text-primary-600" size={20} />
-                            <span className="text-sm font-bold text-[var(--text-main)] truncate max-w-[200px]">{file.name}</span>
-                            <button onClick={() => setFile(null)} className="text-[var(--text-muted)] hover:text-rose-500 transition-colors">
-                                <X size={18} />
+                        <div className="mt-6 flex items-center gap-3 bg-[var(--bg-surface)] px-4 py-2 rounded-lg border border-[var(--border-base)]">
+                            <FileText className="text-blue-500" size={18} />
+                            <span className="text-xs font-semibold text-[var(--text-main)] truncate max-w-[200px]">{file.name}</span>
+                            <button onClick={() => setFile(null)} className="text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer">
+                                <X size={16} />
                             </button>
                         </div>
                     )}
 
                     {error && (
-                        <div className="mt-6 flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider bg-rose-500/10 px-4 py-2 rounded-xl border border-rose-500/20 animate-fade-in">
+                        <div className="mt-5 flex items-center gap-2 text-rose-600 dark:text-rose-400 text-xs font-medium bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20">
                             <AlertCircle size={14} />
                             {error}
                         </div>
                     )}
 
-                    <div className="mt-10 w-full max-w-sm">
+                    <div className="mt-6 w-full max-w-xs">
                         <Button
                             onClick={handleUpload}
                             disabled={!file}
                             loading={loading}
                             className="w-full"
-                            size="lg"
+                            size="md"
                         >
                             {loading ? "Parsing..." : "Extract Transactions"}
                         </Button>
                     </div>
                 </Card>
             ) : (
-                <div className="space-y-8 animate-fade-in">
-                    <Card className="p-8">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+                <div className="space-y-6">
+                    <Card className="p-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                             <div>
-                                <h3 className="text-xl font-bold text-[var(--text-main)] tracking-tight">Preview Transactions</h3>
-                                <p className="text-sm text-[var(--text-muted)] mt-1">
-                                    Found <span className="text-[var(--text-main)] font-bold">{parsedData.totalTransactions}</span> parsed rows. The server checks duplicates when you save.
+                                <h3 className="text-base font-bold text-[var(--text-main)]">Preview Transactions</h3>
+                                <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                                    Found <span className="font-semibold text-[var(--text-main)]">{parsedData.totalTransactions}</span> parsed rows. The server checks duplicates when you save.
                                 </p>
                             </div>
-                            <div className="flex gap-3 w-full md:w-auto">
-                                <Button variant="ghost" onClick={() => setParsedData(null)} size="md">
+                            <div className="flex gap-2 w-full sm:w-auto">
+                                <Button variant="secondary" onClick={() => setParsedData(null)} size="sm">
                                     Cancel
                                 </Button>
-                                <Button onClick={handleSave} loading={saving} size="md">
-                                    <Save className="w-4 h-4 mr-2" />
+                                <Button onClick={handleSave} loading={saving} size="sm">
+                                    <Save className="w-3.5 h-3.5 mr-1.5" />
                                     Save All
                                 </Button>
                             </div>
                         </div>
 
-                        {error && <p role="alert" className="mb-4 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-500">{error}</p>}
-                        {importResult && <p role="status" className="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-600">Previous attempt: {importResult.importedCount} imported, {importResult.duplicateCount} duplicates skipped, {importResult.failedCount} failed. Failed rows can be retried safely.</p>}
+                        {error && <p role="alert" className="mb-4 rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-500">{error}</p>}
+                        {importResult && <p role="status" className="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-600">Previous attempt: {importResult.importedCount} imported, {importResult.duplicateCount} duplicates skipped, {importResult.failedCount} failed. Failed rows can be retried safely.</p>}
 
-                        <div className="overflow-hidden bg-[var(--bg-card)] rounded-2xl border border-[var(--border-base)]">
+                        <div className="overflow-hidden bg-[var(--bg-card)] rounded-xl border border-[var(--border-base)]">
                             <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-center">
+                                <table className="w-full text-xs text-center">
                                     <thead className="bg-[var(--bg-surface)]">
-                                        <tr>
-                                            <th className="px-6 py-4 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Date</th>
-                                            <th className="px-6 py-4 text-left text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Description</th>
-                                            <th className="px-6 py-4 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Amount</th>
-                                            <th className="px-6 py-4 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Status</th>
+                                        <tr className="border-b border-[var(--border-base)] text-[var(--text-muted)] font-medium">
+                                            <th className="px-4 py-2.5">Date</th>
+                                            <th className="px-4 py-2.5 text-left">Description</th>
+                                            <th className="px-4 py-2.5">Amount</th>
+                                            <th className="px-4 py-2.5">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-[var(--border-base)]">
                                         {parsedData.transactions.map((t, i) => (
-                                            <tr key={t.sourceRowIndex ?? i} className="transition-colors hover:bg-[var(--bg-surface)]/30">
-                                                <td className="px-6 py-4 whitespace-nowrap text-[var(--text-muted)] font-medium">
-                                                    {t.date ? new Date(t.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : "-"}
+                                             <tr key={t.sourceRowIndex ?? i} className="transition-colors hover:bg-[var(--bg-surface)]">
+                                                <td className="px-4 py-2.5 whitespace-nowrap text-[var(--text-muted)] font-mono text-[11px]">
+                                                    {t.date ? new Date(t.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : "-"}
                                                 </td>
-                                                <td className="px-6 py-4 text-left font-bold text-[var(--text-main)] tracking-tight">
+                                                <td className="px-4 py-2.5 text-left font-medium text-[var(--text-main)]">
                                                     {t.description}
                                                 </td>
                                                 <td className={clsx(
-                                                    "px-6 py-4 font-bold tracking-tight",
-                                                    t.type.toLowerCase() === 'income' ? 'text-emerald-500' : 'text-rose-500'
+                                                    "px-4 py-2.5 font-semibold tabular-nums",
+                                                    t.type.toLowerCase() === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--text-main)]'
                                                 )}>
                                                     {t.type.toLowerCase() === 'income' ? '+' : '-'}₹{t.amount?.toLocaleString('en-IN')}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">Pending server check</span>
+                                                <td className="px-4 py-2.5 whitespace-nowrap">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-base)]">Pending server check</span>
                                                 </td>
                                             </tr>
                                         ))}

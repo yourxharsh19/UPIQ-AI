@@ -8,6 +8,23 @@
     <meta name="theme-color" content="#08090d" />
     <meta name="description" content="UPIQ AI - Intelligent Fintech Operating System for UPI payments, live ledger tracking, budget forecasting, and AI fraud prevention." />
     <title>UPIQ AI - Fintech Operating System</title>
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('upiq_theme');
+          var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark = saved === 'dark' || ((!saved || saved === 'system') && systemDark);
+          var root = document.documentElement;
+          if (isDark) {
+            root.classList.add('dark');
+            root.classList.remove('light');
+          } else {
+            root.classList.add('light');
+            root.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

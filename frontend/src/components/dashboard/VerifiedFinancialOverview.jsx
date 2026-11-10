@@ -84,24 +84,24 @@ export default function VerifiedFinancialOverview() {
 
   return (
     <section aria-labelledby="verified-financial-title" className="space-y-5">
-      <div className="rounded-3xl border border-emerald-200/70 bg-gradient-to-r from-emerald-50/80 via-[var(--bg-card)] to-[var(--bg-card)] p-5 sm:p-7 shadow-premium dark:border-emerald-900/50 dark:from-emerald-950/20">
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 sm:p-6 shadow-sm">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <BadgeCheck size={19} className="text-emerald-600" />
-            <h2 id="verified-financial-title" className="text-xl sm:text-2xl font-black tracking-tight text-[var(--text-main)]">Verified Financial Insights</h2>
+            <BadgeCheck size={18} className="text-emerald-600 dark:text-emerald-400" />
+            <h2 id="verified-financial-title" className="text-lg sm:text-xl font-bold tracking-tight text-[var(--text-main)]">Verified Financial Insights</h2>
           </div>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">{latestMonth.label} · Calculated from your transaction data by the deterministic financial engine.</p>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">{latestMonth.label} · Calculated from your transaction data by the deterministic financial engine.</p>
         </div>
-        <button onClick={loadDashboard} className="rounded-xl border border-[var(--border-base)] bg-[var(--bg-card)] px-3 py-2 text-sm font-semibold text-primary-600 hover:border-primary-300">Refresh</button>
+        <button onClick={loadDashboard} className="rounded-lg border border-[var(--border-base)] bg-[var(--bg-card)] px-3 py-1.5 text-xs font-medium text-[var(--text-main)] hover:bg-[var(--bg-surface)] transition-colors">Refresh</button>
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {statItems.map(({ title, value }) => (
-          <div key={title} className="rounded-2xl border border-[var(--border-base)] bg-[var(--bg-card)]/90 p-4 sm:p-5">
-            <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">{title}</p>
-            <p className="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-[var(--text-main)]">{amount(value)}</p>
-            <p className="mt-1 text-xs text-[var(--text-muted)]">Verified for {latestMonth.label}</p>
+          <div key={title} className="rounded-lg border border-[var(--border-base)] bg-[var(--bg-card)] p-4 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{title}</p>
+            <p className="mt-1.5 text-2xl font-bold tracking-tight text-[var(--text-main)] tabular-nums">{amount(value)}</p>
+            <p className="mt-1 text-[11px] text-[var(--text-muted)]">Verified for {latestMonth.label}</p>
           </div>
         ))}
       </div>

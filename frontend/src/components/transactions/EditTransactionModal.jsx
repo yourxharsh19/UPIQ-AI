@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Button from "../ui/Button";
 import CategoryService from "../../services/category.service";
-import { Plus, X, IndianRupee } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import clsx from "clsx";
 
 const EditTransactionModal = ({ isOpen, onClose, transaction, onSave }) => {
@@ -124,7 +124,7 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, onSave }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div className="bg-[var(--bg-card)] rounded-3xl shadow-premium w-full max-w-md overflow-hidden animate-zoom-in">
+            <div className="bg-[var(--bg-card)] rounded-xl shadow-xl border border-[var(--border-base)] w-full max-w-md overflow-hidden animate-zoom-in">
                 <div className="px-6 py-5 border-b border-[var(--border-base)] flex justify-between items-center">
                     <h2 className="text-xl font-bold text-[var(--text-main)] tracking-tight">Edit Transaction</h2>
                     <button onClick={onClose} className="p-2 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
@@ -138,7 +138,6 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, onSave }) => {
                             <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2">Description</label>
                             <input
                                 type="text"
-                                shadow-sm
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                 className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm transition-all text-[var(--text-main)]"

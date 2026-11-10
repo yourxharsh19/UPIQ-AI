@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Sparkles, DollarSign, Tag, CreditCard, Layers } from 'lucide-react';
 import { useFinancial } from '../../context/FinancialContext';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
@@ -36,7 +35,7 @@ export const AddEditTransactionModal = ({ isOpen, onClose, transactionToEdit }) 
     }
   }, [transactionToEdit, isOpen]);
 
-  // Handle live title changes to trigger AI Category prediction
+  // Handle live title changes to trigger Category suggestion
   const handleTitleChange = (e) => {
     const val = e.target.value;
     setTitle(val);
@@ -98,14 +97,14 @@ export const AddEditTransactionModal = ({ isOpen, onClose, transactionToEdit }) 
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Type selector toggle */}
-        <div className="flex rounded-xl bg-slate-950 p-1 border border-slate-800 light:bg-slate-100">
+        <div className="flex rounded-lg bg-[var(--bg-surface)] p-1 border border-[var(--border-base)]">
           <button
             type="button"
             onClick={() => setType('expense')}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
               type === 'expense'
-                ? 'bg-rose-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
             Expense
@@ -113,10 +112,10 @@ export const AddEditTransactionModal = ({ isOpen, onClose, transactionToEdit }) 
           <button
             type="button"
             onClick={() => setType('income')}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
               type === 'income'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
             Income
@@ -125,7 +124,7 @@ export const AddEditTransactionModal = ({ isOpen, onClose, transactionToEdit }) 
 
         {/* Title */}
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5 light:text-slate-700">
+          <label className="block text-xs font-medium text-[var(--text-main)] mb-1">
             Transaction Description / Title *
           </label>
           <input
@@ -133,18 +132,18 @@ export const AddEditTransactionModal = ({ isOpen, onClose, transactionToEdit }) 
             required
             value={title}
             onChange={handleTitleChange}
-            placeholder="e.g. Uber Ride to Airport or Starbucks Coffee"
-            className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 light:bg-slate-50 light:border-slate-300 light:text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="e.g. Uber Ride or Coffee"
+            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors"
           />
         </div>
 
         {/* Amount */}
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5 light:text-slate-700">
+          <label className="block text-xs font-medium text-[var(--text-main)] mb-1">
             Amount ({currentCurrency?.symbol || '₹'} {currentCurrency?.code || 'INR'}) *
           </label>
           <div className="relative">
-            <span className="absolute left-3.5 top-2.5 text-sm font-bold text-slate-400">{currentCurrency?.symbol || '₹'}</span>
+            <span className="absolute left-3 top-2 text-xs font-medium text-[var(--text-muted)]">{currentCurrency?.symbol || '₹'}</span>
             <input
               type="number"
               step="0.01"
@@ -152,20 +151,20 @@ export const AddEditTransactionModal = ({ isOpen, onClose, transactionToEdit }) 
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-semibold text-slate-100 light:bg-slate-50 light:border-slate-300 light:text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full pl-7 pr-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs font-semibold tabular-nums text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors"
             />
           </div>
         </div>
 
         {/* Category & Auto prediction badge */}
         <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-semibold text-slate-300 light:text-slate-700">
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-medium text-[var(--text-main)]">
               Category
             </label>
             {autoPredicted && (
-              <Badge variant="ai" size="sm">
-                AI Auto-Categorized
+              <Badge variant="info" size="sm">
+                Rule Suggested
               </Badge>
             )}
           </div>
@@ -175,7 +174,7 @@ export const AddEditTransactionModal = ({ isOpen, onClose, transactionToEdit }) 
               setCategory(e.target.value);
               setAutoPredicted(false);
             }}
-            className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 light:bg-slate-50 light:border-slate-300 light:text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors"
           >
             {categories.map((cat) => (
               <option key={cat} value={cat}>
@@ -188,36 +187,36 @@ export const AddEditTransactionModal = ({ isOpen, onClose, transactionToEdit }) 
         {/* Payment Mode & Merchant */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5 light:text-slate-700">
+            <label className="block text-xs font-medium text-[var(--text-main)] mb-1">
               Payment Mode
             </label>
             <select
               value={mode}
               onChange={(e) => setMode(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 light:bg-slate-50 light:border-slate-300 light:text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors"
             >
-              <option value="UPI">UPI Payment</option>
-              <option value="Card">Credit/Debit Card</option>
-              <option value="NetBanking">NetBanking / Wire</option>
+              <option value="UPI">UPI</option>
+              <option value="Card">Card</option>
+              <option value="NetBanking">NetBanking</option>
               <option value="Cash">Cash</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5 light:text-slate-700">
+            <label className="block text-xs font-medium text-[var(--text-main)] mb-1">
               Merchant Name
             </label>
             <input
               type="text"
               value={merchant}
               onChange={(e) => setMerchant(e.target.value)}
-              placeholder="e.g. Uber Tech Inc"
-              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 light:bg-slate-50 light:border-slate-300 light:text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="e.g. Uber Tech"
+              className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors"
             />
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+        <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-base)]">
           <Button variant="secondary" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>

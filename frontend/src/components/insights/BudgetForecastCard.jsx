@@ -13,20 +13,20 @@ export const BudgetForecastCard = ({ forecast }) => {
   const isNear = percentSpent >= 85 && !isOver;
 
   return (
-    <Card glow={isOver}>
+    <Card className="space-y-3">
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-md"
+            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs text-white"
             style={{ backgroundColor: forecast.color }}
           >
             {forecast.category.charAt(0)}
           </div>
           <div>
-            <h4 className="text-base font-bold text-slate-100 light:text-slate-900">
+            <h4 className="text-sm font-semibold text-[var(--text-main)]">
               {forecast.category}
             </h4>
-            <span className="text-xs text-slate-400">Budget Limit: {formatCurrency(forecast.budget)}</span>
+            <span className="text-xs text-[var(--text-muted)]">Budget Limit: {formatCurrency(forecast.budget)}</span>
           </div>
         </div>
 
@@ -46,31 +46,30 @@ export const BudgetForecastCard = ({ forecast }) => {
       </div>
 
       {/* Figures */}
-      <div className="mt-4 grid grid-cols-2 gap-2 text-xs bg-slate-950/60 light:bg-slate-100 p-3 rounded-xl border border-slate-800 light:border-slate-200">
+      <div className="grid grid-cols-2 gap-2 text-xs bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--border-base)]">
         <div>
-          <span className="text-slate-400 block">Spent so far:</span>
-          <span className="font-extrabold text-sm text-slate-100 light:text-slate-900">
+          <span className="text-[var(--text-muted)] block text-[11px]">Spent so far:</span>
+          <span className="font-semibold text-xs sm:text-sm text-[var(--text-main)] tabular-nums">
             {formatCurrency(forecast.spent)}
           </span>
         </div>
         <div>
-          <span className="text-slate-400 block">Frontend Month-End Estimate:</span>
-          <span className={`font-extrabold text-sm ${forecast.predicted > forecast.budget ? 'text-rose-400' : 'text-indigo-400'}`}>
+          <span className="text-[var(--text-muted)] block text-[11px]">Estimate (not AI prediction):</span>
+          <span className={`font-semibold text-xs sm:text-sm tabular-nums ${forecast.predicted > forecast.budget ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--text-main)]'}`}>
             {formatCurrency(forecast.predicted)}
           </span>
         </div>
       </div>
 
       {/* Progress Bars */}
-      <div className="mt-4 space-y-2">
-        <div className="flex items-center justify-between text-[11px] font-semibold">
-          <span className="text-slate-300">Spent: {percentSpent}%</span>
-          <span className="text-slate-400">Estimated: {percentPredicted}%</span>
+      <div className="space-y-1.5 pt-1">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-[var(--text-muted)]">Spent: {percentSpent}%</span>
+          <span className="text-[var(--text-muted)]">Estimate (not AI prediction): {percentPredicted}%</span>
         </div>
-        <div className="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative">
-          {/* Actual spent bar */}
+        <div className="w-full h-2 bg-[var(--bg-surface)] rounded-full overflow-hidden border border-[var(--border-base)]">
           <div
-            className={`h-full transition-all duration-500 rounded-full ${
+            className={`h-full transition-all duration-300 rounded-full ${
               isOver ? 'bg-rose-500' : isNear ? 'bg-amber-500' : 'bg-emerald-500'
             }`}
             style={{ width: `${percentSpent}%` }}

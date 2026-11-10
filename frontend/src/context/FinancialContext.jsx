@@ -6,8 +6,11 @@ import { TransactionService } from '../services/transaction.service';
 import { FinancialDashboardService } from '../services/financial-dashboard.service';
 import { formatInrAmount, mapCategorySpending, mapDashboardSummary, toFinancialNumber } from '../utils/financialDisplay';
 import { deleteAllAndRefresh, persistTransactionChange } from '../utils/transactionOperations';
+import { getMonthlyReport } from '../utils/monthlyReport.js';
+import { getTransactionCoverage } from '../utils/transactionCoverage.js';
 import { mapAuthenticatedProfile } from '../utils/authProfile.js';
 import { navigateToRegistration } from '../utils/registrationFlow.js';
+import { readStoredReports, createReportSnapshot, saveReportToHistory, deleteReportFromHistory } from '../utils/reportHistoryStorage.js';
 import {
   userProfile as initialProfile,
   testStandardUser,
@@ -19,12 +22,26 @@ import {
   fraudAlerts as initialFraudAlerts,
   budgetForecasts as initialBudgets,
   investmentSuggestions as initialInvestments,
-  monthlyReports as initialReports,
   adminMetrics as initialAdminMetrics,
   supportedCurrencies,
 } from '../data/initialState';
 
-const FinancialContext = createContext();
+export const FinancialContext = createContext();
+
+export const DEFAULT_DEMO_TRANSACTIONS = [
+  { id: 'tx-demo-1', title: 'Salary Credit - TechCorp', amount: 85000, type: 'income', category: 'Salary', mode: 'Bank Transfer', date: '2026-11-01T10:00:00.000Z', status: 'Completed', merchant: 'TechCorp India' },
+  { id: 'tx-demo-2', title: 'Apartment Monthly Rent', amount: 22000, type: 'expense', category: 'Rent', mode: 'UPI', date: '2026-11-02T11:30:00.000Z', status: 'Completed', merchant: 'House Owner' },
+  { id: 'tx-demo-3', title: 'Nature Basket Groceries', amount: 4850, type: 'expense', category: 'Groceries', mode: 'UPI', date: '2026-11-04T16:15:00.000Z', status: 'Completed', merchant: 'Nature Basket' },
+  { id: 'tx-demo-4', title: 'Swiggy Gourmet Order', amount: 1250, type: 'expense', category: 'Food & Dining', mode: 'UPI', date: '2026-11-06T20:45:00.000Z', status: 'Completed', merchant: 'Swiggy' },
+  { id: 'tx-demo-5', title: 'Electricity & Water Bill', amount: 3400, type: 'expense', category: 'Bills & Utilities', mode: 'NetBanking', date: '2026-11-07T09:20:00.000Z', status: 'Completed', merchant: 'State Electricity Board' },
+  { id: 'tx-demo-6', title: 'Uber Daily Commute', amount: 980, type: 'expense', category: 'Transport', mode: 'UPI', date: '2026-11-08T18:00:00.000Z', status: 'Completed', merchant: 'Uber India' },
+  { id: 'tx-demo-7', title: 'Freelance Design Consulting', amount: 25000, type: 'income', category: 'Salary', mode: 'UPI', date: '2026-11-09T14:30:00.000Z', status: 'Completed', merchant: 'Design Studio' },
+  { id: 'tx-demo-8', title: 'Electronics & Accessories', amount: 6200, type: 'expense', category: 'Shopping', mode: 'Credit Card', date: '2026-11-10T15:00:00.000Z', status: 'Completed', merchant: 'Amazon India' },
+  { id: 'tx-demo-9', title: 'Salary Credit - TechCorp', amount: 85000, type: 'income', category: 'Salary', mode: 'Bank Transfer', date: '2026-10-01T10:00:00.000Z', status: 'Completed', merchant: 'TechCorp India' },
+  { id: 'tx-demo-10', title: 'Apartment Monthly Rent', amount: 22000, type: 'expense', category: 'Rent', mode: 'UPI', date: '2026-10-02T11:30:00.000Z', status: 'Completed', merchant: 'House Owner' },
+  { id: 'tx-demo-11', title: 'Supermarket Groceries', amount: 5200, type: 'expense', category: 'Groceries', mode: 'UPI', date: '2026-10-05T17:00:00.000Z', status: 'Completed', merchant: 'Supermarket' },
+  { id: 'tx-demo-12', title: 'Dining & Restaurants', amount: 3100, type: 'expense', category: 'Food & Dining', mode: 'UPI', date: '2026-10-12T21:00:00.000Z', status: 'Completed', merchant: 'Zomato' },
+];
 
 
 
@@ -55,7 +72,7 @@ export const FinancialProvider = ({ children }) => {
 
   const [kpi, setKpi] = useState(initialKpi);
   const [categories, setCategories] = useState(initialCategories);
-  const [trends, setTrends] = useState(initialTrends);
+  const [trends] = useState(initialTrends);
   const [transactions, setTransactions] = useState([]);
   const [transactionsError, setTransactionsError] = useState('');
   const [hasTransactionData, setHasTransactionData] = useState(false);
@@ -66,23 +83,54 @@ export const FinancialProvider = ({ children }) => {
     const savedBudgets = getInitialState('budgetForecasts', initialBudgets);
     return Array.isArray(savedBudgets) ? savedBudgets : initialBudgets;
   });
-  const [investments, setInvestments] = useState(initialInvestments);
-  const [reports, setReports] = useState(initialReports);
-  const [adminMetrics, setAdminMetrics] = useState(initialAdminMetrics);
+  const [investments] = useState(initialInvestments);
+  const activeUserId = isAuthenticated ? (profile?.id || profile?.email || 'authenticated') : null;
+  const [reportHistory, setReportHistory] = useState(() => readStoredReports(undefined, activeUserId));
+  const activeUserReportRef = useRef(activeUserId);
+
+  useEffect(() => {
+    activeUserReportRef.current = activeUserId;
+    setReportHistory(readStoredReports(undefined, activeUserId));
+  }, [activeUserId]);
+
+  const [adminMetrics] = useState(initialAdminMetrics);
   const [loading, setLoading] = useState(false);
 
   // View routing states: 'home' | 'login' | 'app'
   const [currentView, setCurrentView] = useState(() => {
     const isAuth = getInitialAuthState();
+    if (typeof window !== 'undefined' && window.location) {
+      const path = (window.location.pathname || '').toLowerCase();
+      const hash = (window.location.hash || '').toLowerCase();
+      if (path === '/register' || hash === '#register') return 'register';
+      if (path === '/login' || hash === '#login') return 'login';
+      const protectedPaths = ['/dashboard', '/transactions', '/categories', '/ai-assistant', '/insights', '/reports', '/admin', '/profile', '/upload', '/chat'];
+      if (!isAuth && protectedPaths.some((p) => path.startsWith(p) || hash.startsWith('#' + p.slice(1)))) {
+        return 'login';
+      }
+    }
     return isAuth ? 'app' : 'home';
   });
-  const [postLoginRedirect, setPostLoginRedirect] = useState('dashboard');
+  const [postLoginRedirect, setPostLoginRedirect] = useState(() => {
+    if (typeof window !== 'undefined' && window.location) {
+      const rawPath = (window.location.pathname || '').replace(/^\//, '').toLowerCase();
+      const rawHash = (window.location.hash || '').replace(/^#/, '').toLowerCase();
+      const candidate = rawPath || rawHash;
+      const validTabs = ['dashboard', 'transactions', 'categories', 'ai-assistant', 'insights', 'reports', 'admin', 'profile'];
+      if (validTabs.includes(candidate)) return candidate;
+    }
+    return 'dashboard';
+  });
 
   // UI interaction states
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isFraudDrawerOpen, setIsFraudDrawerOpen] = useState(false);
+  const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
   const [aiPromptQuery, setAiPromptQuery] = useState('');
   const [toasts, setToasts] = useState([]);
+
+  const openStatementModal = useCallback(() => setIsStatementModalOpen(true), []);
+  const closeStatementModal = useCallback(() => setIsStatementModalOpen(false), []);
 
   const handlingExpiryRef = useRef(false);
   const profileHydrationStartedRef = useRef(false);
@@ -104,7 +152,7 @@ export const FinancialProvider = ({ children }) => {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    const handleSessionExpired = () => {
+    const handleSessionExpired = (event) => {
       profileHydrationStartedRef.current = false;
       applySessionExpiration({
         storage: localStorage,
@@ -114,6 +162,7 @@ export const FinancialProvider = ({ children }) => {
         setProfile,
         initialProfile,
         addToast,
+        message: event?.detail?.message,
       });
     };
     if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
@@ -135,6 +184,21 @@ export const FinancialProvider = ({ children }) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const saveReportPreview = useCallback((reportData, customTitle) => {
+    const snapshot = createReportSnapshot(reportData, customTitle);
+    if (!snapshot) return null;
+    const updated = saveReportToHistory(snapshot, reportHistory, undefined, activeUserId);
+    setReportHistory(updated);
+    addToast('Report Saved', `Saved preview for "${snapshot.title}" on this device.`, 'success');
+    return snapshot;
+  }, [activeUserId, reportHistory]);
+
+  const deleteReportPreview = useCallback((reportId) => {
+    const updated = deleteReportFromHistory(reportId, reportHistory, undefined, activeUserId);
+    setReportHistory(updated);
+    addToast('Report Deleted', 'Report preview removed from this device.', 'info');
+  }, [activeUserId, reportHistory]);
+
   // Mapper helper: convert backend transaction response DTO to frontend format
   const mapBackendTxToFrontend = useCallback((tx) => {
     return {
@@ -154,7 +218,23 @@ export const FinancialProvider = ({ children }) => {
   // Fetch real transaction ledger from backend
   const refreshTransactions = useCallback(async () => {
     const token = localStorage.getItem('token');
+    const isDemo = typeof localStorage !== 'undefined' && localStorage.getItem('upiq_demo') === 'true';
+
     if (!token) {
+      if (isDemo) {
+        const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('upiq_demo_transactions') : null;
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setTransactions(parsed);
+              setTransactionsError('');
+              return;
+            }
+          } catch {}
+        }
+        setTransactions((prev) => (Array.isArray(prev) && prev.length > 0 ? prev : DEFAULT_DEMO_TRANSACTIONS));
+      }
       setTransactionsError('');
       return;
     }
@@ -175,21 +255,94 @@ export const FinancialProvider = ({ children }) => {
     }
   }, [mapBackendTxToFrontend]);
 
-  // Fetch real financial dashboard calculation summary from backend
+  const importClientTransactions = useCallback((rows) => {
+    if (!Array.isArray(rows) || rows.length === 0) return 0;
+    const mapped = rows.map((r) => mapBackendTxToFrontend({
+      id: r.id || `tx-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      description: r.description || r.title || 'Transaction',
+      amount: r.amount,
+      type: r.type,
+      category: r.category || 'Uncategorized',
+      paymentMethod: r.paymentMethod || r.mode || 'UPI',
+      date: r.date,
+    }));
+    setTransactions((prev) => {
+      const combined = [...mapped, ...prev];
+      try {
+        localStorage.setItem('upiq_demo_transactions', JSON.stringify(combined));
+      } catch {}
+      return combined;
+    });
+    addToast('Statement Imported', `Imported ${mapped.length} transaction${mapped.length === 1 ? '' : 's'} into ledger.`, 'success');
+    return mapped.length;
+  }, [mapBackendTxToFrontend]);
+
+  const transactionsRef = useRef(transactions);
+  useEffect(() => {
+    transactionsRef.current = transactions;
+  }, [transactions]);
+
+  // Fetch real financial dashboard calculation summary from backend (or compute in demo mode)
   const refreshDashboard = useCallback(async () => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      const currentList = transactionsRef.current || [];
+      const coverage = getTransactionCoverage(currentList);
+      const targetMonth = coverage.defaultMonth;
+      if (targetMonth && currentList.length > 0) {
+        const report = getMonthlyReport(currentList, targetMonth);
+        setHasTransactionData(true);
+        setKpi((previous) => ({
+          ...previous,
+          totalBalance: report.netCashFlow,
+          monthlyIncome: report.totalIncome,
+          monthlyExpense: report.totalExpense,
+          savingsRate: report.totalIncome > 0
+            ? Math.round((report.netCashFlow / report.totalIncome) * 10000) / 100
+            : 0,
+          transactionCount: report.transactionCount,
+        }));
+      } else {
+        setHasTransactionData(false);
+        setKpi((previous) => ({ ...previous, ...mapDashboardSummary({}) }));
+        setCategories([]);
+      }
+      return;
+    }
+
     try {
       const res = await FinancialDashboardService.getDashboardSummary();
       const dashData = res?.data || res;
       if (dashData) {
-        setHasTransactionData(dashData.hasTransactionData ?? false);
-        if (dashData.currentMonthSummary) {
-          setKpi((previous) => ({ ...previous, ...mapDashboardSummary(dashData.currentMonthSummary) }));
+        const hasData = Boolean(dashData.hasTransactionData);
+        setHasTransactionData(hasData);
+        if (hasData && dashData.currentMonthSummary) {
+          const mapped = mapDashboardSummary(dashData.currentMonthSummary);
+          let expenseChange = '0%';
+          if (dashData.monthlyExpenseComparison?.percentageDifference != null) {
+            const diff = Number(dashData.monthlyExpenseComparison.percentageDifference);
+            if (Number.isFinite(diff)) {
+              expenseChange = `${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%`;
+            }
+          }
+          setKpi((previous) => ({
+            ...previous,
+            ...mapped,
+            expenseChange,
+          }));
+        } else {
+          setKpi((previous) => ({
+            ...previous,
+            ...mapDashboardSummary({}),
+            expenseChange: '0%',
+          }));
         }
-        if (Array.isArray(dashData.categorySpending)) {
+
+        if (hasData && Array.isArray(dashData.categorySpending)) {
           const mappedCats = mapCategorySpending(dashData.categorySpending, getCategoryColor);
           setCategories(mappedCats);
+        } else {
+          setCategories([]);
         }
       }
     } catch (err) {
@@ -230,6 +383,12 @@ export const FinancialProvider = ({ children }) => {
   }, [profile, activeTab]);
 
   const changeActiveTab = (tab) => {
+    if (!isAuthenticated) {
+      setPostLoginRedirect(tab);
+      setCurrentView('login');
+      addToast('Sign In Required', 'Please log in to access this page.', 'info');
+      return;
+    }
     if (tab === 'admin' && profile?.role !== 'admin') {
       addToast('Access Restricted', 'Admin View is restricted to Administrator accounts', 'warning');
       setActiveTab('dashboard');
@@ -246,7 +405,13 @@ export const FinancialProvider = ({ children }) => {
     setCurrentView('login');
   };
   const navigateToRegister = () => navigateToRegistration(setCurrentView);
-  const navigateToApp = (tab) => {
+  const navigateToApp = (tab = 'dashboard') => {
+    if (!isAuthenticated) {
+      setPostLoginRedirect(tab);
+      setCurrentView('login');
+      addToast('Sign In Required', 'Please log in to access this page.', 'info');
+      return;
+    }
     if (tab) setActiveTab(tab);
     setCurrentView('app');
   };
@@ -432,6 +597,7 @@ export const FinancialProvider = ({ children }) => {
       try {
         const res = await persistTransactionChange({
           request: () => TransactionService.create(txPayload),
+          refreshTransactions,
           refreshDashboard,
           requireData: true,
         });
@@ -441,9 +607,7 @@ export const FinancialProvider = ({ children }) => {
         addToast('Transaction Not Saved', 'The server could not save this transaction. Please retry.', 'danger');
         return false;
       }
-    }
-
-    if (!createdTx) {
+    } else {
       createdTx = {
         id: `tx-${Date.now()}`,
         title: txPayload.description,
@@ -455,10 +619,10 @@ export const FinancialProvider = ({ children }) => {
         status: 'Completed',
         merchant: txPayload.description,
       };
+      setTransactions((prev) => [createdTx, ...prev]);
+      refreshDashboard();
     }
 
-    setTransactions((prev) => [createdTx, ...prev]);
-    if (!token) refreshDashboard();
     addToast('Transaction Added', `Recorded "${createdTx.title}" (${formatCurrency(createdTx.amount)})`, 'success');
     return true;
   };
@@ -487,6 +651,7 @@ export const FinancialProvider = ({ children }) => {
       }
     } else {
       setTransactions((prev) => prev.map((t) => (t.id === id ? { ...t, ...updatedFields } : t)));
+      refreshDashboard();
     }
     addToast('Transaction Updated', 'Changes saved successfully', 'info');
     return true;
@@ -506,8 +671,10 @@ export const FinancialProvider = ({ children }) => {
         addToast('Transaction Not Deleted', 'The server could not delete this transaction. Please retry.', 'danger');
         return false;
       }
+    } else {
+      setTransactions((prev) => prev.filter((t) => t.id !== id));
+      refreshDashboard();
     }
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
     addToast('Transaction Deleted', 'Transaction removed from ledger', 'warning');
     return true;
   };
@@ -521,11 +688,12 @@ export const FinancialProvider = ({ children }) => {
         refreshTransactions,
         refreshDashboard,
       });
+    } else {
+      setTransactions([]);
+      setKpi(initialKpi);
+      setCategories([]);
+      setHasTransactionData(false);
     }
-    setTransactions([]);
-    setKpi(initialKpi);
-    setCategories([]);
-    setHasTransactionData(false);
     addToast(
       hadTransactions ? 'Transactions Deleted' : 'No Transactions to Delete',
       hadTransactions
@@ -577,7 +745,11 @@ export const FinancialProvider = ({ children }) => {
         budgets,
         setBudgets,
         investments,
-        reports,
+        reports: reportHistory,
+        reportHistory,
+        saveReportPreview,
+        deleteReportPreview,
+        reportStorageNote: 'Saved on this device only',
         adminMetrics,
         activeTab,
         setActiveTab: changeActiveTab,
@@ -606,6 +778,11 @@ export const FinancialProvider = ({ children }) => {
         resolveFraudAlert,
         predictCategory,
         loading,
+        isStatementModalOpen,
+        setIsStatementModalOpen,
+        openStatementModal,
+        closeStatementModal,
+        importClientTransactions,
       }}
     >
       {children}

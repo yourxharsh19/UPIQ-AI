@@ -1,23 +1,23 @@
 const SkeletonLoader = ({ type = "card", count = 1 }) => {
   const CardSkeleton = () => (
-    <div className="bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-base)] shadow-sm animate-pulse">
-      <div className="h-4 bg-[var(--bg-main)] rounded w-1/4 mb-4"></div>
-      <div className="h-8 bg-[var(--bg-main)] rounded w-1/2 mb-2"></div>
-      <div className="h-4 bg-[var(--bg-main)] rounded w-3/4"></div>
+    <div className="bg-[var(--bg-card)] p-6 rounded-xl border border-[var(--border-base)] shadow-sm animate-pulse">
+      <div className="h-4 bg-[var(--bg-surface)] rounded w-1/4 mb-4"></div>
+      <div className="h-8 bg-[var(--bg-surface)] rounded w-1/2 mb-2"></div>
+      <div className="h-4 bg-[var(--bg-surface)] rounded w-3/4"></div>
     </div>
   );
 
   const KPISkeleton = () => (
-    <div className="bg-[var(--bg-card)] rounded-2xl shadow-lg border border-[var(--border-base)] overflow-hidden animate-pulse">
-      <div className="bg-gradient-to-br from-[var(--bg-main)] to-[var(--border-base)] p-4">
-        <div className="h-4 bg-[var(--bg-card)] opacity-50 rounded w-1/3 mb-2"></div>
-        <div className="h-8 bg-[var(--bg-card)] opacity-50 rounded w-1/2"></div>
+    <div className="bg-[var(--bg-card)] rounded-xl shadow-sm border border-[var(--border-base)] overflow-hidden animate-pulse">
+      <div className="p-5 bg-[var(--bg-surface)]">
+        <div className="h-4 bg-[var(--bg-card)] rounded w-1/3 mb-2"></div>
+        <div className="h-8 bg-[var(--bg-card)] rounded w-1/2"></div>
       </div>
     </div>
   );
 
   const TableSkeleton = () => (
-    <div className="bg-[var(--bg-card)] rounded-lg shadow border border-[var(--border-base)] animate-pulse">
+    <div className="bg-[var(--bg-card)] rounded-xl shadow-sm border border-[var(--border-base)] animate-pulse">
       <div className="p-6">
         <div className="space-y-4">
           {[...Array(5)].map((_, i) => (

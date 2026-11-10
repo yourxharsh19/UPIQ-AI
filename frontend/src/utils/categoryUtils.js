@@ -64,7 +64,7 @@ export const getCategoryColor = (categoryName, customColor = null) => {
  */
 export const getCategoryIcon = (categoryName, customIcon = null) => {
   const normalizedName = categoryName?.trim().toLowerCase() || '';
-  return CATEGORY_ICON_BY_NAME[normalizedName] || customIcon || CATEGORY_ICON_BY_NAME.other;
+  return customIcon || CATEGORY_ICON_BY_NAME[normalizedName] || CATEGORY_ICON_BY_NAME.other;
 };
 
 /**

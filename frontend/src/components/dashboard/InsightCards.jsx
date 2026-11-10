@@ -102,37 +102,37 @@ const InsightCards = ({ transactions }) => {
         <Target size={18} className="text-primary-600" />
         Financial Insights
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {insights.map((insight, index) => {
           const Icon = insight.icon;
           const severityColors = {
             error: "border-l-rose-500 text-rose-600 dark:text-rose-400",
             warning: "border-l-amber-500 text-amber-600 dark:text-amber-400",
             success: "border-l-emerald-500 text-emerald-600 dark:text-emerald-400",
-            info: "border-l-indigo-500 text-indigo-600 dark:text-indigo-400",
+            info: "border-l-blue-500 text-blue-600 dark:text-blue-400",
           };
 
           return (
             <div
               key={index}
               className={clsx(
-                "bg-[var(--bg-card)] rounded-2xl p-6 border border-[var(--border-base)] border-l-4 shadow-premium hover:shadow-premium-hover transition-all duration-300",
-                severityColors[insight.severity] || "border-l-primary-500"
+                "bg-[var(--bg-card)] rounded-xl p-5 border border-[var(--border-base)] border-l-4 shadow-sm transition-colors duration-150",
+                severityColors[insight.severity] || "border-l-blue-500"
               )}
             >
-              <div className="flex items-start gap-5">
+              <div className="flex items-start gap-4">
                 <div className={clsx(
-                  "p-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-base)]",
+                  "p-2 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-base)] shrink-0",
                   insight.iconColor
                 )}>
-                  <Icon size={20} />
+                  <Icon size={18} />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-[var(--text-main)] mb-1 tracking-tight">{insight.title}</h3>
-                  <p className="text-sm text-[var(--text-muted)] leading-relaxed">{insight.description}</p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm text-[var(--text-main)] mb-1 tracking-tight">{insight.title}</h3>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">{insight.description}</p>
                   {insight.value && (
                     <div className="mt-3">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[var(--bg-surface)] border border-[var(--border-base)] text-[var(--text-main)]">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[var(--bg-surface)] border border-[var(--border-base)] text-[var(--text-main)]">
                         {insight.value}
                       </span>
                     </div>

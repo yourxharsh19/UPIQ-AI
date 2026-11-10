@@ -1,5 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { submitRegistration, resolveAuthView, navigateToRegistration } from '../src/utils/registrationFlow.js';
 import { AuthService } from '../src/services/auth.service.js';
 import api from '../src/services/api.js';
@@ -89,3 +91,14 @@ test('dashboard chart data is ledger-derived, INR-compatible amounts, and expens
   ]);
   assert.equal(spending.reduce((sum, item) => sum + item.value, 0), trend[1].expense);
 });
+
+test('EmptyState and Reports files do not contain missing hooks or invalid router dependencies', () => {
+  const emptyStateContent = readFileSync(resolve('src/components/ui/EmptyState.jsx'), 'utf8');
+  assert.equal(emptyStateContent.includes('react-router-dom'), false, 'EmptyState should not import from react-router-dom');
+
+  const reportsContent = readFileSync(resolve('src/pages/Reports.jsx'), 'utf8');
+  assert.match(reportsContent, /import\s*\{[^}]*useState[^}]*\}\s*from\s*['"]react['"]/);
+  assert.match(reportsContent, /import\s*\{[^}]*useMemo[^}]*\}\s*from\s*['"]react['"]/);
+  assert.match(reportsContent, /import\s*\{[^}]*useEffect[^}]*\}\s*from\s*['"]react['"]/);
+});
+

@@ -1,25 +1,24 @@
 import { Navigate, Outlet } from "react-router-dom";
+import { getInitialAuthState } from "../utils/authUtils.js";
 import useAuth from "../hooks/useAuth";
 
 const ProtectedRoute = () => {
-    const { user, loading } = useAuth();
-    console.log("ProtectedRoute: State check", { user: !!user, loading });
+    const authContext = useAuth();
+    const loading = authContext?.loading ?? false;
 
     if (loading) {
-        console.log("ProtectedRoute: Loading state detected, showing spinner");
         return (
-            <div className="h-screen w-full flex items-center justify-center bg-gray-50">
+            <div className="h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-slate-950">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
             </div>
         );
     }
 
-    if (!user) {
-        console.log("ProtectedRoute: NO USER found, redirecting to /login");
+    const isAuthenticated = getInitialAuthState();
+    if (!isAuthenticated) {
         return <Navigate to="/login" replace />;
     }
 
-    console.log("ProtectedRoute: USER ACTIVE, rendering Outlet");
     return <Outlet />;
 };
 
