@@ -32,11 +32,11 @@ test('maps backend summary fields to monthly KPI values and transaction counts',
   assert.equal(formatSavingsRate(63.8), '63.80%');
 });
 
-test('maps category API totals to the chart value field as numeric INR amounts', () => {
+test('maps backend category totals to the chart value fields', () => {
   const mapped = mapCategorySpending([{
-    categoryName: 'Food',
-    totalAmount: '3620.00',
-    percentage: '27.50',
+    category: 'Food',
+    total: '3620.00',
+    percentageOfTotalExpense: '27.50',
     transactionCount: 6,
   }], () => '#123456');
 
@@ -50,6 +50,26 @@ test('maps category API totals to the chart value field as numeric INR amounts',
   }]);
   assert.equal(mapped.reduce((total, category) => total + category.value, 0), 3620);
   assert.equal('amount' in mapped[0], false);
+});
+
+test('maps multiple backend categories and safely handles empty, null, and missing data', () => {
+  const colorFor = (name) => name === 'Food' ? '#123456' : '#654321';
+  const mapped = mapCategorySpending([
+    { category: 'Food', total: '120.50', percentageOfTotalExpense: '60.25', transactionCount: 2 },
+    { category: 'Travel', total: 79.5, percentageOfTotalExpense: 39.75, transactionCount: 3 },
+  ], colorFor);
+
+  assert.deepEqual(mapped.map(({ name, value, percentage, count, color }) => ({
+    name, value, percentage, count, color,
+  })), [
+    { name: 'Food', value: 120.5, percentage: 60.25, count: 2, color: '#123456' },
+    { name: 'Travel', value: 79.5, percentage: 39.75, count: 3, color: '#654321' },
+  ]);
+  assert.deepEqual(mapCategorySpending([]), []);
+  assert.deepEqual(mapCategorySpending(null), []);
+  assert.deepEqual(mapCategorySpending([null, {}]), [
+    { id: 'cat-0', name: 'Uncategorized', value: 0, percentage: 0, count: 0, color: '#6B7280' },
+  ]);
 });
 
 test('normalizes numeric transaction amounts without scaling or string concatenation', () => {

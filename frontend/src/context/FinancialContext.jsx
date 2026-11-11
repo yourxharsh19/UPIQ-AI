@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { getInitialAuthState } from '../utils/authUtils';
-import { activateDemoSession, applySessionExpiration, authenticateWithBackend, clearAuthSession } from '../utils/authFlow.js';
+import { activateDemoSession, applySessionExpiration, authenticateWithBackend, clearAuthSession, getAuthSessionMode } from '../utils/authFlow.js';
 import { AuthService } from '../services/auth.service';
 import { TransactionService } from '../services/transaction.service';
 import { FinancialDashboardService } from '../services/financial-dashboard.service';
 import { formatInrAmount, mapCategorySpending, mapDashboardSummary, toFinancialNumber } from '../utils/financialDisplay';
-import { deleteAllAndRefresh, persistTransactionChange } from '../utils/transactionOperations';
+import { buildTransactionUpdatePayload, deleteAllAndRefresh, persistTransactionChange } from '../utils/transactionOperations';
 import { getMonthlyReport } from '../utils/monthlyReport.js';
 import { getTransactionCoverage } from '../utils/transactionCoverage.js';
 import { mapAuthenticatedProfile } from '../utils/authProfile.js';
@@ -136,7 +136,7 @@ export const FinancialProvider = ({ children }) => {
   const profileHydrationStartedRef = useRef(false);
 
   useEffect(() => {
-    if (!isAuthenticated || localStorage.getItem('upiq_demo') === 'true' || profileHydrationStartedRef.current) return;
+    if (!isAuthenticated || getAuthSessionMode() !== 'authenticated' || profileHydrationStartedRef.current) return;
     profileHydrationStartedRef.current = true;
     AuthService.getMe().then((response) => {
       const account = response?.data;
@@ -217,25 +217,39 @@ export const FinancialProvider = ({ children }) => {
 
   // Fetch real transaction ledger from backend
   const refreshTransactions = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    const isDemo = typeof localStorage !== 'undefined' && localStorage.getItem('upiq_demo') === 'true';
+    const sessionMode = getAuthSessionMode();
 
-    if (!token) {
-      if (isDemo) {
-        const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('upiq_demo_transactions') : null;
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setTransactions(parsed);
-              setTransactionsError('');
-              return;
-            }
-          } catch {}
-        }
-        setTransactions((prev) => (Array.isArray(prev) && prev.length > 0 ? prev : DEFAULT_DEMO_TRANSACTIONS));
+    if (sessionMode === 'inconsistent') {
+      setTransactionsError('Your session needs to be resolved or reauthenticated.');
+      return;
+    }
+
+    if (sessionMode === 'demo') {
+      const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('upiq_demo_transactions') : null;
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setTransactions(parsed);
+            setTransactionsError('');
+            return;
+          }
+        } catch {}
       }
+      setTransactions((prev) => (Array.isArray(prev) && prev.length > 0 ? prev : DEFAULT_DEMO_TRANSACTIONS));
       setTransactionsError('');
+      return;
+    }
+
+    if (sessionMode === 'unauthenticated') {
+      setTransactions([]);
+      setTransactionsError('');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setTransactionsError('Your session needs to be resolved or reauthenticated.');
       return;
     }
     try {
@@ -273,7 +287,7 @@ export const FinancialProvider = ({ children }) => {
       } catch {}
       return combined;
     });
-    addToast('Statement Imported', `Imported ${mapped.length} transaction${mapped.length === 1 ? '' : 's'} into ledger.`, 'success');
+    addToast('Demo Import Only', `Saved ${mapped.length} transaction${mapped.length === 1 ? '' : 's'} in this browser only; not sent to the backend.`, 'info');
     return mapped.length;
   }, [mapBackendTxToFrontend]);
 
@@ -631,14 +645,8 @@ export const FinancialProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (token && id && !id.toString().startsWith('tx-')) {
       try {
-        const txPayload = {
-          amount: parseFloat(updatedFields.amount || 0),
-          type: updatedFields.type || 'expense',
-          category: updatedFields.category || 'Uncategorized',
-          description: updatedFields.title || updatedFields.merchant || 'Updated Transaction',
-          paymentMethod: updatedFields.mode || 'UPI',
-          date: updatedFields.date || new Date().toISOString(),
-        };
+        const existingDate = transactionsRef.current.find((transaction) => String(transaction.id) === String(id))?.date;
+        const txPayload = buildTransactionUpdatePayload(updatedFields, existingDate);
         await persistTransactionChange({
           request: () => TransactionService.update(id, txPayload),
           refreshTransactions,

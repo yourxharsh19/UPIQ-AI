@@ -15,7 +15,8 @@ import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { useFinancial } from '../../context/FinancialContext';
 import { PDFService } from '../../services/pdf.service';
-import { normalizeParsedTransactions, parseCsvStatementText } from '../../utils/statementImport';
+import { getAuthSessionMode } from '../../utils/authFlow.js';
+import { canImportStatementPreview, executeStatementImport, normalizeParsingResponse, parseCsvStatementText } from '../../utils/statementImport';
 import { validateStatementFile } from '../../utils/fileValidation';
 
 const getErrorMessage = (error) =>
@@ -54,19 +55,31 @@ export const StatementUploadModal = ({ isOpen, onClose }) => {
 
     try {
       let response = null;
-      try {
-        response = await PDFService.upload(file);
-      } catch (backendError) {
-        if (validation.fileType === 'csv') {
-          const text = await file.text();
-          const fallbackTx = parseCsvStatementText(text);
-          if (fallbackTx.length > 0) {
-            response = { success: true, data: { transactions: fallbackTx } };
-          } else {
-            throw backendError;
-          }
-        } else {
-          throw backendError;
+      let localPreview = false;
+      const sessionMode = getAuthSessionMode();
+      if (sessionMode === 'inconsistent') {
+        throw new Error('Your session needs to be resolved or reauthenticated before importing.');
+      }
+      if (sessionMode === 'unauthenticated') {
+        throw new Error('Sign in or activate demo mode before importing a statement.');
+      }
+      const demoMode = sessionMode === 'demo';
+      if (demoMode) {
+        if (validation.fileType !== 'csv') {
+          throw new Error('PDF parsing requires an authenticated backend. Demo mode supports local CSV preview and import only.');
+        }
+        const fallbackTx = parseCsvStatementText(await file.text());
+        response = { success: true, data: { transactions: fallbackTx } };
+        localPreview = true;
+      } else {
+        try {
+          response = await PDFService.upload(file);
+        } catch (backendError) {
+          if (validation.fileType !== 'csv') throw backendError;
+          const fallbackTx = parseCsvStatementText(await file.text());
+          if (fallbackTx.length === 0) throw backendError;
+          response = { success: true, data: { transactions: fallbackTx } };
+          localPreview = true;
         }
       }
 
@@ -74,8 +87,8 @@ export const StatementUploadModal = ({ isOpen, onClose }) => {
         throw new Error(response?.message || 'The parser did not return a successful result.');
       }
 
-      const { transactions, rejectedCount } = normalizeParsedTransactions(response.data.transactions);
-      if (transactions.length === 0) {
+      const { transactions, rejectedCount, rejectedRows } = normalizeParsingResponse(response.data);
+      if (transactions.length === 0 && rejectedCount === 0) {
         const typeLabel = validation.fileType === 'csv' ? 'CSV' : 'PDF';
         throw new Error(
           `No valid transactions with an amount, type, description, and date were found in this ${typeLabel} file. No transactions were imported.`
@@ -88,13 +101,22 @@ export const StatementUploadModal = ({ isOpen, onClose }) => {
         fileType: validation.fileType,
         transactions,
         rejectedCount,
+        rejectedRows,
+        localPreview,
+        demoMode,
+        sessionMode,
       });
 
-      if (rejectedCount > 0) {
-        setImportMessage(
-          `${rejectedCount} parsed row${rejectedCount === 1 ? '' : 's'} omitted because required transaction details were missing or invalid.`
-        );
+      const previewNotes = [];
+      if (localPreview) {
+        previewNotes.push(demoMode
+          ? 'Demo-only local preview; this file is not connected to an account.'
+          : 'Local CSV preview only; the backend will re-parse and validate the original file during import.');
       }
+      if (rejectedCount > 0) {
+        previewNotes.push(`${rejectedCount} row${rejectedCount === 1 ? '' : 's'} will be omitted because required transaction details are missing or invalid.`);
+      }
+      setImportMessage(previewNotes.join(' '));
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
     } finally {
@@ -139,34 +161,24 @@ export const StatementUploadModal = ({ isOpen, onClose }) => {
     setErrorMessage('');
 
     try {
-      let resultData = null;
-      try {
-        const response = await PDFService.importStatement(statementData.file);
-        if (response?.success === true && response?.data) {
-          resultData = response.data;
-        } else {
-          throw new Error(response?.message || 'The server did not confirm statement import.');
-        }
-      } catch (backendImportError) {
-        if (importClientTransactions) {
-          const count = importClientTransactions(statementData.transactions);
-          resultData = {
-            importedCount: count,
-            duplicateCount: 0,
-            rejectedCount: statementData.rejectedCount || 0,
-            failedCount: 0,
-          };
-        } else {
-          throw backendImportError;
-        }
-      }
+      const sessionMode = getAuthSessionMode();
+      const resultData = await executeStatementImport({
+        sessionMode,
+        previewSessionMode: statementData.sessionMode,
+        file: statementData.file,
+        transactions: statementData.transactions,
+        rejectedCount: statementData.rejectedCount || 0,
+        importOnServer: PDFService.importStatement,
+        importLocally: importClientTransactions,
+      });
 
       setImportResult(resultData);
       const { importedCount = 0, duplicateCount = 0, rejectedCount = 0, failedCount = 0 } = resultData;
-      setImportMessage(
-        `Imported ${importedCount} new transaction${importedCount === 1 ? '' : 's'}; skipped ${duplicateCount} duplicate${duplicateCount === 1 ? '' : 's'}; omitted ${rejectedCount} invalid row${rejectedCount === 1 ? '' : 's'}${failedCount ? `; ${failedCount} failed and can be retried` : ''}.`
-      );
-      if (importedCount > 0) {
+      const countsMessage = `Imported ${importedCount} new transaction${importedCount === 1 ? '' : 's'}; skipped ${duplicateCount} duplicate${duplicateCount === 1 ? '' : 's'}; omitted ${rejectedCount} invalid row${rejectedCount === 1 ? '' : 's'}${failedCount ? `; ${failedCount} failed and can be retried` : ''}.`;
+      setImportMessage(resultData.localOnly
+        ? `Demo-only local import. ${countsMessage} Saved in this browser only; not persisted to an account.`
+        : countsMessage);
+      if (importedCount > 0 && !resultData.localOnly) {
         await Promise.all([refreshTransactions(), refreshDashboard()]);
       }
       if (failedCount > 0) {
@@ -175,7 +187,7 @@ export const StatementUploadModal = ({ isOpen, onClose }) => {
         );
       }
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(`Statement import failed. No transactions were added. ${getErrorMessage(error)}`);
     } finally {
       setIsImporting(false);
     }
@@ -297,9 +309,13 @@ export const StatementUploadModal = ({ isOpen, onClose }) => {
         {importResult && (
           <div className="space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-5">
             <div className="flex items-center gap-2.5">
-              <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+              {importResult.localOnly
+                ? <FileSpreadsheet className="h-6 w-6 text-amber-300" />
+                : <CheckCircle2 className="h-6 w-6 text-emerald-400" />}
               <div>
-                <h4 className="text-sm font-bold text-slate-100">Statement Import Summary</h4>
+                <h4 className="text-sm font-bold text-slate-100">
+                  {importResult.localOnly ? 'Demo-only Local Import Summary' : 'Statement Import Summary'}
+                </h4>
                 <p className="text-xs text-slate-400">{statementData?.fileName}</p>
               </div>
             </div>
@@ -369,6 +385,12 @@ export const StatementUploadModal = ({ isOpen, onClose }) => {
               </span>
             </div>
 
+            {statementData.localPreview && <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-200">
+              {statementData.demoMode
+                ? 'Demo-only: preview and local import stay in this browser and are not saved to a backend account.'
+                : 'Local CSV preview only: the backend will re-parse this file before any account import is confirmed.'}
+            </p>}
+
             <div className="space-y-2">
               <span className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
                 <Table className="h-3.5 w-3.5 text-indigo-400" /> Transactions to import
@@ -425,11 +447,15 @@ export const StatementUploadModal = ({ isOpen, onClose }) => {
               <Button
                 variant="emerald"
                 onClick={handleImportAll}
-                disabled={isImporting}
                 className="flex-1"
                 icon={ArrowRight}
+                disabled={!canImportStatementPreview(statementData, isImporting)}
               >
-                {isImporting ? 'Importing to Ledger…' : `Import ${statementData.transactions.length} to Ledger`}
+                {isImporting
+                  ? (statementData.demoMode ? 'Saving demo import…' : 'Importing to Ledger…')
+                  : statementData.demoMode
+                    ? `Import ${statementData.transactions.length} locally (demo)`
+                    : `Import ${statementData.transactions.length} to Ledger`}
               </Button>
             </div>
           </div>

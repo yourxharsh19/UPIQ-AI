@@ -1,4 +1,4 @@
-import { clearAuthSession, isWellFormedJwt, isJwtExpired } from './authFlow.js';
+import { clearAuthSession, getAuthSessionMode, isWellFormedJwt, isJwtExpired } from './authFlow.js';
 
 export const getInitialAuthState = (storage = globalThis.localStorage) => {
   try {
@@ -6,6 +6,9 @@ export const getInitialAuthState = (storage = globalThis.localStorage) => {
     const isDemoStored = storage?.getItem('upiq_demo');
     const token = storage?.getItem('token');
     const profile = storage?.getItem('upiq_profile');
+
+    // Do not silently pick demo or backend mode if both markers are present.
+    if (getAuthSessionMode(storage) === 'inconsistent') return false;
 
     // Explicit demo sessions do not require a backend JWT.
     if (isDemoStored === 'true' || isAuthStored === '"demo"' || isAuthStored === 'demo') {

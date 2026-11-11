@@ -74,6 +74,23 @@ export const clearAuthSession = (storage, { clearProfile = false } = {}) => {
   }
 };
 
+export const getAuthSessionMode = (storage = globalThis.localStorage) => {
+  try {
+    const authMode = storage?.getItem('upiq_auth');
+    const isDemo = storage?.getItem('upiq_demo') === 'true' || authMode === '"demo"' || authMode === 'demo';
+    const hasToken = Boolean(storage?.getItem('token'));
+    if (isDemo && hasToken) return 'inconsistent';
+    if (isDemo) return 'demo';
+    if (hasToken) return 'authenticated';
+    return 'unauthenticated';
+  } catch {
+    return 'inconsistent';
+  }
+};
+
+export const isActiveDemoSession = (storage = globalThis.localStorage) =>
+  getAuthSessionMode(storage) === 'demo';
+
 export const applySessionExpiration = ({
   storage,
   handledRef,
