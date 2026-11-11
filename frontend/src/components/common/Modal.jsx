@@ -20,14 +20,14 @@ export const Modal = ({ isOpen, onClose, title, children, maxWidth = 'max-w-xl' 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
       onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`w-full ${maxWidth} max-h-[calc(100dvh-2rem)] flex flex-col bg-slate-900 border border-slate-800 light:bg-white light:border-slate-200 rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-300 scale-100`}
+        className={`w-full ${maxWidth} max-h-[calc(100dvh-2rem)] flex flex-col bg-slate-900 border border-slate-800 light:bg-white light:border-slate-200 rounded-xl shadow-xl overflow-hidden transform transition-all duration-200 scale-100`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between px-6 py-4 border-b border-slate-800/80 light:border-slate-200">

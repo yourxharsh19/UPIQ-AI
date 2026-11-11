@@ -16,7 +16,6 @@ import {
   Film,
   Wallet,
   TrendingUp,
-  PieChart,
 } from 'lucide-react';
 import { useTransactions } from '../hooks/useTransactions';
 import { useFinancial } from '../context/FinancialContext';
@@ -46,10 +45,9 @@ export const Transactions = () => {
     setDateRange,
   } = useTransactions();
 
-  const { formatCurrency, deleteAllTransactions, addToast } = useFinancial();
+  const { formatCurrency, deleteAllTransactions, addToast, openStatementModal } = useFinancial();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
   const [txToEdit, setTxToEdit] = useState(null);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
 
@@ -70,16 +68,15 @@ export const Transactions = () => {
     }
   };
 
-  // Category Configuration with icons & colors
   const categoryConfigs = [
-    { name: 'All', label: 'All Categories', icon: Layers, color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
-    { name: 'Food & Dining', label: 'Food & Dining', icon: Utensils, color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
-    { name: 'Shopping', label: 'Shopping', icon: ShoppingBag, color: 'text-pink-400 bg-pink-500/10 border-pink-500/20' },
-    { name: 'Bills & Utilities', label: 'Bills & Utilities', icon: Zap, color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
-    { name: 'Transport & Fuel', label: 'Transport & Fuel', icon: Car, color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
-    { name: 'Entertainment', label: 'Entertainment', icon: Film, color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' },
-    { name: 'Salary', label: 'Salary & Income', icon: Wallet, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-    { name: 'Investments', label: 'Investments', icon: TrendingUp, color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+    { name: 'All', label: 'All', icon: Layers },
+    { name: 'Food & Dining', label: 'Food & Dining', icon: Utensils },
+    { name: 'Shopping', label: 'Shopping', icon: ShoppingBag },
+    { name: 'Bills & Utilities', label: 'Bills & Utilities', icon: Zap },
+    { name: 'Transport & Fuel', label: 'Transport & Fuel', icon: Car },
+    { name: 'Entertainment', label: 'Entertainment', icon: Film },
+    { name: 'Salary', label: 'Salary & Income', icon: Wallet },
+    { name: 'Investments', label: 'Investments', icon: TrendingUp },
   ];
 
   // Calculate dynamic stats per category from rawTransactions
@@ -96,16 +93,13 @@ export const Transactions = () => {
         stats['All'] = {
           count: list.length,
           total: totalExpense,
-          percent: 100,
         };
       } else {
         const catTxList = list.filter((t) => t.category === cfg.name);
         const catTotal = catTxList.reduce((acc, t) => acc + (t.amount || 0), 0);
-        const pct = totalExpense > 0 ? Math.min(100, Math.round((catTotal / totalExpense) * 100)) : 0;
         stats[cfg.name] = {
           count: catTxList.length,
           total: catTotal,
-          percent: pct,
         };
       }
     });
@@ -119,32 +113,32 @@ export const Transactions = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Top Header & Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-100 light:text-slate-900">
-            Automated Transaction Ledger
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-main)]">
+            Transaction Ledger
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Categorized records, bank statement imports, and transaction history
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">
+            Review and organize your financial records, statement imports, and categories
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
-            onClick={() => setIsStatementModalOpen(true)}
-            variant="ai"
+            onClick={openStatementModal}
+            variant="secondary"
             icon={FileText}
           >
-            Upload Bank Statement
+            Import Statement
           </Button>
           <Button
             onClick={() => {
               setTxToEdit(null);
               setIsAddModalOpen(true);
             }}
-            variant="emerald"
+            variant="primary"
             icon={Plus}
           >
             New Transaction
@@ -154,107 +148,70 @@ export const Transactions = () => {
             variant="secondary"
             icon={Trash2}
             disabled={isDeletingAll}
-            className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
+            className="border-rose-500/30 text-rose-500 hover:bg-rose-500/10"
           >
-            {isDeletingAll ? 'Deleting…' : 'Delete All Transactions'}
+            {isDeletingAll ? 'Deleting…' : 'Delete All'}
           </Button>
         </div>
       </div>
 
-      {/* TRANSACTION CATEGORY SECTION */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <PieChart className="w-4 h-4 text-indigo-400" />
-            <h2 className="text-sm font-bold text-slate-200 light:text-slate-900">
-              Transaction Category Breakdown
-            </h2>
-          </div>
-          {selectedCategory !== 'All' && (
+      {/* CATEGORY PILL FILTER STRIP */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {categoryConfigs.map((cfg) => {
+          const Icon = cfg.icon;
+          const stat = categoryStats[cfg.name] || { count: 0, total: 0 };
+          const isSelected = selectedCategory === cfg.name;
+
+          return (
             <button
-              onClick={() => setSelectedCategory('All')}
-              className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+              key={cfg.name}
+              type="button"
+              onClick={() => setSelectedCategory(cfg.name)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                isSelected
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                  : 'bg-[var(--bg-card)] border-[var(--border-base)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)]'
+              }`}
             >
-              Reset Filter (Showing {selectedCategory}) &times;
-            </button>
-          )}
-        </div>
-
-        {/* Category Cards Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-          {categoryConfigs.map((cfg) => {
-            const Icon = cfg.icon;
-            const stat = categoryStats[cfg.name] || { count: 0, total: 0, percent: 0 };
-            const isSelected = selectedCategory === cfg.name;
-
-            return (
-              <button
-                key={cfg.name}
-                type="button"
-                onClick={() => setSelectedCategory(cfg.name)}
-                className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-2.5 relative overflow-hidden ${
-                  isSelected
-                    ? 'bg-indigo-600/20 border-indigo-500 shadow-lg shadow-indigo-600/20 ring-2 ring-indigo-500/50 scale-[1.02]'
-                    : 'glass-panel border-slate-800/80 hover:border-slate-700 hover:bg-slate-800/40'
+              <Icon className="w-3.5 h-3.5 shrink-0" />
+              <span>{cfg.label}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+                  isSelected ? 'bg-blue-700 text-white' : 'bg-[var(--bg-surface)] text-[var(--text-muted)]'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${cfg.color}`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">
-                    {stat.count} txs
-                  </span>
-                </div>
-
-                <div className="space-y-0.5">
-                  <p className="text-[11px] font-bold text-slate-200 light:text-slate-900 truncate">
-                    {cfg.label}
-                  </p>
-                  <p className="text-xs font-extrabold text-slate-100 light:text-slate-900">
-                    {formatCurrency(stat.total)}
-                  </p>
-                </div>
-
-                {/* Micro Share Bar */}
-                {cfg.name !== 'All' && (
-                  <div className="w-full bg-slate-950 rounded-full h-1 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500"
-                      style={{ width: `${stat.percent}%` }}
-                    />
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                {stat.count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Filter & Search Toolbar */}
-      <div className="rounded-2xl p-4 glass-panel flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="rounded-xl p-3 border border-[var(--border-base)] bg-[var(--bg-card)] flex flex-col md:flex-row items-center justify-between gap-3 shadow-xs">
         {/* Search */}
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-[var(--text-muted)]" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by merchant, title, category..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-900/80 border border-slate-800 rounded-xl text-xs text-slate-100 light:bg-white light:border-slate-300 light:text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Search by merchant, title, or category..."
+            className="w-full pl-9 pr-3 py-1.5 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors"
           />
         </div>
 
         {/* Category Pill Filters */}
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto pb-1 md:pb-0">
-          <span className="text-xs text-slate-400 font-semibold flex items-center gap-1 flex-shrink-0">
-            <Filter className="w-3.5 h-3.5" /> Filter:
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto shrink-0">
+          <span className="text-xs text-[var(--text-muted)] font-medium flex items-center gap-1 shrink-0">
+            <Filter className="w-3.5 h-3.5" /> Filters:
           </span>
 
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 light:bg-white light:border-slate-300 light:text-slate-800"
+            aria-label="Filter by category"
+            className="px-2.5 py-1.5 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)]"
           >
             {categoryConfigs.map((cfg) => (
               <option key={cfg.name} value={cfg.name}>
@@ -268,18 +225,20 @@ export const Transactions = () => {
           <select
             value={selectedMode}
             onChange={(e) => setSelectedMode(e.target.value)}
-            className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 light:bg-white light:border-slate-300 light:text-slate-800"
+            aria-label="Filter by payment mode"
+            className="px-2.5 py-1.5 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)]"
           >
             <option value="All">All Modes</option>
-            <option value="UPI">UPI Only</option>
-            <option value="Card">Card Only</option>
-            <option value="NetBanking">NetBanking Only</option>
+            <option value="UPI">UPI</option>
+            <option value="Card">Card</option>
+            <option value="NetBanking">NetBanking</option>
           </select>
 
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 light:bg-white light:border-slate-300 light:text-slate-800"
+            aria-label="Sort transactions"
+            className="px-2.5 py-1.5 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)]"
           >
             <option value="date-desc">Newest First</option>
             <option value="date-asc">Oldest First</option>
@@ -290,88 +249,120 @@ export const Transactions = () => {
       </div>
 
       {/* Transactions Data Table */}
-      <div className="rounded-2xl glass-panel overflow-hidden">
+      <div className="rounded-xl border border-[var(--border-base)] bg-[var(--bg-card)] overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="bg-slate-950/60 light:bg-slate-100 border-b border-slate-800 light:border-slate-200 text-slate-400 font-semibold uppercase">
-                <th className="py-3.5 px-4">Date</th>
-                <th className="py-3.5 px-4">Description & Merchant</th>
-                <th className="py-3.5 px-4">Category</th>
-                <th className="py-3.5 px-4">Payment Mode</th>
-                <th className="py-3.5 px-4">AI Risk Indicator</th>
-                <th className="py-3.5 px-4 text-right">Amount</th>
-                <th className="py-3.5 px-4 text-center">Actions</th>
+              <tr className="bg-[var(--bg-surface)] border-b border-[var(--border-base)] text-[var(--text-muted)] font-medium">
+                <th className="py-2.5 px-4">Date</th>
+                <th className="py-2.5 px-4">Description & Merchant</th>
+                <th className="py-2.5 px-4">Category</th>
+                <th className="py-2.5 px-4">Mode</th>
+                <th className="py-2.5 px-4">Status</th>
+                <th className="py-2.5 px-4 text-right">Amount</th>
+                <th className="py-2.5 px-4 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 light:divide-slate-200">
+            <tbody className="divide-y divide-[var(--border-base)]">
               {transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400">
-                    No transactions match your current date, search, category, or payment filters.
+                  <td colSpan={7} className="text-center py-12 px-4">
+                    {(!rawTransactions || rawTransactions.length === 0) ? (
+                      <div className="max-w-md mx-auto space-y-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center mx-auto">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-[var(--text-main)]">No Transactions Recorded Yet</p>
+                          <p className="text-xs text-[var(--text-muted)] mt-1">Upload a bank statement (PDF or CSV) to extract transactions automatically, or add an entry manually.</p>
+                        </div>
+                        <div className="flex items-center justify-center gap-2 pt-1">
+                          <Button onClick={openStatementModal} variant="secondary" size="sm" icon={FileText}>
+                            Upload Statement
+                          </Button>
+                          <Button onClick={() => { setTxToEdit(null); setIsAddModalOpen(true); }} variant="primary" size="sm" icon={Plus}>
+                            New Transaction
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-xs text-[var(--text-muted)]">No transactions match your current date, search, category, or payment filters.</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchTerm('');
+                            setSelectedCategory('All');
+                            setSelectedMode('All');
+                          }}
+                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                        >
+                          Clear Filters
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ) : (
                 transactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-slate-800/40 light:hover:bg-slate-100 transition-colors">
-                    <td className="py-4 px-4 text-slate-400 font-mono text-[11px]">
+                  <tr key={tx.id} className="hover:bg-[var(--bg-surface)] transition-colors">
+                    <td className="py-3 px-4 text-[var(--text-muted)] font-mono text-[11px] whitespace-nowrap">
                       {new Date(tx.date).toLocaleDateString('en-IN', {
                         month: 'short',
                         day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
+                        year: 'numeric',
                       })}
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-3">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2.5">
                         <div
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${
                             tx.type === 'income'
-                              ? 'bg-emerald-500/10 text-emerald-400'
-                              : 'bg-rose-500/10 text-rose-400'
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                              : 'bg-slate-500/10 text-slate-600 dark:text-slate-400'
                           }`}
                         >
-                          {tx.type === 'income' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                          {tx.type === 'income' ? <ArrowDownLeft className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
                         </div>
                         <div>
-                          <span className="font-bold text-slate-100 light:text-slate-900 block">
+                          <span className="font-medium text-[var(--text-main)] block">
                             {tx.title}
                           </span>
-                          <span className="text-[10px] text-slate-400">{tx.merchant}</span>
+                          <span className="text-[11px] text-[var(--text-muted)]">{tx.merchant}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-3 px-4">
                       <CategoryChip category={tx.category} />
                     </td>
-                    <td className="py-4 px-4">
-                      <span className="px-2.5 py-1 rounded bg-slate-900 text-slate-300 border border-slate-800 font-mono text-[11px] light:bg-slate-100 light:text-slate-800">
+                    <td className="py-3 px-4">
+                      <span className="px-2 py-0.5 rounded bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-base)] font-mono text-[10px]">
                         {tx.mode}
                       </span>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-3 px-4">
                       <Badge variant="neutral">Not monitored</Badge>
                     </td>
-                    <td className="py-4 px-4 text-right font-extrabold text-sm">
-                      <span className={tx.type === 'income' ? 'text-emerald-400' : 'text-slate-100 light:text-slate-900'}>
+                    <td className="py-3 px-4 text-right font-semibold tabular-nums text-xs sm:text-sm">
+                      <span className={tx.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--text-main)]'}>
                         {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                       </span>
                     </td>
-                    <td className="py-4 px-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => handleEdit(tx)}
-                          className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                          className="p-1 text-[var(--text-muted)] hover:text-blue-500 hover:bg-[var(--bg-surface)] rounded transition-colors cursor-pointer"
                           title="Edit Transaction"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => deleteTransaction(tx.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                          className="p-1 text-[var(--text-muted)] hover:text-rose-500 hover:bg-[var(--bg-surface)] rounded transition-colors cursor-pointer"
                           title="Delete Transaction"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -388,10 +379,6 @@ export const Transactions = () => {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         transactionToEdit={txToEdit}
-      />
-      <StatementUploadModal
-        isOpen={isStatementModalOpen}
-        onClose={() => setIsStatementModalOpen(false)}
       />
     </div>
   );

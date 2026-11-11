@@ -1,4 +1,4 @@
-import { Target, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Target, AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { useBudget } from "../../context/BudgetContext";
 import { buildLocalBudgetForecasts } from "../../utils/budgetForecasts.js";
 import { getCategoryDisplayProps } from "../../utils/categoryUtils";
@@ -11,15 +11,21 @@ const BudgetProgress = ({ transactions }) => {
 
   if (budgetedCategories.length === 0) {
     return (
-      <div className="bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-base)] shadow-premium">
-        <div className="mb-6">
-          <h3 className="text-lg font-bold text-[var(--text-main)] mb-1">Budget Tracking</h3>
-          <p className="text-sm text-[var(--text-muted)]">Set budgets for categories to track your spending</p>
+      <div className="bg-[var(--bg-card)] p-6 rounded-xl border border-[var(--border-base)] shadow-sm">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-base font-semibold text-[var(--text-main)] mb-1">Budget Tracking</h3>
+            <p className="text-xs text-[var(--text-muted)]">Set budgets for categories to track your spending</p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--bg-surface)] border border-[var(--border-base)] text-[11px] text-[var(--text-muted)] w-fit">
+            <Info size={12} className="text-blue-500 shrink-0" />
+            Budgets are saved on this device only
+          </span>
         </div>
         <div className="text-center py-8">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--bg-surface)]"><Target size={28} className="text-[var(--text-muted)]" /></div>
-          <p className="text-[var(--text-main)] font-semibold mb-2">No budgets set yet</p>
-          <p className="text-sm text-[var(--text-muted)]">Go to Categories to set monthly budgets</p>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--bg-surface)] border border-[var(--border-base)]"><Target size={24} className="text-[var(--text-muted)]" /></div>
+          <p className="text-[var(--text-main)] font-semibold text-sm mb-1">No budgets set yet</p>
+          <p className="text-xs text-[var(--text-muted)]">Go to Categories to set monthly budgets</p>
         </div>
       </div>
     );
@@ -37,10 +43,16 @@ const BudgetProgress = ({ transactions }) => {
   };
 
   return (
-    <div className="bg-[var(--bg-card)] p-8 rounded-2xl border border-[var(--border-base)] shadow-premium hover:shadow-premium-hover transition-all duration-300">
-      <div className="mb-8">
-        <h3 className="text-lg font-bold text-[var(--text-main)] mb-1 tracking-tight">Budget Tracking</h3>
-        <p className="text-sm text-[var(--text-muted)]">Monitor your spending against monthly budgets</p>
+    <div className="bg-[var(--bg-card)] p-6 rounded-xl border border-[var(--border-base)] shadow-sm">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h3 className="text-base font-semibold text-[var(--text-main)] mb-1 tracking-tight">Budget Tracking</h3>
+          <p className="text-xs text-[var(--text-muted)]">Monitor your spending against monthly budgets</p>
+        </div>
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--bg-surface)] border border-[var(--border-base)] text-[11px] text-[var(--text-muted)] w-fit">
+          <Info size={12} className="text-blue-500 shrink-0" />
+          Budgets are saved on this device only
+        </span>
       </div>
 
       <div className="space-y-8">

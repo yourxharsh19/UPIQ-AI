@@ -24,7 +24,8 @@ if (typeof globalThis.CustomEvent === 'undefined') {
 }
 
 import { getInitialAuthState } from '../src/utils/authUtils.js';
-import { activateDemoSession, applySessionExpiration, authenticateWithBackend, clearAuthSession, isWellFormedJwt } from '../src/utils/authFlow.js';
+import { activateDemoSession, applySessionExpiration, authenticateWithBackend, clearAuthSession, isWellFormedJwt, isJwtExpired } from '../src/utils/authFlow.js';
+import { resolveAuthView } from '../src/utils/registrationFlow.js';
 import api from '../src/services/api.js';
 import { AuthService } from '../src/services/auth.service.js';
 
@@ -288,3 +289,112 @@ describe('production backend login helper', () => {
     assert.equal(storage.getItem('upiq_auth'), '"demo"');
   });
 });
+
+describe('Task 4: session / auth handling & token lifecycle', () => {
+  beforeEach(resetGlobals);
+
+  test('manual token deletion: removes session on startup and clears residual keys', () => {
+    values.set('token', validJwt);
+    values.set('upiq_auth', 'true');
+    values.set('upiq_profile', '{"name":"Active User"}');
+    assert.equal(getInitialAuthState(), true);
+
+    // Manually delete token
+    values.delete('token');
+    assert.equal(getInitialAuthState(), false);
+    assert.equal(values.has('upiq_auth'), false);
+    assert.equal(values.has('upiq_profile'), false);
+  });
+
+  test('token tampering: malformed, corrupted, or non-base64 tokens are rejected and wiped', () => {
+    const tamperedTokens = [
+      'random-garbage-string',
+      'invalid.jwt',
+      'part1.part2.part3.part4',
+      `${encode({ alg: 'HS256' })}.invalid-base64-json.sig`,
+      'Bearer ' + validJwt,
+      '   ' + validJwt + '   ',
+    ];
+
+    for (const badToken of tamperedTokens) {
+      values.clear();
+      values.set('token', badToken);
+      values.set('upiq_auth', 'true');
+      values.set('upiq_profile', '{"name":"Hacked User"}');
+
+      assert.equal(isWellFormedJwt(badToken), false, `should reject tampered token: ${badToken}`);
+      assert.equal(getInitialAuthState(), false);
+      assert.equal(values.has('token'), false, 'tampered token is purged');
+      assert.equal(values.has('upiq_auth'), false, 'stale auth flag purged');
+      assert.equal(values.has('upiq_profile'), false, 'stale profile purged');
+    }
+  });
+
+  test('token expiration: isJwtExpired correctly detects past vs future exp claims', () => {
+    const pastSeconds = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
+    const futureSeconds = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+
+    const expiredToken = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ sub: 'user@test', exp: pastSeconds })}.${Buffer.from('sig').toString('base64url')}`;
+    const activeToken = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ sub: 'user@test', exp: futureSeconds })}.${Buffer.from('sig').toString('base64url')}`;
+
+    assert.equal(isJwtExpired(expiredToken), true);
+    assert.equal(isJwtExpired(activeToken), false);
+    assert.equal(isJwtExpired(validJwt), false, 'tokens without exp claim are not expired client-side');
+    assert.equal(isJwtExpired('not-a-token'), true);
+  });
+
+  test('token expiration: getInitialAuthState clears and rejects expired tokens on startup', () => {
+    const pastSeconds = Math.floor(Date.now() / 1000) - 100;
+    const expiredToken = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ sub: 'user@test', exp: pastSeconds })}.${Buffer.from('sig').toString('base64url')}`;
+
+    values.set('token', expiredToken);
+    values.set('upiq_auth', 'true');
+    values.set('upiq_profile', '{"name":"Expired User"}');
+
+    assert.equal(getInitialAuthState(), false);
+    assert.equal(values.has('token'), false, 'expired token removed');
+    assert.equal(values.has('upiq_auth'), false, 'auth flag removed');
+    assert.equal(values.has('upiq_profile'), false, 'profile removed');
+  });
+
+  test('401 on protected request clears session and includes friendly message in detail', async () => {
+    values.set('token', 'tampered-or-expired');
+    values.set('upiq_auth', 'true');
+    values.set('upiq_profile', '{"name":"User"}');
+
+    const errorHandler = api.interceptors.response.handlers[0].rejected;
+    const error = {
+      config: { url: '/v1/users/me' },
+      response: {
+        status: 401,
+        data: { message: 'Full authentication is required to access this resource' },
+      },
+    };
+
+    await assert.rejects(errorHandler(error));
+    assert.equal(values.has('token'), false);
+    assert.equal(values.has('upiq_auth'), false);
+    assert.equal(values.has('upiq_profile'), false);
+    assert.equal(lastDispatchedEvent?.type, 'upiq:session-expired');
+    assert.equal(
+      lastDispatchedEvent?.detail?.message,
+      'Full authentication is required to access this resource'
+    );
+  });
+
+  test('protected routes: resolveAuthView redirects unauthenticated access to login', () => {
+    assert.equal(resolveAuthView('app', false), 'login');
+    assert.equal(resolveAuthView('dashboard', false), 'login');
+    assert.equal(resolveAuthView('transactions', false), 'login');
+    assert.equal(resolveAuthView('categories', false), 'login');
+    assert.equal(resolveAuthView('login', false), 'login');
+    assert.equal(resolveAuthView('home', false), 'home');
+    assert.equal(resolveAuthView('register', false), 'register');
+
+    // Authenticated access allows app
+    assert.equal(resolveAuthView('app', true), 'app');
+    assert.equal(resolveAuthView('home', true), 'home');
+    assert.equal(resolveAuthView('register', true), 'register');
+  });
+});
+

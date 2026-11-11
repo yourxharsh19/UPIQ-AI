@@ -37,18 +37,59 @@ export const isWellFormedJwt = (token) => {
   }
 };
 
+/**
+ * Checks whether a given JWT string has expired based on its payload exp claim.
+ *
+ * @param {string} token
+ * @param {number} [clockToleranceSeconds=0]
+ * @returns {boolean} True if expired or malformed, false if valid and unexpired
+ */
+export const isJwtExpired = (token, clockToleranceSeconds = 0) => {
+  if (!token || typeof token !== 'string') return true;
+  const parts = token.split('.');
+  if (parts.length !== 3) return true;
+  try {
+    const payload = decodeJwtJsonSegment(parts[1]);
+    if (!payload || typeof payload !== 'object') return true;
+    if (typeof payload.exp !== 'number') {
+      return false; // Tokens without exp claim are not expired client-side
+    }
+    const currentSeconds = Math.floor(Date.now() / 1000);
+    return payload.exp + clockToleranceSeconds <= currentSeconds;
+  } catch {
+    return true;
+  }
+};
+
 export const clearAuthSession = (storage, { clearProfile = false } = {}) => {
   const keys = ['token', 'upiq_auth', 'upiq_demo'];
   if (clearProfile) keys.push('upiq_profile');
 
   for (const key of keys) {
     try {
-      storage.removeItem(key);
+      storage?.removeItem(key);
     } catch {
       // Continue attempting to clear other keys when storage is restricted.
     }
   }
 };
+
+export const getAuthSessionMode = (storage = globalThis.localStorage) => {
+  try {
+    const authMode = storage?.getItem('upiq_auth');
+    const isDemo = storage?.getItem('upiq_demo') === 'true' || authMode === '"demo"' || authMode === 'demo';
+    const hasToken = Boolean(storage?.getItem('token'));
+    if (isDemo && hasToken) return 'inconsistent';
+    if (isDemo) return 'demo';
+    if (hasToken) return 'authenticated';
+    return 'unauthenticated';
+  } catch {
+    return 'inconsistent';
+  }
+};
+
+export const isActiveDemoSession = (storage = globalThis.localStorage) =>
+  getAuthSessionMode(storage) === 'demo';
 
 export const applySessionExpiration = ({
   storage,
@@ -58,6 +99,8 @@ export const applySessionExpiration = ({
   setProfile,
   initialProfile,
   addToast,
+  message,
+  title = 'Session Expired',
 }) => {
   if (handledRef.current) return false;
 
@@ -66,7 +109,8 @@ export const applySessionExpiration = ({
   setProfile(initialProfile);
   setIsAuthenticated(false);
   setCurrentView('login');
-  addToast('Session Expired', 'Your session has expired. Please log in again.', 'warning');
+  const friendlyMessage = message || 'Your session has expired. Please log in again.';
+  addToast(title, friendlyMessage, 'warning');
   return true;
 };
 

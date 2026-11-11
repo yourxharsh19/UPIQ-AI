@@ -3,10 +3,11 @@ import { clearAuthSession } from '../utils/authFlow.js';
 import { normalizeApiError } from './safeApiError.js';
 
 const api = axios.create({
-  baseURL: (import.meta.env ?. VITE_API_BASE_URL) || 'http://localhost:8080/api',
+  baseURL: (import.meta.env?.VITE_API_BASE_URL) || 'http://localhost:8080/api',
   headers: {
     'Content-Type': 'application/json',
-  },  timeout: 10000,
+  },
+  timeout: 10000,
 });
 
 // Request interceptor to add Authorization header using 'token'
@@ -37,14 +38,20 @@ api.interceptors.response.use(
     // Handle 401 from protected requests only; auth endpoint failures (e.g. invalid credentials)
     // should reject normally without clearing stored credentials or redirecting the user.
     if (error.response && error.response.status === 401 && !isAuthEndpoint) {
-      clearAuthSession(localStorage);
+      clearAuthSession(localStorage, { clearProfile: true });
 
       // Dispatch custom session-expiration event for active SPA state transition without hard reload
       if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
         try {
+          const detail = {
+            message:
+              error.response?.data?.message ||
+              'Your session has expired. Please log in again.',
+            status: 401,
+          };
           const event = typeof CustomEvent === 'function'
-            ? new CustomEvent('upiq:session-expired')
-            : { type: 'upiq:session-expired' };
+            ? new CustomEvent('upiq:session-expired', { detail })
+            : { type: 'upiq:session-expired', detail };
           window.dispatchEvent(event);
         } catch {
           // Fallback if CustomEvent is unavailable

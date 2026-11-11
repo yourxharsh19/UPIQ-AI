@@ -18,11 +18,30 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class CSVParserService {
+
+    private static final Set<String> AMOUNT_HEADERS = Set.of("amount", "amt", "value", "transactionamount", "total");
+    private static final Set<String> DEBIT_HEADERS = Set.of(
+            "debit", "debitamount", "debitamt", "debitamountinr", "withdraw", "withdrawal",
+            "withdrawals", "withdrawalamount", "withdrawalamt", "withdrawn", "withdrawnamount", "dr", "dramount"
+    );
+    private static final Set<String> CREDIT_HEADERS = Set.of(
+            "credit", "creditamount", "creditamt", "creditamountinr", "deposit", "deposits",
+            "depositamount", "depositamt", "deposited", "cr", "cramount"
+    );
+
+    private static final Pattern VALID_AMOUNT = Pattern.compile(
+            "[+-]?(?:(?:\\d+|\\d{1,3}(?:,\\d{3})+|\\d{1,2}(?:,\\d{2})*,\\d{3})(?:\\.\\d*)?|\\.\\d+)"
+    );
+    private static final Pattern CURRENCY_PREFIX = Pattern.compile("(?i)^(?:₹|\\$|INR|RS\\.?)");
+    private static final Pattern CURRENCY_MARKER = Pattern.compile("(?i)(?:₹|\\$|INR|RS\\.?)");
 
     private final TransactionMappingService mappingService;
 
@@ -69,26 +88,44 @@ public class CSVParserService {
         tx.setSourceRowIndex(sourceRowIndex);
         List<StatementRowValidationReason> reasons = new ArrayList<>();
 
-        // Try to extract amount from various possible column names
-        String amountStr = getValueIgnoreCase(record, "amount", "value", "transaction_amount", "amt", "total");
-        if (amountStr != null) {
-            try {
-                String normalizedAmount = amountStr.replaceAll("(?i)\\b(?:inr|rs\\.?)\\s*", "")
-                        .replace("₹", "").replace(",", "").trim();
-                if (!normalizedAmount.matches("[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)")) throw new NumberFormatException();
-                tx.setAmount(Double.parseDouble(normalizedAmount));
-            } catch (NumberFormatException e) {
-                reasons.add(StatementRowValidationReason.INVALID_AMOUNT);
-            }
+        // Try generic amount columns first, then use debit/credit columns when present.
+        String amountStr = getValueByHeaderAliases(record, AMOUNT_HEADERS);
+        String debitStr = getValueByHeaderAliases(record, DEBIT_HEADERS);
+        String creditStr = getValueByHeaderAliases(record, CREDIT_HEADERS);
+        Double debitAmount = parseAmountSafely(debitStr, reasons);
+        Double creditAmount = parseAmountSafely(creditStr, reasons);
+
+        if (hasPositiveAmount(debitAmount) && hasPositiveAmount(creditAmount)) {
+            addReasonIfAbsent(reasons, StatementRowValidationReason.INVALID_AMOUNT);
+        } else if ((debitAmount != null && debitAmount < 0) || (creditAmount != null && creditAmount < 0)) {
+            tx.setAmount(debitAmount != null && debitAmount < 0 ? debitAmount : creditAmount);
+        } else if (hasPositiveAmount(debitAmount)) {
+            tx.setAmount(debitAmount);
+            tx.setType("expense");
+        } else if (hasPositiveAmount(creditAmount)) {
+            tx.setAmount(creditAmount);
+            tx.setType("income");
+        } else if (debitAmount != null || creditAmount != null) {
+            tx.setAmount(debitAmount != null ? debitAmount : creditAmount);
+        } else {
+            tx.setAmount(parseAmountSafely(amountStr, reasons));
         }
-        if (amountStr == null) reasons.add(StatementRowValidationReason.MISSING_AMOUNT);
-        else if (tx.getAmount() == null && !reasons.contains(StatementRowValidationReason.INVALID_AMOUNT)) reasons.add(StatementRowValidationReason.INVALID_AMOUNT);
-        else if (tx.getAmount() != null && !Double.isFinite(tx.getAmount())) reasons.add(StatementRowValidationReason.INVALID_AMOUNT);
-        else if (tx.getAmount() != null && tx.getAmount() <= 0) reasons.add(StatementRowValidationReason.NON_POSITIVE_AMOUNT);
+
+        if (tx.getAmount() == null) {
+            if (!reasons.contains(StatementRowValidationReason.INVALID_AMOUNT)) {
+                addReasonIfAbsent(reasons, StatementRowValidationReason.MISSING_AMOUNT);
+            }
+        } else if (!Double.isFinite(tx.getAmount())) {
+            addReasonIfAbsent(reasons, StatementRowValidationReason.INVALID_AMOUNT);
+        } else if (tx.getAmount() <= 0) {
+            addReasonIfAbsent(reasons, StatementRowValidationReason.NON_POSITIVE_AMOUNT);
+        }
 
         // Extract type (income/expense)
         String typeStr = getValueIgnoreCase(record, "type", "transaction_type", "credit_debit", "cd");
-        if (typeStr != null) {
+        if (tx.getType() != null) {
+            // A populated debit/credit amount column is the source of the transaction direction.
+        } else if (typeStr != null) {
             String normalizedType = typeStr.trim().toLowerCase(java.util.Locale.ROOT);
             if (List.of("income", "expense", "credit", "debit", "cr", "dr").contains(normalizedType)) {
                 tx.setType(toTransactionType(mappingService.extractType(typeStr)));
@@ -154,6 +191,66 @@ public class CSVParserService {
             }
         }
         return null;
+    }
+
+    private String getValueByHeaderAliases(CSVRecord record, Set<String> aliases) {
+        for (String header : record.getParser().getHeaderMap().keySet()) {
+            if (aliases.contains(normalizeHeader(header))) {
+                String value = record.get(header);
+                if (value != null && !value.trim().isEmpty()) return value;
+            }
+        }
+        return null;
+    }
+
+    private String normalizeHeader(String header) {
+        return header.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+    }
+
+    private Double parseAmountSafely(String amount, List<StatementRowValidationReason> reasons) {
+        if (amount == null || amount.isBlank()) return null;
+        try {
+            return parseAmount(amount);
+        } catch (NumberFormatException e) {
+            addReasonIfAbsent(reasons, StatementRowValidationReason.INVALID_AMOUNT);
+            return null;
+        }
+    }
+
+    private Double parseAmount(String amount) {
+        String normalizedAmount = stripCurrencyPrefix(amount);
+        if (!VALID_AMOUNT.matcher(normalizedAmount).matches()) throw new NumberFormatException("Invalid amount format");
+        double parsed = Double.parseDouble(normalizedAmount.replace(",", ""));
+        if (!Double.isFinite(parsed)) throw new NumberFormatException("Amount is not finite");
+        return parsed;
+    }
+
+    private String stripCurrencyPrefix(String amount) {
+        String value = amount.trim();
+        String sign = "";
+        if (!value.isEmpty() && (value.charAt(0) == '+' || value.charAt(0) == '-')) {
+            sign = value.substring(0, 1);
+            value = value.substring(1).trim();
+        }
+
+        var currencyMatcher = CURRENCY_PREFIX.matcher(value);
+        if (currencyMatcher.find()) value = value.substring(currencyMatcher.end()).trim();
+
+        if (!value.isEmpty() && (value.charAt(0) == '+' || value.charAt(0) == '-')) {
+            if (!sign.isEmpty()) throw new NumberFormatException("Multiple signs in amount");
+            sign = value.substring(0, 1);
+            value = value.substring(1).trim();
+        }
+        if (CURRENCY_MARKER.matcher(value).find()) throw new NumberFormatException("Currency marker must appear once as a prefix");
+        return sign + value;
+    }
+
+    private boolean hasPositiveAmount(Double amount) {
+        return amount != null && amount > 0;
+    }
+
+    private void addReasonIfAbsent(List<StatementRowValidationReason> reasons, StatementRowValidationReason reason) {
+        if (!reasons.contains(reason)) reasons.add(reason);
     }
 
     private String toTransactionType(String mappedType) {

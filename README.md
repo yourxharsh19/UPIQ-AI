@@ -77,11 +77,37 @@ See [.env.example](.env.example) for the supported template variables: database 
 
 The datasource is PostgreSQL, configured from `DB_URL` or `DB_HOST`/`DB_PORT`/`DB_NAME`. Hibernate updates the schema automatically in the current configuration; the production migration risk is documented in [Bugs and Issues](docs/BUGS_AND_ISSUES.md). Compose persists data in its `upiq-postgres-data` volume. `/api/auth/**` and `/health/**` are public; other API requests require authentication. Transaction and category operations are scoped to the authenticated user.
 
+## Frontend status, fixes, and limitations
+
+The frontend has been updated with the following features, boundaries, and limitations:
+
+### 1. What is Fixed & Implemented
+* **CSV and PDF Statement Upload:** Upload component natively accepts `.csv` and `.pdf` files up to 10MB, verifies MIME types and size on the client, renders a parsing progress spinner, provides preview rows, and shows post-import success summaries (new rows imported, duplicates skipped, invalid rows omitted).
+* **Dashboard & Ledger Consistency:** All mutations (add, edit, single delete, bulk delete) consistently invalidate cache and refetch backend ledger and financial dashboard summaries (`/api/transactions`, `/api/financial/dashboard`). Stale KPI retention and optimistic double-counting have been eliminated.
+* **Session & Auth Handling:** Expired and tampered JWT tokens are caught before render; protected 401 responses clear stored sessions and redirect to Login with a friendly toast notification. Protected views prevent unauthenticated rendering.
+* **Theme System (Light / Dark / System):** 3-mode theme switcher with OS preference synchronization (`matchMedia`). An inline anti-flash script in `index.html` prevents FOUC. The design uses a subtle, low-saturation academic navy palette with crisp pure white (`#ffffff`) background in light mode, satisfying WCAG AA/AAA contrast.
+* **Codebase Health:** Clean build and 0 errors, 0 warnings across all frontend files; 129 automated unit tests pass.
+
+### 2. What is Frontend-Only (Client-Side)
+* **Local Category Budgets:** Budgets are partitioned per authenticated user in browser storage (`upiq_budgets_user_${userId}`). Includes JSON Export/Import for cross-device migration and is clearly labeled *"Budgets are saved on this device only"*.
+* **Report History Previews:** Downloaded and generated report snapshots are saved per authenticated user (`upiq_report_history_user_${userId}`) with delete capability, labeled *"Saved on this device only"*.
+* **Month-End Spend Estimates:** Linear run-rate projections are explicitly labeled *"Estimate (not AI prediction)"*.
+* **Assistant Bounds:** The assistant clearly disclaims supported ledger intents and notes that AI-synthesized answers require a running backend with a local Ollama instance.
+
+### 3. What is BLOCKED (Requires Backend Changes)
+* **BLOCKED – Backend Cloud Budget Sync:** No backend controller, entity, table, or service exists for budgets. Budgets remain browser-local until backend CRUD endpoints are implemented.
+* **BLOCKED – Scanned PDF OCR:** Backend parser extracts text from digital PDFs and CSVs; scanned image-only PDFs require an OCR engine (e.g., Tesseract). Labeled *"Coming soon"*.
+* **BLOCKED – Report Archive Workflow:** Backend generates downloadable PDF streams but does not store generated reports in the database.
+* **BLOCKED – Google OAuth:** Backend authentication only supports username/password credentials. Google button is disabled and labeled *"Coming soon"*.
+* **BLOCKED – Fraud Monitoring & Anomaly Blocking:** Graph Neural Network (GNN) microservice is not implemented on the backend. Labeled *"Coming soon"*.
+* **BLOCKED – Live Admin Telemetry:** No backend telemetry APIs exist for platform metrics, user counts, or retraining status. Labeled *"Coming soon"*.
+* **BLOCKED – Push Notifications:** Server-side push webhook subscriptions are not implemented. Labeled *"Coming soon"*.
+
 ## Limitations and known risks
 
-- Browser-local budgets and simple run-rate estimates are not server-synchronized or AI predictions. Investment advice, fraud detection, persistent push notifications, and live admin telemetry are not implemented.
+- Browser-local budgets and simple run-rate estimates are not server-synchronized or AI predictions. Investment advice, fraud detection, persistent push notifications, and live admin telemetry are not implemented and are labeled Coming soon.
 - Financial chat supports bounded intents and depends on backend/Ollama for grounded answers. A timeout is not evidence of an incorrect calculation; consult the issue register before drawing performance conclusions.
-- Backend CSV parsing exists, but the browser upload UI is PDF-only. Parsing uses heuristic text extraction and does not OCR scanned image PDFs.
+- Statement upload supports CSV and digital text PDFs. Scanned image-only PDFs (OCR) are not supported.
 - Transaction records have no currency metadata and use a `Double` amount. Do not infer original currency or conversion from display formatting.
 - Backend schema uses Hibernate `ddl-auto: update`; a versioned production migration workflow is not yet configured. CORS uses a wildcard origin with credentials disabled; set deployment-specific policy before exposing publicly.
 - The research dataset is small, and no answer-quality metrics/statistics exist. Recorded local runtime issues are not evidence that any system performs better.

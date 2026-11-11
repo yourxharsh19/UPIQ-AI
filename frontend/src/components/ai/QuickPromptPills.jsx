@@ -11,9 +11,9 @@ export const QuickPromptPills = ({ onSelectPrompt, transactions = [] }) => {
         <button
           key={p}
           onClick={() => onSelectPrompt(p)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium glass-pill text-indigo-200 hover:text-white hover:border-indigo-400 transition-all hover:scale-[1.02] active:scale-95"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-[var(--border-base)] bg-[var(--bg-surface)] hover:bg-[var(--bg-card)] text-[var(--text-main)] hover:border-blue-500/40 transition-colors"
         >
-          <Sparkles className="w-3 h-3 text-purple-400" />
+          <Sparkles className="w-3 h-3 text-blue-500 shrink-0" />
           {p}
         </button>
       ))}

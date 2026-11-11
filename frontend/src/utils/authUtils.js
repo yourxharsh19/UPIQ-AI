@@ -1,24 +1,27 @@
-import { clearAuthSession, isWellFormedJwt } from './authFlow.js';
+import { clearAuthSession, getAuthSessionMode, isWellFormedJwt, isJwtExpired } from './authFlow.js';
 
-export const getInitialAuthState = () => {
+export const getInitialAuthState = (storage = globalThis.localStorage) => {
   try {
-    const isAuthStored = localStorage.getItem('upiq_auth');
-    const isDemoStored = localStorage.getItem('upiq_demo');
-    const token = localStorage.getItem('token');
-    const profile = localStorage.getItem('upiq_profile');
+    const isAuthStored = storage?.getItem('upiq_auth');
+    const isDemoStored = storage?.getItem('upiq_demo');
+    const token = storage?.getItem('token');
+    const profile = storage?.getItem('upiq_profile');
+
+    // Do not silently pick demo or backend mode if both markers are present.
+    if (getAuthSessionMode(storage) === 'inconsistent') return false;
 
     // Explicit demo sessions do not require a backend JWT.
     if (isDemoStored === 'true' || isAuthStored === '"demo"' || isAuthStored === 'demo') {
       return true;
     }
 
-    // This checks JWT structure only. The backend remains authoritative for authenticity.
-    if (isAuthStored && isAuthStored !== 'false' && isWellFormedJwt(token)) {
+    // Checks JWT structure and expiration. The backend remains authoritative for authenticity.
+    if (isAuthStored && isAuthStored !== 'false' && isWellFormedJwt(token) && !isJwtExpired(token)) {
       return true;
     }
 
     if (isAuthStored || isDemoStored || token !== null || profile !== null) {
-      clearAuthSession(localStorage, { clearProfile: true });
+      clearAuthSession(storage, { clearProfile: true });
     }
     return false;
   } catch {

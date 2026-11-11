@@ -1,6 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { persistTransactionChange, submitTransactionForm } from '../src/utils/transactionOperations.js';
+import {
+  buildTransactionUpdatePayload,
+  persistTransactionChange,
+  submitTransactionForm,
+} from '../src/utils/transactionOperations.js';
+
+test('non-date transaction edits preserve the existing transaction date', () => {
+  const originalDate = '2026-09-30T23:45:00';
+  const edits = [
+    { title: 'Updated description' },
+    { amount: 42.5 },
+    { category: 'Travel' },
+    { mode: 'Card' },
+  ];
+
+  for (const fields of edits) {
+    const payload = buildTransactionUpdatePayload(fields, originalDate);
+    assert.equal(payload.date, originalDate);
+  }
+});
+
+test('an explicitly edited transaction date replaces the existing date', () => {
+  const payload = buildTransactionUpdatePayload(
+    { date: '2026-10-01T08:30:00' },
+    '2026-09-30T23:45:00',
+  );
+
+  assert.equal(payload.date, '2026-10-01T08:30:00');
+});
 
 test('keeps transaction dialog open when the save did not persist', async () => {
   let closed = false;

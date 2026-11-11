@@ -15,10 +15,10 @@ export const ToastContainer = () => {
   };
 
   const borders = {
-    success: 'border-emerald-500/30 bg-slate-900/95',
-    danger: 'border-rose-500/30 bg-slate-900/95',
-    warning: 'border-amber-500/30 bg-slate-900/95',
-    info: 'border-indigo-500/30 bg-slate-900/95',
+    success: 'border-emerald-500/40 bg-white dark:bg-slate-900',
+    danger: 'border-rose-500/40 bg-white dark:bg-slate-900',
+    warning: 'border-amber-500/40 bg-white dark:bg-slate-900',
+    info: 'border-blue-500/40 bg-white dark:bg-slate-900',
   };
 
   return (
@@ -26,18 +26,18 @@ export const ToastContainer = () => {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl border glass-panel-glow shadow-2xl transform transition-all duration-300 animate-slide-up ${
+          className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl border shadow-lg transform transition-all duration-200 animate-slide-up ${
             borders[toast.type] || borders.info
           }`}
         >
           <div className="flex-shrink-0 mt-0.5">{icons[toast.type] || icons.info}</div>
           <div className="flex-1">
-            <h4 className="text-sm font-semibold text-slate-100">{toast.title}</h4>
-            <p className="text-xs text-slate-300 mt-0.5">{toast.message}</p>
+            <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{toast.title}</h4>
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">{toast.message}</p>
           </div>
           <button
             onClick={() => removeToast(toast.id)}
-            className="text-slate-400 hover:text-slate-200 p-1 rounded-md"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-md"
           >
             <X className="w-4 h-4" />
           </button>

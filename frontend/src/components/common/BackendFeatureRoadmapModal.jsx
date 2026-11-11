@@ -59,64 +59,64 @@ export const BackendFeatureRoadmapModal = ({ isOpen, onClose }) => {
     <Modal isOpen={isOpen} onClose={onClose} title="Feature Roadmap" maxWidth="max-w-4xl">
       <div className="space-y-6">
         {/* Connection Status Banner */}
-        <div className="p-4 rounded-2xl glass-panel border border-indigo-500/20 bg-gradient-to-r from-indigo-950/40 via-purple-950/20 to-slate-900/60 flex items-center justify-between gap-4">
+        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-xl border ${backendHealth.connected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
-              <Server className="w-5 h-5 animate-pulse" />
+            <div className={`p-2.5 rounded-lg border ${backendHealth.connected ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'}`}>
+              <Server className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-slate-100 light:text-slate-900">
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   Backend API Engine Status
                 </h4>
                 <Badge variant={backendHealth.connected ? 'success' : 'warning'} size="sm">
                   {backendHealth.loading ? 'Checking...' : backendHealth.connected ? 'Backend API Reachable' : 'Backend API Unavailable'}
                 </Badge>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Connectivity check and current feature-status overview
               </p>
             </div>
           </div>
-          <div className="hidden sm:flex items-center gap-2 text-xs font-mono bg-slate-950/60 px-3 py-1.5 rounded-xl border border-slate-800">
-            <span className="text-emerald-400 font-bold">{onlineCount} Active</span>
-            <span className="text-slate-600">/</span>
-            <span className="text-purple-400 font-bold">{upcomingCount} Upcoming</span>
+          <div className="hidden sm:flex items-center gap-2 text-xs font-mono bg-white dark:bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
+            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{onlineCount} Active</span>
+            <span className="text-slate-400 dark:text-slate-600">/</span>
+            <span className="text-blue-600 dark:text-blue-400 font-semibold">{upcomingCount} Upcoming</span>
           </div>
         </div>
 
         {/* Tab Filters */}
-        <div className="flex border-b border-slate-800 light:border-slate-200">
+        <div className="flex border-b border-slate-200 dark:border-slate-800">
           <button
             onClick={() => setActiveTab('all')}
-            className={`px-5 py-2.5 text-xs font-bold border-b-2 transition-all ${
+            className={`px-5 py-2.5 text-xs font-medium border-b-2 transition-colors ${
               activeTab === 'all'
-                ? 'border-indigo-500 text-indigo-400 light:text-indigo-600'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400 font-semibold'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             All System Features ({BACKEND_FEATURES.length})
           </button>
           <button
             onClick={() => setActiveTab('online')}
-            className={`px-5 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+            className={`px-5 py-2.5 text-xs font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
               activeTab === 'online'
-                ? 'border-emerald-500 text-emerald-400 light:text-emerald-600'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400 dark:border-emerald-400 font-semibold'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             Available Now ({onlineCount})
           </button>
           <button
             onClick={() => setActiveTab('upcoming')}
-            className={`px-5 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+            className={`px-5 py-2.5 text-xs font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
               activeTab === 'upcoming'
-                ? 'border-purple-500 text-purple-400 light:text-purple-600'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400 font-semibold'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
-            <Clock className="w-3.5 h-3.5 text-purple-400" />
+            <Clock className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
             Phase 2 Upcoming ({upcomingCount})
           </button>
         </div>
@@ -130,10 +130,10 @@ export const BackendFeatureRoadmapModal = ({ isOpen, onClose }) => {
             return (
               <div
                 key={feat.id}
-                className={`p-4 rounded-2xl glass-panel border transition-all duration-200 ${
+                className={`p-4 rounded-xl border transition-colors duration-150 ${
                   isOnline
-                    ? 'border-emerald-500/20 hover:border-emerald-500/40 bg-slate-900/40'
-                    : 'border-purple-500/20 hover:border-purple-500/40 bg-purple-950/10'
+                    ? 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900/60'
+                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">

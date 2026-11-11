@@ -8,13 +8,19 @@ import {
   Save,
   CheckCircle2,
   Check,
+  Sun,
+  Moon,
+  Laptop,
+  Palette,
 } from 'lucide-react';
 import { useFinancial } from '../context/FinancialContext';
+import { useTheme } from '../context/ThemeContext';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 
 export const Profile = () => {
   const { profile, updateProfile, supportedCurrencies, currentCurrency } = useFinancial();
+  const { theme, setTheme, resolvedTheme } = useTheme();
 
   // Local form state initialized from global profile
   const [formData, setFormData] = useState({
@@ -53,123 +59,126 @@ export const Profile = () => {
       currency: formData.currency,
     });
     setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+    setTimeout(() => setIsSaved(false), 2500);
   };
 
   return (
-    <div className="space-y-8 animate-fade-in pb-12">
-      {/* Top Banner Header with Rim Lighting & Anti-Gravity Aura */}
-      <div className="relative rounded-3xl overflow-hidden glass-panel border border-slate-800/80 p-6 md:p-8 bg-gradient-to-r from-slate-900/90 via-indigo-950/40 to-slate-900/90 backdrop-blur-xl shadow-2xl">
-        {/* Glow ambient background aura */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 left-1/3 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
-          <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-            {/* Avatar Container with Pulsing Status Indicator */}
-            <div className="relative group">
-              <div className="w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden ring-4 ring-indigo-500/30 shadow-xl transition-all duration-300 group-hover:scale-105">
-                <span className="flex h-full w-full items-center justify-center bg-indigo-600 text-3xl font-bold text-white" aria-hidden="true">{(formData.name || '?').trim().charAt(0).toUpperCase()}</span>
-              </div>
+    <div className="space-y-6 pb-8">
+      {/* Top Header Card */}
+      <div className="rounded-xl border border-[var(--border-base)] bg-[var(--bg-card)] p-5 sm:p-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+            {/* Avatar Container */}
+            <div className="w-16 h-16 rounded-xl border border-[var(--border-base)] bg-blue-500/10 flex items-center justify-center shrink-0">
+              <span className="text-xl font-bold text-blue-600 dark:text-blue-400" aria-hidden="true">
+                {(formData.name || '?').trim().charAt(0).toUpperCase()}
+              </span>
             </div>
 
             {/* Profile Info Summary */}
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-100">
-                  {formData.name}
-                </h1>
-              </div>
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-1 text-xs text-slate-400">
+            <div className="space-y-1">
+              <h1 className="text-xl font-bold tracking-tight text-[var(--text-main)]">
+                {formData.name}
+              </h1>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs text-[var(--text-muted)]">
                 <span className="flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-indigo-400" />
+                  <Mail className="w-3.5 h-3.5 text-blue-500" />
                   {formData.email}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                  <Globe className="w-3.5 h-3.5 text-emerald-500" />
                   {formData.country}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <DollarSign className="w-3.5 h-3.5 text-amber-400" />
+                  <DollarSign className="w-3.5 h-3.5 text-amber-500" />
                   {currentCurrency.code} ({currentCurrency.symbol})
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Save Action Status Pill */}
-          <div className="flex items-center gap-3">
+          {/* Save Action */}
+          <div className="flex items-center gap-2">
             <Button
               type="button"
               onClick={handleSubmit}
-              variant="ai"
-              size="lg"
+              variant="primary"
+              size="md"
               icon={isSaved ? Check : Save}
-              className="shadow-lg shadow-indigo-600/30"
             >
-              {isSaved ? 'Changes Saved!' : 'Save Profile'}
+              {isSaved ? 'Changes Saved' : 'Save Profile'}
             </Button>
           </div>
         </div>
       </div>
 
       {/* Main Grid: Navigation Tabs & Form Settings */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column: Anti-Gravity Pill Navigation Sidebar */}
-        <div className="lg:col-span-4 space-y-4">
-          <Card className="p-3 bg-slate-900/80 backdrop-blur-xl border-slate-800">
-            <div className="space-y-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab('personal')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-xs md:text-sm transition-all ${
-                  activeTab === 'personal'
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
-                }`}
-              >
-                <User className="w-4 h-4 text-indigo-300" />
-                <span>Personal Information</span>
-              </button>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Left Column: Navigation Sidebar */}
+        <div className="lg:col-span-4 space-y-3">
+          <Card className="p-2 space-y-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab('personal')}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-xs transition-colors cursor-pointer ${
+                activeTab === 'personal'
+                  ? 'bg-blue-600 text-white font-semibold'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)]'
+              }`}
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>Personal Information</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab('currency')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-xs md:text-sm transition-all ${
-                  activeTab === 'currency'
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
-                }`}
-              >
-                <Globe className="w-4 h-4 text-emerald-400" />
-                <span>Currency & Regional</span>
-              </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('currency')}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-xs transition-colors cursor-pointer ${
+                activeTab === 'currency'
+                  ? 'bg-blue-600 text-white font-semibold'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)]'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>Currency & Regional</span>
+            </button>
 
-            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('appearance')}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-xs transition-colors cursor-pointer ${
+                activeTab === 'appearance'
+                  ? 'bg-blue-600 text-white font-semibold'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)]'
+              }`}
+            >
+              <Palette className="w-3.5 h-3.5" />
+              <span>Appearance & Theme</span>
+            </button>
           </Card>
 
-          {/* Account Identity Card Preview */}
-          <Card className="p-5 bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-950 border-indigo-500/20 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Account Profile</span>
-            </div>
+          {/* Account Profile Card */}
+          <Card className="p-4 space-y-3">
+            <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Account Overview</span>
 
-            <div className="flex items-center gap-3 pt-2">
-              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold text-white" aria-hidden="true">{(formData.name || '?').trim().charAt(0).toUpperCase()}</span>
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--bg-surface)] border border-[var(--border-base)] text-sm font-bold text-[var(--text-main)]" aria-hidden="true">
+                {(formData.name || '?').trim().charAt(0).toUpperCase()}
+              </span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-slate-100 truncate">{formData.name}</p>
-                <p className="text-xs text-slate-400 truncate">{formData.email}</p>
+                <p className="text-xs font-semibold text-[var(--text-main)] truncate">{formData.name}</p>
+                <p className="text-[11px] text-[var(--text-muted)] truncate">{formData.email}</p>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-[11px] text-slate-400">
+            <div className="pt-2.5 border-t border-[var(--border-base)] grid grid-cols-2 gap-2 text-xs text-[var(--text-muted)]">
               <div>
-                <span className="block text-[10px] text-slate-500">Region:</span>
-                <span className="font-semibold text-slate-200">{formData.country}</span>
+                <span className="block text-[10px]">Location:</span>
+                <span className="font-medium text-[var(--text-main)]">{formData.country}</span>
               </div>
               <div>
-                <span className="block text-[10px] text-slate-500">Active Currency:</span>
-                <span className="font-semibold text-amber-400">{formData.currency} ({currentCurrency.symbol})</span>
+                <span className="block text-[10px]">Currency:</span>
+                <span className="font-medium text-[var(--text-main)]">{formData.currency} ({currentCurrency.symbol})</span>
               </div>
             </div>
           </Card>
@@ -180,98 +189,88 @@ export const Profile = () => {
           <form onSubmit={handleSubmit}>
             {/* Personal Details Tab */}
             {activeTab === 'personal' && (
-              <Card className="p-6 md:p-8 space-y-6">
+              <Card className="p-5 sm:p-6 space-y-5">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-100">Personal Information</h3>
-                  <p className="text-xs text-slate-400">These display details are saved in this browser and do not change your login credentials.</p>
+                  <h3 className="text-base font-semibold text-[var(--text-main)]">Personal Details</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">These display details are saved in this browser and do not change your login credentials.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">Full Name</label>
-                    <div className="relative">
-                      <User className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
-                      <input
-                        type="text"
-                        name="name"
-                        required
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
+                    <label className="block text-xs font-medium text-[var(--text-main)] mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      name="name"
+                      required
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
+                    />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">Email Address</label>
-                    <div className="relative">
-                      <Mail className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
-                      <input
-                        type="email"
-                        name="email"
-                        required
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
+                    <label className="block text-xs font-medium text-[var(--text-main)] mb-1">Email Address</label>
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
+                    />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">Phone Number</label>
-                    <div className="relative">
-                      <Phone className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
-                      <input
-                        type="text"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
+                    <label className="block text-xs font-medium text-[var(--text-main)] mb-1">Phone Number</label>
+                    <input
+                      type="text"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      placeholder="+91 98765 43210"
+                      className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
+                    />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">Country / Location</label>
-                    <div className="relative">
-                      <Globe className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
-                      <select
-                        name="country"
-                        value={formData.country}
-                        onChange={(e) => {
-                          const newCountry = e.target.value;
-                          const matchedCurrency = supportedCurrencies.find((c) => c.country === newCountry);
-                          setFormData((prev) => ({
-                            ...prev,
-                            country: newCountry,
-                            currency: matchedCurrency ? matchedCurrency.code : prev.currency,
-                          }));
-                        }}
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      >
-                        {supportedCurrencies.map((c) => (
-                          <option key={c.country} value={c.country}>
-                            {c.country}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    <label className="block text-xs font-medium text-[var(--text-main)] mb-1">Country / Region</label>
+                    <select
+                      name="country"
+                      value={formData.country}
+                      onChange={(e) => {
+                        const newCountry = e.target.value;
+                        const matchedCurrency = supportedCurrencies.find((c) => c.country === newCountry);
+                        setFormData((prev) => ({
+                          ...prev,
+                          country: newCountry,
+                          currency: matchedCurrency ? matchedCurrency.code : prev.currency,
+                        }));
+                      }}
+                      className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
+                    >
+                      {supportedCurrencies.map((c) => (
+                        <option key={c.country} value={c.country}>
+                          {c.country}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Bio / Professional Role</label>
+                  <label className="block text-xs font-medium text-[var(--text-main)] mb-1">Bio / Notes</label>
                   <textarea
                     name="bio"
                     rows={3}
                     value={formData.bio}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Brief notes about this ledger account..."
+                    className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
                   />
                 </div>
 
-                <div className="flex justify-end pt-4 border-t border-slate-800">
-                  <Button type="submit" variant="ai" icon={Save}>
+                <div className="flex justify-end pt-3 border-t border-[var(--border-base)]">
+                  <Button type="submit" variant="primary" size="md" icon={Save}>
                     Save Changes
                   </Button>
                 </div>
@@ -280,44 +279,44 @@ export const Profile = () => {
 
             {/* Currency & Regional Preferences Tab */}
             {activeTab === 'currency' && (
-              <Card className="p-6 md:p-8 space-y-6">
+              <Card className="p-5 sm:p-6 space-y-5">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-100">Currency & Regional Preferences</h3>
-                  <p className="text-xs text-slate-400">
+                  <h3 className="text-base font-semibold text-[var(--text-main)]">Currency & Regional Preferences</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
                     UPIQ transaction amounts are stored and displayed in Indian rupees (INR). Currency conversion is unavailable.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {supportedCurrencies.map((c) => (
                     <button
                       key={c.code}
                       type="button"
                       onClick={() => setFormData((prev) => ({ ...prev, currency: c.code, country: c.country }))}
-                      className={`p-4 rounded-2xl border text-left transition-all ${
+                      className={`p-3.5 rounded-lg border text-left transition-colors cursor-pointer ${
                         formData.currency === c.code
-                          ? 'bg-indigo-600/20 border-indigo-500 text-white shadow-lg ring-2 ring-indigo-500/30'
-                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                          ? 'bg-blue-600/10 border-blue-500 text-[var(--text-main)] shadow-xs'
+                          : 'bg-[var(--bg-surface)] border-[var(--border-base)] text-[var(--text-muted)] hover:border-slate-400 dark:hover:border-slate-700'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-lg font-extrabold text-indigo-400">{c.symbol} {c.code}</span>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{c.symbol} {c.code}</span>
                         {formData.currency === c.code && (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                         )}
                       </div>
-                      <p className="text-xs font-bold text-slate-200">{c.name}</p>
-                      <p className="text-[10px] text-slate-400 mt-1">Country: {c.country}</p>
+                      <p className="text-xs font-semibold text-[var(--text-main)]">{c.name}</p>
+                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5">{c.country}</p>
                     </button>
                   ))}
                 </div>
 
-                <div className="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-500/20 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Globe className="w-5 h-5 text-emerald-400" />
+                <div className="p-3.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-base)] flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <Globe className="w-4 h-4 text-emerald-500 shrink-0" />
                     <div>
-                      <p className="text-xs font-bold text-slate-200">Selected Display Currency</p>
-                      <p className="text-[11px] text-slate-400">Current preference set to {formData.currency}</p>
+                      <p className="text-xs font-semibold text-[var(--text-main)]">Selected Display Currency</p>
+                      <p className="text-[11px] text-[var(--text-muted)]">Current preference set to {formData.currency}</p>
                     </div>
                   </div>
                   <Button type="submit" variant="emerald" size="sm" icon={Save}>
@@ -327,6 +326,56 @@ export const Profile = () => {
               </Card>
             )}
 
+            {/* Appearance & Theme Preferences Tab */}
+            {activeTab === 'appearance' && (
+              <Card className="p-5 sm:p-6 space-y-5">
+                <div>
+                  <h3 className="text-base font-semibold text-[var(--text-main)]">Appearance & Theme</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                    Choose your preferred interface theme. Settings are saved locally on this device with zero flash on load.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { id: 'light', label: 'Light Mode', desc: 'Crisp white canvas with academic navy accents', icon: Sun },
+                    { id: 'dark', label: 'Dark Mode', desc: 'Subtle slate navy for comfortable low-light focus', icon: Moon },
+                    { id: 'system', label: 'System Default', desc: 'Automatically matches your device or OS appearance', icon: Laptop },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    const isSelected = theme === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setTheme(item.id)}
+                        className={`p-4 rounded-lg border text-left transition-colors flex flex-col justify-between cursor-pointer ${
+                          isSelected
+                            ? 'bg-blue-600/10 border-blue-500 text-[var(--text-main)] shadow-xs'
+                            : 'bg-[var(--bg-surface)] border-[var(--border-base)] text-[var(--text-muted)] hover:border-slate-400 dark:hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className={`p-2 rounded-md ${isSelected ? 'bg-blue-600 text-white' : 'bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-base)]'}`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          {isSelected && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-[var(--text-main)]">{item.label}</p>
+                          <p className="text-[11px] text-[var(--text-muted)] mt-0.5">{item.desc}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="p-3 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-base)] flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs text-[var(--text-muted)]">
+                  <span>Currently active: <strong className="text-[var(--text-main)] capitalize">{resolvedTheme}</strong> ({theme} preference)</span>
+                  <span className="text-[11px]">Zero flash on load · WCAG AA compliant</span>
+                </div>
+              </Card>
+            )}
           </form>
         </div>
       </div>

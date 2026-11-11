@@ -54,21 +54,21 @@ const KPIStrip = ({ transactions }) => {
         return (
           <div
             key={index}
-            className="relative overflow-hidden bg-[var(--bg-card)] rounded-2xl shadow-premium border border-[var(--border-base)] p-5 sm:p-6 hover:shadow-premium-hover transition-all duration-300 group"
+            className="relative overflow-hidden bg-[var(--bg-card)] rounded-xl shadow-sm border border-[var(--border-base)] p-5 hover:border-[var(--border-hover)] transition-colors duration-150"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className="p-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-base)] text-primary-600 dark:text-primary-400">
-                <Icon size={20} />
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-2 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-base)] text-blue-600 dark:text-blue-400">
+                <Icon size={18} />
               </div>
               {trend && (
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-[var(--bg-surface)] border border-[var(--border-base)]">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[var(--bg-surface)] border border-[var(--border-base)]">
                   {trend.direction === 'down' ? (
                     <TrendingDown size={12} className="text-emerald-500" />
                   ) : trend.direction === 'up' ? (
                     <TrendingUp size={12} className="text-rose-500" />
                   ) : null}
                   <span className={clsx(
-                    "text-[10px] font-bold uppercase tracking-wider",
+                    "text-[10px] font-semibold uppercase tracking-wider",
                     trend.direction === 'down' ? "text-emerald-500" : trend.direction === 'up' ? "text-rose-500" : "text-[var(--text-muted)]"
                   )}>
                     {trend.change ? `${trend.change.toFixed(0)}%` : "stable"}
@@ -78,10 +78,10 @@ const KPIStrip = ({ transactions }) => {
             </div>
 
             <div>
-              <p className="text-[var(--text-muted)] text-sm font-medium opacity-80">
+              <p className="text-[var(--text-muted)] text-xs font-medium">
                 {kpi.label}
               </p>
-              <h2 className="text-2xl sm:text-3xl font-black mt-1 text-[var(--text-main)] tracking-tight break-words">
+              <h2 className="text-2xl font-bold mt-1 text-[var(--text-main)] tracking-tight tabular-nums break-words">
                 {kpi.value}
               </h2>
               <p className="mt-2 text-xs text-[var(--text-muted)]">{kpi.supporting}</p>

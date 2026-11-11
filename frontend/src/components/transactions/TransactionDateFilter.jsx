@@ -40,7 +40,7 @@ export const TransactionDateFilter = ({ dateRange, setDateRange }) => {
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="relative ml-auto mt-2 w-72 max-w-full rounded-xl border border-slate-700 bg-slate-900 p-3 shadow-xl light:border-slate-200 light:bg-white">
+        <div className="absolute right-0 z-20 mt-1.5 w-72 max-w-full rounded-xl border border-slate-700 bg-slate-900 p-3 shadow-xl light:border-slate-200 light:bg-white">
           <p className="px-2 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Quick filters</p>
           <div className="grid grid-cols-2 gap-1">
             {presets.map(([value, label]) => (

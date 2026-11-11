@@ -35,37 +35,29 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--bg-main)] p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)] text-[var(--text-primary)] p-4 relative transition-colors">
       {/* Brand Header */}
-      <div className="absolute top-6 left-6 sm:top-8 sm:left-8 flex items-center gap-3 animate-fade-in">
-        <img src={logo} alt="UPIQ" className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl object-cover" />
+      <div className="absolute top-6 left-6 sm:top-8 sm:left-8 flex items-center gap-2.5">
+        <img src={logo} alt="UPIQ" className="w-8 h-8 rounded-lg object-cover border border-[var(--border-base)]" />
         <div className="flex flex-col">
-          <span className="text-base sm:text-lg font-bold text-[var(--text-main)] leading-none">UPIQ</span>
-          <span className="hidden sm:inline text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)] font-bold">Finance, Without the Friction</span>
+          <span className="text-sm font-bold text-[var(--text-main)] leading-none">UPIQ</span>
+          <span className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Finance Ledger</span>
         </div>
       </div>
 
-      {/* Decorative Background Elements */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500/10 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-500/10 blur-[120px] rounded-full" />
-      </div>
-
-      <div className="w-full max-w-md animate-fade-in">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-600 rounded-2xl shadow-premium group hover:scale-110 transition-transform duration-500">
-              <Wallet className="text-white" size={32} />
-            </div>
+      <div className="w-full max-w-sm my-8">
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl border border-blue-500/20 mb-3">
+            <Wallet size={24} />
           </div>
-          <h1 className="text-3xl font-bold text-[var(--text-main)] tracking-tight">Create Account</h1>
-          <p className="text-[var(--text-muted)] mt-2">Start tracking your wealth with UPIQ</p>
+          <h1 className="text-2xl font-bold text-[var(--text-main)] tracking-tight">Create your account</h1>
+          <p className="text-xs text-[var(--text-muted)] mt-1">Start tracking transactions with UPIQ</p>
         </div>
 
-        <div className="bg-[var(--bg-card)] p-8 rounded-3xl shadow-premium border border-[var(--border-base)]">
-          <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="bg-[var(--bg-card)] p-6 sm:p-7 rounded-xl shadow-xs border border-[var(--border-base)]">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2 ml-1">
+              <label className="block text-xs font-medium text-[var(--text-main)] mb-1">
                 Full Name
               </label>
               <input
@@ -75,12 +67,12 @@ const Register = () => {
                 placeholder="John Doe"
                 value={form.name}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm transition-all text-[var(--text-main)]"
+                className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-xs transition-colors text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2 ml-1">
+              <label className="block text-xs font-medium text-[var(--text-main)] mb-1">
                 Email Address
               </label>
               <input
@@ -89,12 +81,12 @@ const Register = () => {
                 placeholder="name@example.com"
                 value={form.email}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm transition-all text-[var(--text-main)]"
+                className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-xs transition-colors text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2 ml-1">
+              <label className="block text-xs font-medium text-[var(--text-main)] mb-1">
                 Password
               </label>
               <input
@@ -105,7 +97,7 @@ const Register = () => {
                 placeholder="At least 12 characters"
                 value={form.password}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm transition-all text-[var(--text-main)]"
+                className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-xs transition-colors text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
                 required
               />
             </div>
@@ -113,26 +105,26 @@ const Register = () => {
             <Button
               type="submit"
               loading={loading}
-              className="w-full py-3.5 text-base"
+              className="w-full py-2.5 text-xs font-medium"
             >
               Create Account
             </Button>
           </form>
 
           {error && (
-            <div role="alert" className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-600 text-xs font-medium text-center animate-shake">
+            <div role="alert" className="mt-4 p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-600 dark:text-rose-400 text-xs font-medium text-center">
               {error}
             </div>
           )}
         </div>
 
-        <p className="text-center mt-8 text-[var(--text-muted)]">
+        <p className="text-center mt-5 text-xs text-[var(--text-muted)]">
           Already have an account?{" "}
           <button
             onClick={() => navigateToLogin()}
-            className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline underline-offset-4"
+            className="text-blue-600 dark:text-blue-400 font-medium hover:underline cursor-pointer"
           >
-            Login here
+            Sign in here
           </button>
         </p>
       </div>

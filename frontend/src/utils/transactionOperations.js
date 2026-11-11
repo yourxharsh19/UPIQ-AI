@@ -7,6 +7,19 @@ export const submitTransactionForm = async ({ save, close }) => {
   return true;
 };
 
+export const buildTransactionUpdatePayload = (updatedFields = {}, existingDate) => {
+  const payload = {
+    amount: parseFloat(updatedFields.amount || 0),
+    type: updatedFields.type || 'expense',
+    category: updatedFields.category || 'Uncategorized',
+    description: updatedFields.title || updatedFields.merchant || 'Updated Transaction',
+    paymentMethod: updatedFields.mode || 'UPI',
+  };
+  const date = updatedFields.date || existingDate;
+  if (date) payload.date = date;
+  return payload;
+};
+
 export const persistTransactionChange = async ({ request, refreshTransactions, refreshDashboard, requireData = false }) => {
   const response = await request();
   if (response?.success === false || (requireData && (!response?.success || !response?.data))) {

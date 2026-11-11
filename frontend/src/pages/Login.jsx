@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Sparkles,
   ShieldCheck,
   ArrowRight,
   ArrowLeft,
   Lock,
+  User,
+  HelpCircle,
 } from 'lucide-react';
 import { useFinancial } from '../context/FinancialContext';
 
@@ -18,13 +19,11 @@ export const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Triggers the login flow with a brief animated delay so the spinner is visible.
-  // Resets isSubmitting in a finally block to ensure the card re-mounts on failure.
   const triggerLoginProcess = async (emailVal, passVal, isDemoVal = false, nameVal = '', roleVal = 'user') => {
     setIsSubmitting(true);
     setErrorMessage('');
     try {
-      await new Promise((resolve) => setTimeout(resolve, 550));
+      await new Promise((resolve) => setTimeout(resolve, 400));
       const res = await login(emailVal, passVal, 'INR', nameVal, roleVal, isDemoVal);
       if (!res?.success) {
         setErrorMessage(res?.error || 'Login failed. Invalid credentials.');
@@ -52,58 +51,46 @@ export const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between p-4 md:p-8 relative overflow-hidden selection:bg-indigo-500 selection:text-white">
-      {/* Ambient background glowing radial blobs */}
-      <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/3 w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-[120px] pointer-events-none" />
-
+    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex flex-col justify-between p-4 sm:p-6 transition-colors">
       {/* Top Header Navigation */}
-      <motion.header
-        initial={{ y: -40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.4 }}
-        className="w-full max-w-4xl mx-auto flex items-center justify-between py-3.5 px-6 rounded-2xl glass-panel border border-slate-800/80 mb-6 z-20 backdrop-blur-xl"
-      >
-        <div className="flex items-center gap-3 cursor-pointer" onClick={navigateToHome}>
+      <header className="w-full max-w-xl mx-auto flex items-center justify-between py-3 mb-4">
+        <div className="flex items-center gap-2.5 cursor-pointer" onClick={navigateToHome}>
           <img
             src="/upiq-logo.jpg"
             alt="UPIQ AI Logo"
-            className="w-9 h-9 rounded-xl object-cover ring-2 ring-indigo-500/40 shadow-lg shadow-indigo-600/30 hover:scale-105 transition-transform"
+            className="w-7 h-7 rounded-lg object-cover border border-[var(--border-base)]"
           />
-          <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">
-            UPIQ AI<span className="text-indigo-400">.</span>
+          <span className="font-bold text-base tracking-tight text-[var(--text-main)]">
+            UPIQ
           </span>
         </div>
 
         <button
           onClick={navigateToHome}
-          className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
+          className="px-3 py-1.5 rounded-lg border border-[var(--border-base)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-surface)] text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4 text-indigo-400" />
-          <span>Back to Home Page</span>
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Home</span>
         </button>
-      </motion.header>
+      </header>
 
       {/* CENTERED LOGIN FORM CONTAINER */}
-      <div className="w-full max-w-md mx-auto z-10 flex-1 my-auto flex flex-col justify-center">
+      <div className="w-full max-w-md mx-auto my-auto py-6">
         <AnimatePresence mode="wait">
           {!isSubmitting && (
             <motion.div
               key="centered-login-card"
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -15 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="rounded-3xl glass-panel-glow border border-slate-800/80 p-6 md:p-8 space-y-5 bg-slate-900/90 backdrop-blur-2xl shadow-2xl relative overflow-hidden"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="rounded-xl border border-[var(--border-base)] p-6 sm:p-8 space-y-5 bg-[var(--bg-card)] shadow-xs"
             >
-              {/* Top Rim Lighting */}
-              <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
-
               {/* Special AI Assistant Redirect Notice */}
               {postLoginRedirect === 'ai-assistant' && (
-                <div className="p-3 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs flex items-center gap-2.5 animate-pulse">
-                  <Sparkles className="w-4 h-4 text-yellow-300 shrink-0" />
-                  <span>Sign in to launch your <strong>AI Assistant</strong> session directly!</span>
+                <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-500 text-xs flex items-center gap-2">
+                  <HelpCircle className="w-4 h-4 shrink-0" />
+                  <span>Sign in to launch your <strong>Financial Assistant</strong> session directly.</span>
                 </div>
               )}
 
@@ -112,31 +99,25 @@ export const Login = () => {
                   id="login-error"
                   role="alert"
                   aria-live="assertive"
-                  className="rounded-xl border border-rose-500/40 bg-rose-950/50 px-4 py-3 text-sm font-medium text-rose-200"
+                  className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3.5 py-2.5 text-xs font-medium text-rose-500 dark:text-rose-400"
                 >
                   {errorMessage}
                 </div>
               )}
 
-              {/* Form Title & Logo Header */}
-              <div className="text-center space-y-2">
-                <img
-                  src="/upiq-logo.jpg"
-                  alt="UPIQ AI Logo"
-                  className="w-14 h-14 rounded-2xl object-cover ring-2 ring-indigo-500/40 mx-auto shadow-xl shadow-indigo-600/40 hover:scale-105 transition-transform"
-                />
-                <h1 className="text-2xl font-bold text-slate-100">Sign In to UPIQ AI</h1>
-                <p className="text-xs text-slate-400">Sign in to your UPIQ account. Financial amounts are shown in INR.</p>
+              {/* Form Title */}
+              <div className="text-center space-y-1">
+                <h1 className="text-xl font-bold tracking-tight text-[var(--text-main)]">Sign in to your account</h1>
+                <p className="text-xs text-[var(--text-muted)]">Personal financial ledger for your accounts</p>
               </div>
 
               {/* DIRECT GOOGLE / GMAIL LOGIN BUTTON */}
               <button
                 type="button"
                 disabled
-                className="w-full py-3 px-4 rounded-xl border border-slate-800 bg-slate-950/50 text-xs font-semibold text-slate-500 flex items-center justify-center gap-3 shadow-md cursor-not-allowed opacity-60"
-                title="Google sign-in is currently unavailable"
+                className="w-full py-2.5 px-3 rounded-lg border border-[var(--border-base)] bg-[var(--bg-surface)] text-xs font-medium text-[var(--text-muted)] flex items-center justify-center gap-2.5 cursor-not-allowed opacity-60"
+                title="Google sign-in is coming soon"
               >
-                {/* Official Google Logo SVG */}
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path
                     fill="#4285F4"
@@ -155,104 +136,117 @@ export const Login = () => {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
                 </svg>
-                <span>Continue with Google (Unavailable)</span>
+                <span>Continue with Google (Coming soon)</span>
               </button>
 
               {/* DIVIDER */}
-              <div className="relative flex items-center justify-center my-1">
-                <div className="w-full border-t border-slate-800" />
-                <span className="bg-slate-900 px-3 text-[10px] font-semibold text-slate-500 tracking-wider uppercase shrink-0">
-                  or continue with email / upi
+              <div className="relative flex items-center justify-center my-2">
+                <div className="w-full border-t border-[var(--border-base)]" />
+                <span className="bg-[var(--bg-card)] px-3 text-[10px] font-medium text-[var(--text-muted)] tracking-wider uppercase shrink-0">
+                  or email sign in
                 </span>
               </div>
 
               {/* FORM FIELDS */}
               <form onSubmit={handleSubmit} className="space-y-3.5">
-                {/* Email / UPI ID */}
+                {/* Email Address */}
                 <div>
-                    <label htmlFor="vpa-field" className="block text-xs font-semibold text-slate-300 mb-1">
-                      Email Address
+                  <label htmlFor="vpa-field" className="block text-xs font-medium text-[var(--text-main)] mb-1">
+                    Email Address
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-2.5 text-xs text-slate-500 font-mono">@</span>
-                    <input
-                      id="vpa-field"
-                      type="email"
-                      required
-                      value={vpa}
-                      onChange={(e) => setVpa(e.target.value)}
-                      className="w-full pl-8 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder="name@example.com"
-                    />
-                  </div>
+                  <input
+                    id="vpa-field"
+                    type="email"
+                    required
+                    value={vpa}
+                    onChange={(e) => setVpa(e.target.value)}
+                    className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors"
+                    placeholder="name@example.com"
+                  />
                 </div>
 
                 {/* Password */}
                 <div>
-                  <label htmlFor="password-field" className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
-                  <div className="relative">
-                    <input id="password-field" type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-4 pr-12 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-[11px] font-semibold text-slate-400 hover:text-slate-200">{showPassword ? 'Hide' : 'Show'}</button>
+                  <div className="flex items-center justify-between mb-1">
+                    <label htmlFor="password-field" className="block text-xs font-medium text-[var(--text-main)]">
+                      Password
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
+                    >
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
                   </div>
+                  <input
+                    id="password-field"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors"
+                    placeholder="••••••••"
+                  />
                 </div>
 
                 {/* Submit Login Button */}
-                <motion.button
+                <button
                   type="submit"
-                  whileHover={{ scale: 1.015 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-xs shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center gap-2">
                       <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                      Launching UPIQ AI...
+                      Signing in...
                     </span>
                   ) : (
                     <>
                       <span>Sign in</span>
-                      <ArrowRight className="w-4 h-4" />
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </>
                   )}
-                </motion.button>
+                </button>
 
                 {/* 1-Click Demo Logins */}
-                <div className="grid grid-cols-2 gap-2.5 pt-1">
-                  <motion.button
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
                     type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
                     onClick={handleUserDemo}
-                    className="py-2.5 px-3 rounded-xl border border-indigo-500/30 bg-indigo-600/10 hover:bg-indigo-600/20 text-xs font-semibold text-indigo-300 transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    className="py-2 px-2.5 rounded-lg border border-[var(--border-base)] bg-[var(--bg-surface)] hover:bg-[var(--bg-card)] text-xs font-medium text-[var(--text-main)] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     title="Login as Standard User"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                    <span>User Login</span>
-                  </motion.button>
+                    <User className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span>User Demo</span>
+                  </button>
 
-                  <motion.button
+                  <button
                     type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
                     onClick={handleAdminDemo}
-                    className="py-2.5 px-3 rounded-xl border border-purple-500/30 bg-purple-600/10 hover:bg-purple-600/20 text-xs font-semibold text-purple-300 transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    className="py-2 px-2.5 rounded-lg border border-[var(--border-base)] bg-[var(--bg-surface)] hover:bg-[var(--bg-card)] text-xs font-medium text-[var(--text-main)] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     title="Login as System Admin"
                   >
-                    <ShieldCheck className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                    <span>Admin Login</span>
-                  </motion.button>
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>Admin Demo</span>
+                  </button>
                 </div>
               </form>
 
-              <p className="text-center text-xs text-slate-400">
-                New to UPIQ? <button type="button" onClick={navigateToRegister} className="font-semibold text-indigo-300 hover:text-indigo-200">Create an account</button>
+              <p className="text-center text-xs text-[var(--text-muted)] pt-1">
+                New to UPIQ?{' '}
+                <button
+                  type="button"
+                  onClick={navigateToRegister}
+                  className="font-medium text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+                >
+                  Create an account
+                </button>
               </p>
 
               {/* Bottom Security Footer */}
-              <div className="pt-2 border-t border-slate-800/80 text-center flex items-center justify-center gap-4 text-[10px] text-slate-500">
-                <span className="flex items-center gap-1">
-                  <Lock className="w-3 h-3 text-slate-500" /> Google OAuth (Planned)
-                </span>
+              <div className="pt-2 border-t border-[var(--border-base)] text-center flex items-center justify-center gap-1 text-[11px] text-[var(--text-muted)]">
+                <Lock className="w-3 h-3 text-[var(--text-muted)]" />
+                <span>Google OAuth (Coming soon)</span>
               </div>
             </motion.div>
           )}
@@ -260,12 +254,12 @@ export const Login = () => {
       </div>
 
       {/* Footer */}
-      <footer className="w-full max-w-4xl mx-auto pt-4 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2 z-10">
-        <button onClick={navigateToHome} className="hover:text-slate-300 transition-colors">
-          © 2026 UPIQ Financial OS — Return to Home Page
+      <footer className="w-full max-w-xl mx-auto pt-3 flex flex-col sm:flex-row items-center justify-between text-xs text-[var(--text-muted)] gap-2">
+        <button onClick={navigateToHome} className="hover:text-[var(--text-main)] transition-colors cursor-pointer">
+          © 2026 UPIQ — Return to Home Page
         </button>
-        <a href="mailto:support@upiq.ai" className="hover:text-indigo-400 transition-colors">
-          Need help? &rarr;
+        <a href="mailto:support@upiq.ai" className="hover:text-[var(--text-main)] transition-colors">
+          Support &rarr;
         </a>
       </footer>
     </div>

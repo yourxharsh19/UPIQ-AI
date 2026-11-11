@@ -140,4 +140,60 @@ describe('statement import mapping', () => {
       api.defaults.adapter = originalAdapter;
     }
   });
+
+  test('PDFService uploads CSV file successfully to /pdf/upload', async () => {
+    const originalAdapter = api.defaults.adapter;
+    let requestConfig;
+    api.defaults.adapter = async (config) => {
+      requestConfig = config;
+      return {
+        data: {
+          success: true,
+          data: {
+            totalTransactions: 2,
+            successfulParses: 2,
+            failedParses: 0,
+            transactions: [
+              { amount: 500, type: 'expense', description: 'Grocery Market', date: '2026-10-01' },
+              { amount: 12000, type: 'income', description: 'Salary Credit', date: '2026-10-02' },
+            ],
+          },
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      };
+    };
+
+    try {
+      const csvBlob = new Blob(['date,description,amount,type\n2026-10-01,Grocery Market,500,expense\n2026-10-02,Salary Credit,12000,income'], {
+        type: 'text/csv',
+      });
+      const response = await PDFService.upload(csvBlob);
+      assert.equal(requestConfig.url, '/pdf/upload');
+      assert.equal(response.success, true);
+      assert.equal(response.data.transactions.length, 2);
+      const normalized = normalizeParsedTransactions(response.data.transactions);
+      assert.equal(normalized.transactions.length, 2);
+      assert.equal(normalized.rejectedCount, 0);
+    } finally {
+      api.defaults.adapter = originalAdapter;
+    }
+  });
+
+  test('handles CSV with invalid rows by isolating valid rows and counting rejected entries', () => {
+    const mixedCsvParsed = [
+      { amount: 250, type: 'EXPENSE', description: 'Coffee', date: '2026-10-15' },
+      { amount: 0, type: 'EXPENSE', description: 'Invalid Zero', date: '2026-10-15' },
+      { amount: -50, type: 'EXPENSE', description: 'Invalid Negative', date: '2026-10-15' },
+      { amount: 1500, type: 'TRANSFER', description: 'Unknown Type', date: '2026-10-15' },
+    ];
+    const result = normalizeParsedTransactions(mixedCsvParsed);
+    assert.equal(result.transactions.length, 1);
+    assert.equal(result.rejectedCount, 3);
+    assert.equal(result.transactions[0].description, 'Coffee');
+    assert.equal(result.transactions[0].amount, 250);
+  });
 });
+
