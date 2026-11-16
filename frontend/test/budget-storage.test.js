@@ -22,7 +22,7 @@ const createMockStorage = (initial = {}) => {
 };
 
 test('loads a saved budget object', () => {
-  assert.deepEqual(readStoredBudgets(storageWith('{"Food":500}')), { Food: 500 });
+  assert.deepEqual(readStoredBudgets(storageWith('{"Food":500}')), { Food: '500.00' });
 });
 
 test('recovers from malformed or non-object budget storage', () => {
@@ -51,8 +51,8 @@ describe('user-scoped budget persistence', () => {
     writeStoredBudgets({ Food: 500, Travel: 200 }, storage, 'alice');
     writeStoredBudgets({ Rent: 1500, Utilities: 300 }, storage, 'bob');
 
-    assert.deepEqual(readStoredBudgets(storage, 'alice'), { Food: 500, Travel: 200 });
-    assert.deepEqual(readStoredBudgets(storage, 'bob'), { Rent: 1500, Utilities: 300 });
+    assert.deepEqual(readStoredBudgets(storage, 'alice'), { Food: '500.00', Travel: '200.00' });
+    assert.deepEqual(readStoredBudgets(storage, 'bob'), { Rent: '1500.00', Utilities: '300.00' });
     assert.deepEqual(readStoredBudgets(storage, 'charlie'), {});
   });
 
@@ -63,7 +63,7 @@ describe('user-scoped budget persistence', () => {
 
     // Alice reads for the first time with no user-scoped entry
     const aliceBudgets = readStoredBudgets(storage, 'alice');
-    assert.deepEqual(aliceBudgets, { Groceries: 450, Entertainment: 150 });
+    assert.deepEqual(aliceBudgets, { Groceries: '450.00', Entertainment: '150.00' });
 
     // Should have migrated into alice's scoped key
     assert.equal(
@@ -73,7 +73,7 @@ describe('user-scoped budget persistence', () => {
 
     // If Alice updates her budgets, legacy remains intact or untouched
     writeStoredBudgets({ Groceries: 600 }, storage, 'alice');
-    assert.deepEqual(readStoredBudgets(storage, 'alice'), { Groceries: 600 });
+    assert.deepEqual(readStoredBudgets(storage, 'alice'), { Groceries: '600.00' });
   });
 });
 
@@ -85,7 +85,7 @@ describe('budget export & import JSON handling', () => {
     assert.equal(parsed.appName, 'UPIQ AI');
     assert.equal(parsed.user, 'user_123');
     assert.equal(parsed.note, 'Budgets are saved on this device only');
-    assert.deepEqual(parsed.budgets, { Dining: 350, Fuel: 150 });
+    assert.deepEqual(parsed.budgets, { Dining: '350.00', Fuel: '150.00' });
   });
 
   test('parseImportedBudgetsJson parses structured export payload correctly', () => {
@@ -100,21 +100,21 @@ describe('budget export & import JSON handling', () => {
 
     const result = parseImportedBudgetsJson(exported);
     assert.deepEqual(result, {
-      Groceries: 5000,
-      Electricity: 1200.5,
+      Groceries: '5000.00',
+      Electricity: '1200.50',
     });
   });
 
   test('parseImportedBudgetsJson also accepts a raw category-to-amount map', () => {
     const flat = JSON.stringify({
-      Education: 2500,
-      Healthcare: 800,
+      Education: '2500.00',
+      Healthcare: '800.00',
     });
 
     const result = parseImportedBudgetsJson(flat);
     assert.deepEqual(result, {
-      Education: 2500,
-      Healthcare: 800,
+      Education: '2500.00',
+      Healthcare: '800.00',
     });
   });
 
@@ -140,7 +140,7 @@ describe('budget export & import JSON handling', () => {
 
     const result = parseImportedBudgetsJson(mixed);
     assert.deepEqual(result, {
-      ValidCategory: 150,
+      ValidCategory: '150.00',
     });
   });
 });

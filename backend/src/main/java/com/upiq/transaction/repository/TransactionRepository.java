@@ -8,18 +8,23 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
+    @Query("select count(t), sum(case when lower(t.type) = 'income' then t.amount else 0 end), "
+            + "sum(case when lower(t.type) = 'expense' then t.amount else 0 end) from Transaction t")
+    List<Object[]> getPlatformTotals();
+
     @Modifying
     @Query(value = "INSERT INTO transactions (user_id, amount, type, category, description, date, payment_method, import_identity) "
             + "VALUES (:userId, :amount, :type, :category, :description, :date, :paymentMethod, :importIdentity) "
             + "ON CONFLICT (user_id, import_identity) DO NOTHING", nativeQuery = true)
     int insertImportedIfAbsent(@Param("userId") Long userId,
-            @Param("amount") Double amount,
+            @Param("amount") BigDecimal amount,
             @Param("type") String type,
             @Param("category") String category,
             @Param("description") String description,

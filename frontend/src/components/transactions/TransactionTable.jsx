@@ -2,6 +2,7 @@ import { Edit2, Trash2 } from "lucide-react";
 import { getCategoryDisplayProps } from "../../utils/categoryUtils";
 import EmptyState from "../ui/EmptyState";
 import clsx from "clsx";
+import { formatInrAmount } from "../../utils/financialDisplay.js";
 
 const TransactionTable = ({ transactions, onEdit, onDelete }) => {
     if (!transactions || transactions.length === 0) {
@@ -60,7 +61,7 @@ const TransactionTable = ({ transactions, onEdit, onDelete }) => {
                                         "px-5 py-3 whitespace-nowrap font-semibold tabular-nums",
                                         t.type?.toLowerCase() === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--text-main)]'
                                     )}>
-                                        ₹{t.amount?.toLocaleString('en-IN')}
+                                        {formatInrAmount(t.amount)}
                                     </td>
                                     <td className="px-5 py-3 whitespace-nowrap text-right font-medium">
                                         <div className="flex justify-end space-x-1 opacity-70 group-hover:opacity-100 transition-opacity">
@@ -107,7 +108,7 @@ const TransactionTable = ({ transactions, onEdit, onDelete }) => {
                                     "text-base font-bold tabular-nums",
                                     isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                                 )}>
-                                    {isIncome ? '+' : '-'}₹{t.amount?.toLocaleString('en-IN')}
+                                    {isIncome ? '+' : '-'}{formatInrAmount(t.amount, 0)}
                                 </p>
                             </div>
 

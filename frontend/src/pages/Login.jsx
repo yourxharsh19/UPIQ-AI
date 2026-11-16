@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldCheck,
@@ -9,15 +9,41 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { useFinancial } from '../context/FinancialContext';
+import { AuthService } from '../services/auth.service';
 
 export const Login = () => {
-  const { login, navigateToHome, navigateToRegister, postLoginRedirect } = useFinancial();
+  const { login, loginWithGoogle, navigateToHome, navigateToRegister, postLoginRedirect } = useFinancial();
 
   const [vpa, setVpa] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    AuthService.getGoogleSignInStatus()
+      .then((response) => { if (active) setGoogleEnabled(response?.success === true && response?.data?.enabled === true); })
+      .catch(() => { if (active) setGoogleEnabled(false); });
+    return () => { active = false; };
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleSigningIn(true);
+    setErrorMessage('');
+    try {
+      const result = await loginWithGoogle();
+      if (!result?.success) {
+        setErrorMessage(result?.error || 'Google sign-in could not be completed.');
+        setIsGoogleSigningIn(false);
+      }
+    } catch {
+      setErrorMessage('Google sign-in could not be completed. Try email and password instead.');
+      setIsGoogleSigningIn(false);
+    }
+  };
 
   const triggerLoginProcess = async (emailVal, passVal, isDemoVal = false, nameVal = '', roleVal = 'user') => {
     setIsSubmitting(true);
@@ -39,6 +65,7 @@ export const Login = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (isGoogleSigningIn) return;
     triggerLoginProcess(vpa, password);
   };
 
@@ -114,9 +141,10 @@ export const Login = () => {
               {/* DIRECT GOOGLE / GMAIL LOGIN BUTTON */}
               <button
                 type="button"
-                disabled
-                className="w-full py-2.5 px-3 rounded-lg border border-[var(--border-base)] bg-[var(--bg-surface)] text-xs font-medium text-[var(--text-muted)] flex items-center justify-center gap-2.5 cursor-not-allowed opacity-60"
-                title="Google sign-in is coming soon"
+                onClick={handleGoogleSignIn}
+                disabled={!googleEnabled || isGoogleSigningIn || isSubmitting}
+                className="w-full py-2.5 px-3 rounded-lg border border-[var(--border-base)] bg-[var(--bg-surface)] text-xs font-medium text-[var(--text-main)] flex items-center justify-center gap-2.5 disabled:cursor-not-allowed disabled:opacity-60"
+                title={googleEnabled ? 'Continue securely with Google' : 'Google sign-in is not configured for this deployment'}
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path
@@ -136,7 +164,7 @@ export const Login = () => {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
                 </svg>
-                <span>Continue with Google (Coming soon)</span>
+                <span>{isGoogleSigningIn ? 'Waiting for Google…' : googleEnabled ? 'Continue with Google' : 'Google sign-in unavailable'}</span>
               </button>
 
               {/* DIVIDER */}
@@ -193,6 +221,7 @@ export const Login = () => {
                 {/* Submit Login Button */}
                 <button
                   type="submit"
+                  disabled={isGoogleSigningIn || isSubmitting}
                   className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-xs shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
                 >
                   {isSubmitting ? (
@@ -212,6 +241,7 @@ export const Login = () => {
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <button
                     type="button"
+                    disabled={isGoogleSigningIn || isSubmitting}
                     onClick={handleUserDemo}
                     className="py-2 px-2.5 rounded-lg border border-[var(--border-base)] bg-[var(--bg-surface)] hover:bg-[var(--bg-card)] text-xs font-medium text-[var(--text-main)] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     title="Login as Standard User"
@@ -222,6 +252,7 @@ export const Login = () => {
 
                   <button
                     type="button"
+                    disabled={isGoogleSigningIn || isSubmitting}
                     onClick={handleAdminDemo}
                     className="py-2 px-2.5 rounded-lg border border-[var(--border-base)] bg-[var(--bg-surface)] hover:bg-[var(--bg-card)] text-xs font-medium text-[var(--text-main)] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     title="Login as System Admin"
@@ -246,7 +277,7 @@ export const Login = () => {
               {/* Bottom Security Footer */}
               <div className="pt-2 border-t border-[var(--border-base)] text-center flex items-center justify-center gap-1 text-[11px] text-[var(--text-muted)]">
                 <Lock className="w-3 h-3 text-[var(--text-muted)]" />
-                <span>Google OAuth (Coming soon)</span>
+                <span>{googleEnabled ? 'Google OpenID Connect' : 'Google sign-in is not configured for this deployment'}</span>
               </div>
             </motion.div>
           )}

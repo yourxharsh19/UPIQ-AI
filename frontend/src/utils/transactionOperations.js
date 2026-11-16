@@ -9,7 +9,7 @@ export const submitTransactionForm = async ({ save, close }) => {
 
 export const buildTransactionUpdatePayload = (updatedFields = {}, existingDate) => {
   const payload = {
-    amount: parseFloat(updatedFields.amount || 0),
+    amount: String(updatedFields.amount ?? '0').trim(),
     type: updatedFields.type || 'expense',
     category: updatedFields.category || 'Uncategorized',
     description: updatedFields.title || updatedFields.merchant || 'Updated Transaction',

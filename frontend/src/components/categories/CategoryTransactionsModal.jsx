@@ -1,6 +1,8 @@
 import { X } from "lucide-react";
 import Button from "../ui/Button";
 import clsx from "clsx";
+import { formatInrAmount } from '../../utils/financialDisplay.js';
+import { sumMoneyString } from '../../utils/money.js';
 
 const CategoryTransactionsModal = ({ isOpen, onClose, category, transactions = [] }) => {
     if (!isOpen || !category) return null;
@@ -14,10 +16,7 @@ const CategoryTransactionsModal = ({ isOpen, onClose, category, transactions = [
         return transactionCategory === targetCategory;
     });
 
-    const totalAmount = categoryTransactions.reduce(
-        (sum, t) => sum + (Number(t.amount) || 0),
-        0
-    );
+    const totalAmount = sumMoneyString(categoryTransactions.map((t) => t.amount));
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
@@ -33,7 +32,7 @@ const CategoryTransactionsModal = ({ isOpen, onClose, category, transactions = [
                             </span>
                             <span className="w-1 h-1 rounded-full bg-[var(--border-base)]" />
                             <span className="text-xs font-semibold text-[var(--text-main)] tabular-nums">
-                                Total: ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                Total: {formatInrAmount(totalAmount)}
                             </span>
                         </div>
                     </div>
@@ -82,7 +81,7 @@ const CategoryTransactionsModal = ({ isOpen, onClose, category, transactions = [
                                                     "text-xs sm:text-sm font-bold tracking-tight tabular-nums",
                                                     isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                                                 )}>
-                                                    {isIncome ? '+' : '-'} ₹{Number(transaction.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    {isIncome ? '+' : '-'} {formatInrAmount(transaction.amount)}
                                                 </p>
                                                 <span className={clsx(
                                                     "inline-flex px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider rounded border mt-0.5",

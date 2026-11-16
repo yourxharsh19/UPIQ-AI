@@ -156,7 +156,7 @@ class ExperimentRunnerTest {
         ResearchProfileDefinition profile = ResearchProfileDefinition.builder().id("profile_01")
                 .username("synthetic-user").build();
         ResearchTransactionDefinition transaction = ResearchTransactionDefinition.builder().id("tx_" + id)
-                .profileId("profile_01").amount(25.0).type("expense").category("Food")
+                .profileId("profile_01").amount(new java.math.BigDecimal("25.00")).type("expense").category("Food")
                 .description("Groceries").build();
         FinancialContext verified = FinancialContext.builder().contextVersion("1.0").source(FinancialContext.SOURCE)
                 .verified(true).calculationType("CATEGORY_EXPENSE_TOTAL")

@@ -74,7 +74,7 @@ class SystemPromptAdapterTest {
         ResearchProfileDefinition profile = ResearchProfileDefinition.builder()
                 .id("profile_test").username("case-user").email("case@example.test").build();
         ResearchTransactionDefinition transaction = ResearchTransactionDefinition.builder()
-                .id("tx_test").profileId("profile_test").amount(12.50).type("expense")
+                .id("tx_test").profileId("profile_test").amount(new java.math.BigDecimal("12.50")).type("expense")
                 .category("Food").description("Groceries").paymentMethod("UPI")
                 .date(LocalDateTime.of(2026, 8, 3, 12, 0)).build();
         FinancialContext financialContext = FinancialContext.builder().contextVersion("1.0")

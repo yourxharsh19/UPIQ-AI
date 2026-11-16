@@ -1,16 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { getInitialAuthState } from '../utils/authUtils';
-import { activateDemoSession, applySessionExpiration, authenticateWithBackend, clearAuthSession, getAuthSessionMode } from '../utils/authFlow.js';
+import { activateDemoSession, applySessionExpiration, authenticateWithBackend, clearAuthSession, getAuthSessionMode, persistTokenResponse } from '../utils/authFlow.js';
 import { AuthService } from '../services/auth.service';
 import { TransactionService } from '../services/transaction.service';
 import { FinancialDashboardService } from '../services/financial-dashboard.service';
 import { formatInrAmount, mapCategorySpending, mapDashboardSummary, toFinancialNumber } from '../utils/financialDisplay';
+import { compareMoney, moneyRatioPercent } from '../utils/money.js';
 import { buildTransactionUpdatePayload, deleteAllAndRefresh, persistTransactionChange } from '../utils/transactionOperations';
 import { getMonthlyReport } from '../utils/monthlyReport.js';
 import { getTransactionCoverage } from '../utils/transactionCoverage.js';
 import { mapAuthenticatedProfile } from '../utils/authProfile.js';
 import { navigateToRegistration } from '../utils/registrationFlow.js';
 import { readStoredReports, createReportSnapshot, saveReportToHistory, deleteReportFromHistory } from '../utils/reportHistoryStorage.js';
+import { appendChatMessage, getChatMessages, getChatSessionKey } from '../utils/chatSession.js';
+import { waitForGooglePopupHandoff } from '../utils/googlePopup.js';
 import {
   userProfile as initialProfile,
   testStandardUser,
@@ -127,6 +130,21 @@ export const FinancialProvider = ({ children }) => {
   const [isFraudDrawerOpen, setIsFraudDrawerOpen] = useState(false);
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
   const [aiPromptQuery, setAiPromptQuery] = useState('');
+  const [chatConversations, setChatConversations] = useState({});
+  const authSessionMode = getAuthSessionMode();
+  const currentChatSessionKey = isAuthenticated && ['authenticated', 'demo'].includes(authSessionMode)
+    ? getChatSessionKey(profile, authSessionMode)
+    : null;
+  const chatSessionKeyRef = useRef(currentChatSessionKey);
+  chatSessionKeyRef.current = currentChatSessionKey;
+  const chatMessages = getChatMessages(chatConversations, currentChatSessionKey);
+  const appendCurrentChatMessage = useCallback((message) => {
+    const sessionKey = currentChatSessionKey;
+    if (!sessionKey) return;
+    setChatConversations((current) => appendChatMessage(
+      current, sessionKey, chatSessionKeyRef.current, message,
+    ));
+  }, [currentChatSessionKey]);
   const [toasts, setToasts] = useState([]);
 
   const openStatementModal = useCallback(() => setIsStatementModalOpen(true), []);
@@ -154,6 +172,8 @@ export const FinancialProvider = ({ children }) => {
   useEffect(() => {
     const handleSessionExpired = (event) => {
       profileHydrationStartedRef.current = false;
+      chatSessionKeyRef.current = null;
+      setChatConversations({});
       applySessionExpiration({
         storage: localStorage,
         handledRef: handlingExpiryRef,
@@ -204,7 +224,7 @@ export const FinancialProvider = ({ children }) => {
     return {
       id: tx.id || `tx-${Date.now()}`,
       title: tx.description || tx.category || 'Transaction',
-      amount: toFinancialNumber(tx.amount),
+      amount: String(tx.amount ?? '0'),
       type: tx.type || 'expense',
       category: tx.category || 'Uncategorized',
       mode: tx.paymentMethod || 'UPI',
@@ -311,8 +331,8 @@ export const FinancialProvider = ({ children }) => {
           totalBalance: report.netCashFlow,
           monthlyIncome: report.totalIncome,
           monthlyExpense: report.totalExpense,
-          savingsRate: report.totalIncome > 0
-            ? Math.round((report.netCashFlow / report.totalIncome) * 10000) / 100
+          savingsRate: compareMoney(report.totalIncome, '0') > 0
+            ? moneyRatioPercent(report.netCashFlow, report.totalIncome, 2)
             : 0,
           transactionCount: report.transactionCount,
         }));
@@ -443,13 +463,14 @@ export const FinancialProvider = ({ children }) => {
 
   // Sync state to localStorage whenever changed
   const updateCurrency = (code) => {
-    setSelectedCurrencyCode(code);
+    const inrCode = 'INR';
+    setSelectedCurrencyCode(inrCode);
     setProfile((prev) => {
-      const updated = { ...prev, currency: code };
+      const updated = { ...prev, currency: inrCode };
       try { localStorage.setItem('upiq_profile', JSON.stringify(updated)); } catch {}
       return updated;
     });
-    try { localStorage.setItem('upiq_currency', JSON.stringify(code)); } catch {}
+    try { localStorage.setItem('upiq_currency', JSON.stringify(inrCode)); } catch {}
   };
 
   // Active currency object
@@ -487,7 +508,7 @@ export const FinancialProvider = ({ children }) => {
   const login = async (email, password, currencyCode, userName, role, isDemo = false) => {
     const isAdmin = isDemo && ((email && email.toLowerCase().includes('admin')) || role === 'admin');
     const basePreset = isAdmin ? testAdminUser : testStandardUser;
-    const targetCurrency = currencyCode || selectedCurrencyCode || basePreset.currency || 'INR';
+    const targetCurrency = 'INR';
     setSelectedCurrencyCode(targetCurrency);
 
     const derivedName = isDemo && userName && userName.trim()
@@ -564,7 +585,43 @@ export const FinancialProvider = ({ children }) => {
   };
 
   const loginWithGoogle = async () => {
-    addToast('Google Sign-In Unavailable', 'Google OAuth is not implemented on the backend.', 'warning');
+    const apiBase = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8080/api';
+    const backendBase = apiBase.replace(/\/api\/?$/, '');
+    let code;
+    try {
+      code = await waitForGooglePopupHandoff({
+        windowObject: window,
+        authorizationUrl: new URL('/oauth2/authorization/google', backendBase).toString(),
+        expectedOrigin: new URL(backendBase).origin,
+      });
+      const response = await AuthService.exchangeGoogleCode(code);
+      const targetCurrency = 'INR';
+      const initialGoogleProfile = { ...initialProfile, email: '', role: 'user', currency: targetCurrency };
+      const result = persistTokenResponse({ response, profile: initialGoogleProfile, currency: targetCurrency, storage: localStorage });
+      if (!result.success) return result;
+
+      let authenticatedProfile = initialGoogleProfile;
+      try {
+        const profileResponse = await AuthService.getMe();
+        if (profileResponse?.success && profileResponse.data) {
+          authenticatedProfile = mapAuthenticatedProfile(profileResponse.data, initialGoogleProfile);
+        }
+      } catch {
+        // The JWT remains authoritative; never infer elevated privileges from Google claims or email.
+      }
+      try { localStorage.setItem('upiq_profile', JSON.stringify(authenticatedProfile)); } catch {}
+      handlingExpiryRef.current = false;
+      profileHydrationStartedRef.current = true;
+      setProfile(authenticatedProfile);
+      setIsAuthenticated(true);
+      setActiveTab(postLoginRedirect || 'dashboard');
+      setCurrentView('app');
+      setPostLoginRedirect('dashboard');
+      addToast('Welcome to UPIQ AI', `Logged in as ${authenticatedProfile.name}`, 'success');
+      return { success: true, mode: 'backend' };
+    } catch (error) {
+      return { success: false, error: error?.userFriendlyMessage || error?.message || 'Google sign-in could not be completed.' };
+    }
   };
 
   const logout = () => {
@@ -574,6 +631,8 @@ export const FinancialProvider = ({ children }) => {
     setActiveTab('dashboard');
     setCurrentView('home');
     clearAuthSession(localStorage, { clearProfile: true });
+    chatSessionKeyRef.current = null;
+    setChatConversations({});
     setProfile(initialProfile);
     addToast('Logged Out', 'You have been signed out of UPIQ AI session', 'info');
   };
@@ -594,7 +653,7 @@ export const FinancialProvider = ({ children }) => {
   // Transaction Operations (Connected to Backend)
   const addTransaction = async (newTx) => {
     const category = newTx.category || predictCategory(newTx.title);
-    const amt = parseFloat(newTx.amount);
+    const amt = String(newTx.amount ?? '').trim();
     const txPayload = {
       amount: amt,
       type: newTx.type || 'expense',
@@ -773,6 +832,8 @@ export const FinancialProvider = ({ children }) => {
         setIsFraudDrawerOpen,
         aiPromptQuery,
         setAiPromptQuery,
+        chatMessages,
+        appendChatMessage: appendCurrentChatMessage,
         triggerAiQuery,
         toasts,
         addToast,

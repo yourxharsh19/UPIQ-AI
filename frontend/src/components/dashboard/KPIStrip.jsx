@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Wallet, TrendingUp, TrendingDown, Percent } from "lucide-react";
 import { calculateBalance, calculateTotalIncome, calculateTotalExpenses, calculateSavingsRate, compareMonthOverMonth } from "../../utils/transactionUtils";
 import clsx from "clsx";
+import { formatInrAmount } from "../../utils/financialDisplay";
 
 const KPIStrip = ({ transactions }) => {
   const balance = useMemo(() => calculateBalance(transactions), [transactions]);
@@ -13,7 +14,7 @@ const KPIStrip = ({ transactions }) => {
   const kpis = [
     {
       label: "Balance",
-      value: `₹${balance.toLocaleString('en-IN')}`,
+      value: formatInrAmount(balance),
       supporting: "Income minus expenses",
       icon: Wallet,
       bgColor: "bg-gradient-to-br from-blue-500 to-blue-600",
@@ -21,7 +22,7 @@ const KPIStrip = ({ transactions }) => {
     },
     {
       label: "Income",
-      value: `₹${income.toLocaleString('en-IN')}`,
+      value: formatInrAmount(income),
       supporting: `${transactions.filter((item) => item.type?.toLowerCase() === 'income').length} recorded entries`,
       icon: TrendingUp,
       bgColor: "bg-gradient-to-br from-green-500 to-green-600",
@@ -29,7 +30,7 @@ const KPIStrip = ({ transactions }) => {
     },
     {
       label: "Expenses",
-      value: `₹${expenses.toLocaleString('en-IN')}`,
+      value: formatInrAmount(expenses),
       supporting: momComparison ? "Compared with previous month" : "Across the selected period",
       icon: TrendingDown,
       bgColor: "bg-gradient-to-br from-red-500 to-red-600",

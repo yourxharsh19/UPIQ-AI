@@ -7,7 +7,7 @@ import { PDFService } from '../src/services/pdf.service.js';
 describe('statement import mapping', () => {
   test('maps real parser fields without inventing defaults', () => {
     const result = normalizeParsedTransactions([{
-      amount: 125.5,
+      amount: '125.50',
       sourceRowIndex: 4,
       type: 'EXPENSE',
       description: 'Paid to Grocery Shop',
@@ -18,7 +18,7 @@ describe('statement import mapping', () => {
     assert.deepEqual(result.transactions[0], {
       sourceRowIndex: 4,
       id: 'statement-row-4',
-      amount: 125.5,
+      amount: '125.50',
       type: 'expense',
       category: null,
       description: 'Paid to Grocery Shop',
@@ -193,7 +193,7 @@ describe('statement import mapping', () => {
     assert.equal(result.transactions.length, 1);
     assert.equal(result.rejectedCount, 3);
     assert.equal(result.transactions[0].description, 'Coffee');
-    assert.equal(result.transactions[0].amount, 250);
+    assert.equal(result.transactions[0].amount, '250.00');
   });
 });
 

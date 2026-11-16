@@ -122,7 +122,7 @@ class FinancialContextPipelineTest {
         return Transaction.builder()
                 .id(id)
                 .userId(1L)
-                .amount(amount)
+                .amount(BigDecimal.valueOf(amount))
                 .type("expense")
                 .category("Food")
                 .description("row")

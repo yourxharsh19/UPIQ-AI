@@ -43,7 +43,7 @@ test('Task 6: Honest Labels for Limitations & Unavailable Features', async (t) =
     );
   });
 
-  await t.test('unavailable features (Google login, OCR, fraud, push, admin telemetry) are disabled or labeled "Coming soon"', () => {
+  await t.test('unavailable features remain labeled while implemented ledger alerts and admin aggregates are surfaced', () => {
     const loginContent = readFileSync(resolve(root, 'pages/Login.jsx'), 'utf8');
     const uploadModalContent = readFileSync(resolve(root, 'components/transactions/StatementUploadModal.jsx'), 'utf8');
     const uploadPdfContent = readFileSync(resolve(root, 'pages/UploadPDF.jsx'), 'utf8');
@@ -52,15 +52,17 @@ test('Task 6: Honest Labels for Limitations & Unavailable Features', async (t) =
     const bottomNavContent = readFileSync(resolve(root, 'components/layout/BottomNav.jsx'), 'utf8');
     const fraudDrawerContent = readFileSync(resolve(root, 'components/insights/FraudAlertDrawer.jsx'), 'utf8');
     const adminContent = readFileSync(resolve(root, 'pages/Admin.jsx'), 'utf8');
+    const appContent = readFileSync(resolve(root, 'App.jsx'), 'utf8');
+    const financialContextContent = readFileSync(resolve(root, 'context/FinancialContext.jsx'), 'utf8');
 
     // Google Login
     assert.ok(
-      loginContent.includes('Continue with Google (Coming soon)'),
-      'Google button should display "Continue with Google (Coming soon)"'
+      loginContent.includes("googleEnabled ? 'Continue with Google' : 'Google sign-in unavailable'"),
+      'Google button should reflect deployment configuration'
     );
     assert.ok(
-      loginContent.includes('disabled'),
-      'Google button should be disabled'
+      loginContent.includes('disabled={!googleEnabled || isGoogleSigningIn || isSubmitting}'),
+      'Google button should be disabled while unavailable or signing in'
     );
 
     // OCR / Scanned PDFs
@@ -87,20 +89,12 @@ test('Task 6: Honest Labels for Limitations & Unavailable Features', async (t) =
       'FraudAlertDrawer should show "Security and fraud monitoring — Coming soon"'
     );
 
-    // Push Notifications / Alerts
-    assert.ok(
-      headerContent.includes('Alerts: Coming soon'),
-      'Header bell indicator should show "Alerts: Coming soon"'
-    );
-
-    // Live Admin Telemetry
-    assert.ok(
-      adminContent.includes('Live admin telemetry — Coming soon'),
-      'Admin page should state Live admin telemetry — Coming soon'
-    );
-    assert.ok(
-      adminContent.includes('Badge variant="warning">Coming soon</Badge>'),
-      'Admin page should include a Coming soon badge'
-    );
+    assert.ok(headerContent.includes('NotificationService.getNotifications') || headerContent.includes('Open spending notifications'));
+    assert.ok(headerContent.includes('no push alerts'), 'Header should distinguish on-demand alerts from push notifications');
+    assert.ok(adminContent.includes('AdminDashboardService.getSummary'));
+    assert.ok(adminContent.includes('Platform-wide aggregate metrics'));
+    assert.ok(appContent.includes("profile?.role === 'admin' ? <Admin /> : <Dashboard />"), 'direct admin-tab rendering falls back for normal profiles');
+    assert.ok(sidebarContent.includes("profile?.role === 'admin' ? [{ id: 'admin'"), 'normal profiles do not receive admin navigation');
+    assert.ok(financialContextContent.includes("tab === 'admin' && profile?.role !== 'admin'"), 'tab selection independently blocks normal profiles');
   });
 });

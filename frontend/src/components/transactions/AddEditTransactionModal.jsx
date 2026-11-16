@@ -56,7 +56,7 @@ export const AddEditTransactionModal = ({ isOpen, onClose, transactionToEdit }) 
         save: () => transactionToEdit
           ? updateTransaction(transactionToEdit.id, {
             title,
-            amount: parseFloat(amount),
+            amount: String(amount).trim(),
             type,
             category,
             mode,
@@ -64,7 +64,7 @@ export const AddEditTransactionModal = ({ isOpen, onClose, transactionToEdit }) 
           })
           : addTransaction({
             title,
-            amount: parseFloat(amount),
+            amount: String(amount).trim(),
             type,
             category,
             mode,

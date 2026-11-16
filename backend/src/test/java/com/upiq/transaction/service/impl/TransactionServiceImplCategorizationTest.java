@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.slf4j.LoggerFactory;
 
@@ -123,7 +124,7 @@ class TransactionServiceImplCategorizationTest {
 
         try {
             transactionService.addTransaction(
-                    new CreateTransactionRequest(9876.54, "expense", "PrivateCategory", "Sensitive merchant", "UPI", null),
+                    new CreateTransactionRequest(new BigDecimal("9876.54"), "expense", "PrivateCategory", "Sensitive merchant", "UPI", null),
                     51L);
 
             String loggedMessages = appender.list.stream()
@@ -162,7 +163,7 @@ class TransactionServiceImplCategorizationTest {
         assertEquals(false, transactionService.addImportedTransaction(request, 5L, identity));
         assertEquals(true, transactionService.addImportedTransaction(request, 5L, identity));
         verify(repository, org.mockito.Mockito.times(2)).insertImportedIfAbsent(
-                org.mockito.ArgumentMatchers.eq(5L), org.mockito.ArgumentMatchers.eq(100d),
+                org.mockito.ArgumentMatchers.eq(5L), org.mockito.ArgumentMatchers.eq(new BigDecimal("100.00")),
                 org.mockito.ArgumentMatchers.eq("expense"), org.mockito.ArgumentMatchers.eq("Food"),
                 org.mockito.ArgumentMatchers.eq("Paid to local cafe"), any(),
                 org.mockito.ArgumentMatchers.eq("UPI"), org.mockito.ArgumentMatchers.eq(identity));
@@ -176,7 +177,7 @@ class TransactionServiceImplCategorizationTest {
 
     @Test
     void preservesExplicitManualCategoryOnUpdate() {
-        Transaction existing = Transaction.builder().id(20L).userId(5L).amount(90d)
+        Transaction existing = Transaction.builder().id(20L).userId(5L).amount(new BigDecimal("90.00"))
                 .type("expense").category("Uncategorized").description("Old description").build();
         when(repository.findById(20L)).thenReturn(Optional.of(existing));
         when(repository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -211,11 +212,11 @@ class TransactionServiceImplCategorizationTest {
     }
 
     private Transaction transactionOwnedBy(Long userId) {
-        return Transaction.builder().id(20L).userId(userId).amount(90d)
+        return Transaction.builder().id(20L).userId(userId).amount(new BigDecimal("90.00"))
                 .type("expense").category("Food").description("Private transaction").build();
     }
 
     private CreateTransactionRequest request(String category, String description) {
-        return new CreateTransactionRequest(100d, "expense", category, description, "UPI", null);
+        return new CreateTransactionRequest(new BigDecimal("100.00"), "expense", category, description, "UPI", null);
     }
 }

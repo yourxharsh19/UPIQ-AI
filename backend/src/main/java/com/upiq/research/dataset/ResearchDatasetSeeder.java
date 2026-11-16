@@ -87,7 +87,8 @@ public class ResearchDatasetSeeder implements ApplicationRunner {
                 .filter(tx -> profile.getId().equals(tx.getProfileId()))
                 .toList();
 
-        User user = userRepository.findByEmail(profile.getEmail())
+        String normalizedEmail = profile.getEmail().trim().toLowerCase(Locale.ROOT);
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
                 .orElseGet(() -> createResearchUser(profile));
 
         List<Transaction> existing = transactionRepository.findByUserIdOrderByDateDesc(user.getId());

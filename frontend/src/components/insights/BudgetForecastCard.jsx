@@ -3,13 +3,14 @@ import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
 import { useFinancial } from '../../context/FinancialContext';
+import { compareMoney, moneyRatioPercent } from '../../utils/money.js';
 
 export const BudgetForecastCard = ({ forecast }) => {
   const { formatCurrency } = useFinancial();
-  const percentSpent = Math.min(100, Math.round((forecast.spent / forecast.budget) * 100));
-  const percentPredicted = Math.min(100, Math.round((forecast.predicted / forecast.budget) * 100));
+  const percentSpent = Math.min(100, Math.round(moneyRatioPercent(forecast.spent, forecast.budget, 0)));
+  const percentPredicted = Math.min(100, Math.round(moneyRatioPercent(forecast.predicted, forecast.budget, 0)));
 
-  const isOver = forecast.spent > forecast.budget;
+  const isOver = compareMoney(forecast.spent, forecast.budget) > 0;
   const isNear = percentSpent >= 85 && !isOver;
 
   return (
@@ -55,7 +56,7 @@ export const BudgetForecastCard = ({ forecast }) => {
         </div>
         <div>
           <span className="text-[var(--text-muted)] block text-[11px]">Estimate (not AI prediction):</span>
-          <span className={`font-semibold text-xs sm:text-sm tabular-nums ${forecast.predicted > forecast.budget ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--text-main)]'}`}>
+          <span className={`font-semibold text-xs sm:text-sm tabular-nums ${compareMoney(forecast.predicted, forecast.budget) > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--text-main)]'}`}>
             {formatCurrency(forecast.predicted)}
           </span>
         </div>

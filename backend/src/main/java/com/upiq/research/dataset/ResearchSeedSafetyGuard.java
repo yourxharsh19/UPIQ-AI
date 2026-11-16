@@ -29,6 +29,13 @@ public class ResearchSeedSafetyGuard {
                     "Research seeding is disabled. Set research.seeding.enabled=true only with the research profile.");
         }
 
+        int passwordBytes = properties.getUserPassword() == null ? 0
+                : properties.getUserPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+        if (passwordBytes < 12 || passwordBytes > 72) {
+            throw new IllegalStateException(
+                    "Research seeding requires an explicit RESEARCH_SEEDING_USER_PASSWORD of 12 to 72 UTF-8 bytes");
+        }
+
         boolean researchProfileActive = Arrays.stream(environment.getActiveProfiles())
                 .anyMatch(profile -> "research".equalsIgnoreCase(profile));
         if (properties.isRequireResearchProfile() && !researchProfileActive) {
@@ -46,7 +53,7 @@ public class ResearchSeedSafetyGuard {
             }
         }
 
-        log.info("Research seed safety checks passed for datasource URL: {}", redact(jdbcUrl));
+        log.info("Research seed safety checks passed for the configured research datasource");
     }
 
     public String resolveJdbcUrl() {
@@ -55,12 +62,5 @@ public class ResearchSeedSafetyGuard {
         } catch (Exception e) {
             throw new IllegalStateException("Unable to inspect datasource URL before research seeding", e);
         }
-    }
-
-    private static String redact(String jdbcUrl) {
-        if (jdbcUrl == null) {
-            return "unknown";
-        }
-        return jdbcUrl.replaceAll("(?i)(password=)[^&;]+", "$1***");
     }
 }

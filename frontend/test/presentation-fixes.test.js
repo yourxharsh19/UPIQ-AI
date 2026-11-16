@@ -7,6 +7,7 @@ import { AuthService } from '../src/services/auth.service.js';
 import api from '../src/services/api.js';
 import { mapAuthenticatedProfile } from '../src/utils/authProfile.js';
 import { getMonthlyCashFlow, getTransactionCategorySpending } from '../src/utils/dashboardAnalytics.js';
+import { sumMoneyString } from '../src/utils/money.js';
 
 describe('active registration flow', () => {
   test('login navigation selects the rendered registration view and submits the backend field values', async () => {
@@ -86,10 +87,10 @@ test('dashboard chart data is ledger-derived, INR-compatible amounts, and expens
   ]);
   const spending = getTransactionCategorySpending(transactions);
   assert.deepEqual(spending.map(({ name, value, count }) => ({ name, value, count })), [
-    { name: 'Rent', value: 100.5, count: 1 },
-    { name: 'Uncategorized', value: 25, count: 1 },
+      { name: 'Rent', value: '100.50', count: 1 },
+      { name: 'Uncategorized', value: '25.00', count: 1 },
   ]);
-  assert.equal(spending.reduce((sum, item) => sum + item.value, 0), trend[1].expense);
+  assert.equal(sumMoneyString(spending.map((item) => item.value)), '125.50');
 });
 
 test('EmptyState and Reports files do not contain missing hooks or invalid router dependencies', () => {

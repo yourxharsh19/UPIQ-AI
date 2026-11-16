@@ -6,12 +6,12 @@ services:
       - "${DB_PORT:-5432}:5432"
     environment:
       POSTGRES_DB: ${DB_NAME:-upiq}
-      POSTGRES_USER: ${DB_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_USER: ${DB_USERNAME:?DB_USERNAME must be set in the root .env file}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in the root .env file}
     volumes:
       - upiq-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-upiq}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USERNAME:?DB_USERNAME must be set} -d ${DB_NAME:-upiq}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -31,10 +31,19 @@ services:
       - "${SERVER_PORT:-8080}:8080"
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-upiq}
-      DB_USERNAME: ${DB_USERNAME:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      JWT_SECRET: ${JWT_SECRET}
+      DB_USERNAME: ${DB_USERNAME:?DB_USERNAME must be set in the root .env file}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in the root .env file}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be supplied externally}
+      UPIQ_CORS_ALLOWED_ORIGINS: ${UPIQ_CORS_ALLOWED_ORIGINS:?UPIQ_CORS_ALLOWED_ORIGINS must contain explicit origins}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
+      UPIQ_GOOGLE_ENABLED: ${UPIQ_GOOGLE_ENABLED:-false}
+      UPIQ_GOOGLE_CLIENT_ID: ${UPIQ_GOOGLE_CLIENT_ID:-}
+      UPIQ_GOOGLE_CLIENT_SECRET: ${UPIQ_GOOGLE_CLIENT_SECRET:-}
+      UPIQ_FRONTEND_ORIGIN: ${UPIQ_FRONTEND_ORIGIN:-http://localhost:5173}
+      UPIQ_GOOGLE_REDIRECT_URI: ${UPIQ_GOOGLE_REDIRECT_URI:-http://localhost:8080/login/oauth2/code/google}
+      UPIQ_ADMIN_BOOTSTRAP_ENABLED: ${UPIQ_ADMIN_BOOTSTRAP_ENABLED:-false}
+      UPIQ_ADMIN_EMAIL: ${UPIQ_ADMIN_EMAIL:-}
+      UPIQ_ADMIN_PASSWORD: ${UPIQ_ADMIN_PASSWORD:-}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-}
       OLLAMA_TEMPERATURE: ${OLLAMA_TEMPERATURE:-0.0}

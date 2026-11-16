@@ -8,7 +8,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
@@ -21,8 +21,14 @@ spring:
 
 server:
   port: 8080
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
 
 jwt:
+  # Development fallback only. The prod profile requires an externally supplied secret.
   secret: ${JWT_SECRET:local_dev_secret_key_minimum_256_bits_for_upiq_2_0_local_development_only}
   expiration: 86400000 # 24 hours
 
@@ -34,6 +40,17 @@ upiq:
       window-seconds: ${AUTH_RATE_LIMIT_WINDOW_SECONDS:60}
       login-attempts: ${AUTH_LOGIN_RATE_LIMIT:10}
       registration-attempts: ${AUTH_REGISTRATION_RATE_LIMIT:5}
+  google:
+    enabled: ${UPIQ_GOOGLE_ENABLED:false}
+    client-id: ${UPIQ_GOOGLE_CLIENT_ID:}
+    client-secret: ${UPIQ_GOOGLE_CLIENT_SECRET:}
+    frontend-origin: ${UPIQ_FRONTEND_ORIGIN:http://localhost:5173}
+    redirect-uri: ${UPIQ_GOOGLE_REDIRECT_URI:http://localhost:8080/login/oauth2/code/google}
+  admin:
+    bootstrap:
+      enabled: ${UPIQ_ADMIN_BOOTSTRAP_ENABLED:false}
+      email: ${UPIQ_ADMIN_EMAIL:}
+      password: ${UPIQ_ADMIN_PASSWORD:}
 
 logging:
   level:
@@ -47,7 +64,7 @@ research:
   seeding:
     enabled: false
     require-research-profile: true
-    user-password: research-only-not-for-production
+    user-password: ${RESEARCH_SEEDING_USER_PASSWORD:}
     blocked-datasource-substrings:
       - neon.tech
       - neon.database

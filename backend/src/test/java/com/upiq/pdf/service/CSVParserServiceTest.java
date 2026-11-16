@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -57,7 +58,7 @@ class CSVParserServiceTest {
         List<TransactionRequest> transactions = parser.parseCSV(file);
 
         assertEquals(2, transactions.size());
-        assertEquals(125.50, transactions.get(0).getAmount());
+        assertEquals(new BigDecimal("125.50"), transactions.get(0).getAmount());
         assertEquals("expense", transactions.get(0).getType());
         assertEquals(0, transactions.get(0).getSourceRowIndex());
         assertNull(transactions.get(0).getDate());
@@ -77,7 +78,7 @@ class CSVParserServiceTest {
         List<TransactionRequest> transactions = new CSVParserService(new TransactionMappingService()).parseCSV(file);
 
         assertEquals(1, transactions.size());
-        assertEquals(25.0, transactions.get(0).getAmount());
+        assertEquals(new BigDecimal("25"), transactions.get(0).getAmount());
         assertNull(transactions.get(0).getDate());
     }
 
@@ -105,11 +106,11 @@ class CSVParserServiceTest {
                 + "05/09/2026," + "9".repeat(400) + ",debit,Overflow amount\n";
         MockMultipartFile file = new MockMultipartFile("file", "statement.csv", "text/csv", csv.getBytes(StandardCharsets.UTF_8));
         List<StatementRow> parsed = new CSVParserService(new TransactionMappingService()).parseCSVRows(file);
-        TransactionRequest nonFinite = TransactionRequest.builder().amount(Double.POSITIVE_INFINITY).build();
+        TransactionRequest invalidPrecision = TransactionRequest.builder().amount(new BigDecimal("1.001")).build();
 
         assertEquals(2, parsed.size());
         assertTrue(parsed.stream().allMatch(row -> row.getValidationReasons().stream().map(r -> r.getCode()).toList().equals(List.of("invalid_amount"))));
-        assertTrue(StatementRowValidator.validate(nonFinite).contains(com.upiq.pdf.dto.StatementRowValidationReason.INVALID_AMOUNT));
+        assertTrue(StatementRowValidator.validate(invalidPrecision).contains(com.upiq.pdf.dto.StatementRowValidationReason.INVALID_AMOUNT));
     }
 
     @Test
@@ -160,9 +161,9 @@ class CSVParserServiceTest {
         List<StatementRow> rows = new CSVParserService(new TransactionMappingService()).parseCSVRows(file);
 
         assertEquals(6, rows.size());
-        assertEquals(1200.50, rows.get(0).getTransaction().getAmount());
-        assertEquals(1234567.89, rows.get(1).getTransaction().getAmount());
-        assertEquals(1250.75, rows.get(2).getTransaction().getAmount());
+        assertEquals(new BigDecimal("1200.50"), rows.get(0).getTransaction().getAmount());
+        assertEquals(new BigDecimal("1234567.89"), rows.get(1).getTransaction().getAmount());
+        assertEquals(new BigDecimal("1250.75"), rows.get(2).getTransaction().getAmount());
         assertTrue(rows.get(0).getValidationReasons().isEmpty());
         assertTrue(rows.get(1).getValidationReasons().isEmpty());
         assertTrue(rows.get(2).getValidationReasons().isEmpty());
@@ -186,11 +187,11 @@ class CSVParserServiceTest {
 
         assertEquals(7, rows.size());
         assertEquals(0, rows.get(0).getSourceRowIndex());
-        assertEquals(25.50, rows.get(0).getTransaction().getAmount());
+        assertEquals(new BigDecimal("25.50"), rows.get(0).getTransaction().getAmount());
         assertEquals("expense", rows.get(0).getTransaction().getType());
         assertTrue(rows.get(0).getValidationReasons().isEmpty());
         assertEquals(1, rows.get(1).getSourceRowIndex());
-        assertEquals(125.75, rows.get(1).getTransaction().getAmount());
+        assertEquals(new BigDecimal("125.75"), rows.get(1).getTransaction().getAmount());
         assertEquals("income", rows.get(1).getTransaction().getType());
         assertTrue(rows.get(1).getValidationReasons().isEmpty());
         assertTrue(rows.get(2).getValidationReasons().stream().anyMatch(reason -> reason.getCode().equals("missing_amount")));
@@ -208,7 +209,7 @@ class CSVParserServiceTest {
             MockMultipartFile file = new MockMultipartFile("file", "statement.csv", "text/csv", csv.getBytes(StandardCharsets.UTF_8));
             StatementRow row = parser.parseCSVRows(file).get(0);
             assertTrue(row.isValid(), "expected " + alias + " to be recognized");
-            assertEquals(20.0, row.getTransaction().getAmount());
+            assertEquals(new BigDecimal("20"), row.getTransaction().getAmount());
         }
         String csv = "date,description,credit_limit,debit_status,credit_score,amount,type\n"
                 + "05/09/2026,Unrelated directional headers,,,,75,expense\n";
@@ -218,7 +219,7 @@ class CSVParserServiceTest {
 
         assertEquals(1, rows.size());
         assertTrue(rows.get(0).isValid());
-        assertEquals(75.0, rows.get(0).getTransaction().getAmount());
+        assertEquals(new BigDecimal("75"), rows.get(0).getTransaction().getAmount());
         assertEquals("expense", rows.get(0).getTransaction().getType());
     }
 
@@ -238,7 +239,7 @@ class CSVParserServiceTest {
         List<StatementRow> rows = new CSVParserService(new TransactionMappingService()).parseCSVRows(file);
 
         assertEquals(8, rows.size());
-        assertEquals(List.of(1200.50, 1200.50, 1200.50, 1200.50),
+        assertEquals(List.of(new BigDecimal("1200.50"), new BigDecimal("1200.50"), new BigDecimal("1200.50"), new BigDecimal("1200.50")),
                 rows.subList(0, 4).stream().map(row -> row.getTransaction().getAmount()).toList());
         assertTrue(rows.subList(0, 4).stream().allMatch(StatementRow::isValid));
         assertTrue(rows.subList(4, 8).stream().allMatch(row ->

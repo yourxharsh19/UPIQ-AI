@@ -8,14 +8,15 @@ UPIQ is a React/Vite single-page application backed by one Spring Boot REST appl
 
 | Area | Current status | Main modules |
 |---|---|---|
-| JWT login, registration, role checks, session cleanup | Implemented; registration creates `USER` and returns a generic HTTP 200 response for success and duplicates; login/register have process-local throttling; directory endpoints are admin-only. Timing and disabled-account disclosure remain. | `backend/src/main/java/com/upiq/auth/`, `backend/src/main/java/com/upiq/config/`, `frontend/src/context/FinancialContext.jsx`, `frontend/src/services/api.js` |
+| JWT login, registration, role checks, session cleanup | Implemented; registration creates `USER` and returns a generic HTTP 200 response for success and duplicates; login/register have process-local throttling; directory endpoints are admin-only. Unknown-email and wrong-password responses are generic; BCrypt work is performed on both paths, but database and execution timing are not guaranteed constant. Disabled accounts no longer receive a distinct response. | `backend/src/main/java/com/upiq/auth/`, `backend/src/main/java/com/upiq/config/`, `frontend/src/context/FinancialContext.jsx`, `frontend/src/services/api.js` |
 | Transaction CRUD, owner scoping, deterministic categorization | Implemented | `backend/src/main/java/com/upiq/transaction/`, `backend/src/main/java/com/upiq/category/`, `frontend/src/pages/Transactions.jsx`, `frontend/src/context/FinancialContext.jsx` |
 | Category management and browser-local monthly budgets | Partially implemented; budgets are localStorage-only | `frontend/src/pages/Categories.jsx`, `frontend/src/context/BudgetContext.jsx`, `frontend/src/hooks/useAIBudget.js` |
 | PDF and backend CSV parsing/import | Partially implemented; active browser upload supports PDF and CSV, text parsing is heuristic, no OCR; generated-PDF amount fixtures cover the former 1,000,000 boundary and malformed amounts, while real-template/layout coverage remains limited | `backend/src/main/java/com/upiq/pdf/`, `frontend/src/components/transactions/StatementUploadModal.jsx`, `frontend/src/utils/statementImport.js` |
 | Dashboard, calculated report PDF, monthly CSV | Implemented with data-provenance/currency limitations | `backend/src/main/java/com/upiq/financial/dashboard/`, `backend/src/main/java/com/upiq/financial/report/`, `frontend/src/pages/Reports.jsx`, `frontend/src/utils/monthlyReport.js` |
 | Financial Chat | Partially implemented: bounded intents, deterministic calculation, grounded Ollama explanation; not general advice | `backend/src/main/java/com/upiq/financial/chat/`, `backend/src/main/java/com/upiq/research/llm/`, `frontend/src/pages/AIAssistant.jsx`, `frontend/src/utils/financialChat.js` |
 | Budget estimate | Implemented as a simple frontend run-rate estimate; not an AI prediction | `frontend/src/utils/budgetForecasts.js`, `frontend/src/hooks/useAIBudget.js`, `frontend/src/pages/Insights.jsx` |
-| AI transaction categorization, fraud detection, investment advice, budget sync/AI prediction, push notifications | Planned; no corresponding production service/API today | Feature metadata in `frontend/src/services/backendFeatureStatus.js` |
+| AI transaction categorization, fraud detection, investment advice, budget sync/advanced AI prediction, persistent push notifications | Planned; no corresponding production service/API today | Feature metadata in `frontend/src/services/backendFeatureStatus.js` |
+| Smart notification MVP, monthly financial insights, aggregate admin dashboard | Implemented on demand over existing ledger/user data; no feature tables or durable notification state | `backend/src/main/java/com/upiq/notifications/`, `backend/src/main/java/com/upiq/financial/insights/`, `backend/src/main/java/com/upiq/admin/` |
 | Voice | Speech output exists in the assistant; voice input is absent from the current worktree | `frontend/src/pages/AIAssistant.jsx` |
 | Research A/B/C experiment runner | Implemented opt-in raw-result collection; no scoring/statistics | `backend/src/main/java/com/upiq/research/experiment/`, `backend/src/main/resources/research/` |
 
@@ -37,13 +38,13 @@ UPIQ is a React/Vite single-page application backed by one Spring Boot REST appl
 
 **Purpose:** Prevent financial values and reports from presenting unsupported currency or precision claims.
 
-**Existing evidence:** transaction amounts are `Double`; no transaction currency field or conversion service exists; report output labels INR while account display formatting is selectable.
+**Existing evidence:** transactions are INR-only; monetary backend storage uses `BigDecimal`, database storage uses `NUMERIC(19,2)`, and API amounts are decimal strings. Exact browser-side ledger/report/budget totals use integer minor units. No transaction currency metadata or exchange conversion exists.
 
-**Steps:** choose and document an account/base currency contract; add currency to transaction storage/API/import flows if multi-currency is required; plan a decimal database migration; do not infer conversion rates from a display preference.
+**Steps:** retain the INR-only contract. If multi-currency is later approved, design explicit currency metadata and conversion separately; never infer conversion from locale or a display preference.
 
 **Acceptance:** amounts use a fixed decimal representation; each displayed or reported total has a known currency; import/edit tests preserve currency; migration tests cover existing records without inventing provenance.
 
-**Prerequisite:** product decision on whether accounts are single-currency or multi-currency.
+**Status:** the product decision is INR-only for this version; multi-currency is not implemented.
 
 ## Phase 1 — Core ledger and imports (P1)
 
@@ -143,17 +144,21 @@ The earlier feature list mentioned a Graph Neural Network microservice as one po
 
 ### Admin telemetry and alerts
 
-**Status:** planned; Admin view explicitly says live telemetry/admin APIs are unavailable. Role checks protect the UI/API but there are no operational metrics endpoints.
+**Status:** an aggregate-only admin dashboard exists at `GET /api/admin/dashboard`, protected with `ROLE_ADMIN`. It reports account counts and transaction count/income/expense aggregates; it does not provide live service/model/fraud telemetry, audit-event history, or user-level transaction details.
 
-**Steps:** define least-privilege admin scopes, aggregate-only observability, retention controls, and alert ownership; add server-side admin authorization and audit event tests before displaying live counts.
+An opt-in first-administrator bootstrap is available through the deployment environment. It only creates an admin when none exists and refuses to promote an existing normal account. See `docs/AUTHENTICATION_SETUP.md`; the bootstrap flag should be disabled after provisioning.
+
+Google OpenID Connect can be enabled using deployment-provided Google OAuth credentials. It is disabled by default, does not link existing email accounts automatically, and has not been verified against live Google credentials.
+
+**Steps:** add operational telemetry only after defining least-privilege scopes, retention, audit events, and alert ownership. Keep aggregate metrics separate from user-level financial data.
 
 **Acceptance:** non-admin access denied at API level; no transaction content in metrics/logs; displayed values link to an actual supported service endpoint.
 
 ### Notifications and voice
 
-**Status:** planned for persistent server push and smart notifications; browser speech output exists, voice input is not present.
+**Status:** an on-demand authenticated notification API compares each user's expense-category totals for this month with last month. The header can display and dismiss current results in memory. There is no notification table, preference API, durable read/dismiss history, scheduling, or push delivery. Browser speech output exists; voice input is not present.
 
-**Steps:** implement only after consent, notification preference and delivery policy are defined; support budget reminders first; voice input requires browser support disclosure and explicit microphone permission.
+**Steps:** before persistence or push delivery, define consent, notification preferences, quiet hours, retention, and delivery policy. Voice input requires browser support disclosure and explicit microphone permission.
 
 **Acceptance:** opt-in/out, quiet hours, no sensitive amounts on lock screens by default, delivery-failure states, keyboard/screen-reader access, and browser permission-denied coverage.
 

@@ -6,6 +6,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 @Data
 @Builder
@@ -14,7 +17,8 @@ import java.time.LocalDateTime;
 public class TransactionResponse {
     private Long id;
     private Long userId;
-    private Double amount;
+    @JsonSerialize(using = ToStringSerializer.class)
+    private BigDecimal amount;
     private String type;
     private String category;
     private String description;

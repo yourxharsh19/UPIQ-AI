@@ -63,7 +63,7 @@ class FinancialContextBuilderTest {
         assertThat(json).contains("\"context_version\":\"1.0\"");
         assertThat(json).contains("\"verified\":true");
         assertThat(json).contains("\"calculation_type\":\"CATEGORY_EXPENSE_TOTAL\"");
-        assertThat(json).contains("\"total_expense\":3620.00");
+        assertThat(json).contains("\"total_expense\":\"3620.00\"");
         assertThat(json).doesNotContain("You are");
         assertThat(json).doesNotContain("prompt");
     }

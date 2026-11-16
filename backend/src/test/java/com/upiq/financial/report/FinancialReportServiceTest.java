@@ -111,7 +111,7 @@ class FinancialReportServiceTest {
 
     private static Transaction transaction(long userId, double amount, String type, String category,
                                            String description, int day) {
-        return Transaction.builder().userId(userId).amount(amount).type(type).category(category)
+        return Transaction.builder().userId(userId).amount(BigDecimal.valueOf(amount)).type(type).category(category)
                 .description(description).date(LocalDateTime.of(2026, 8, day, 10, 0)).build();
     }
 

@@ -1,5 +1,5 @@
 import { monthKeyForTransaction } from './transactionCoverage.js';
-import { toFinancialNumber } from './financialDisplay.js';
+import { addMoney, compareMoney, divideMoney, moneyFromMinorUnits, moneyRatioPercent, moneyToNumber, parseMoneyMinorUnits, sumMoneyString, subtractMoney } from './money.js';
 
 const COLORS = ['#6366f1', '#10b981', '#f43f5e', '#f59e0b', '#06b6d4', '#a855f7', '#64748b'];
 
@@ -8,7 +8,7 @@ export const getMonthlyCashFlow = (transactions = [], monthCount = 6) => {
     const month = monthKeyForTransaction(transaction.date);
     const type = String(transaction.type || '').toLowerCase();
     if (!month || !['income', 'expense'].includes(type)) return [];
-    return [{ month, type, amount: toFinancialNumber(transaction.amount) }];
+    return [{ month, type, amount: String(transaction.amount ?? '0') }];
   });
   if (!valid.length) return [];
 
@@ -18,20 +18,20 @@ export const getMonthlyCashFlow = (transactions = [], monthCount = 6) => {
   const first = new Date(anchor.getFullYear(), anchor.getMonth() - Math.max(1, monthCount) + 1, 1);
   const totals = new Map();
   valid.forEach(({ month, type, amount }) => {
-    const current = totals.get(month) || { income: 0, expense: 0 };
-    current[type] += amount;
+    const current = totals.get(month) || { income: '0.00', expense: '0.00' };
+    current[type] = addMoney(current[type], amount);
     totals.set(month, current);
   });
 
   return Array.from({ length: Math.max(1, monthCount) }, (_, index) => {
     const date = new Date(first.getFullYear(), first.getMonth() + index, 1);
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    const values = totals.get(key) || { income: 0, expense: 0 };
+    const values = totals.get(key) || { income: '0.00', expense: '0.00' };
     return {
       period: date.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }),
-      income: values.income,
-      expense: values.expense,
-      savings: values.income - values.expense,
+      income: moneyToNumber(values.income),
+      expense: moneyToNumber(values.expense),
+      savings: moneyToNumber(subtractMoney(values.income, values.expense)),
     };
   });
 };
@@ -49,19 +49,20 @@ export const getTransactionCategorySpending = (transactions = []) => {
     const name = typeof transaction.category === 'string' && transaction.category.trim()
       ? transaction.category.trim()
       : 'Uncategorized';
-    const current = totals.get(name) || { amount: 0, count: 0 };
-    current.amount += toFinancialNumber(transaction.amount);
+    const current = totals.get(name) || { amount: '0.00', count: 0 };
+    current.amount = addMoney(current.amount, transaction.amount);
     current.count += 1;
     totals.set(name, current);
   });
-  const total = [...totals.values()].reduce((sum, category) => sum + category.amount, 0);
+  const total = sumMoneyString([...totals.values()].map((category) => category.amount));
   return [...totals.entries()]
     .map(([name, category], index) => ({
       name,
       value: category.amount,
+      chartValue: moneyToNumber(category.amount),
       count: category.count,
-      percentage: total ? Number(((category.amount / total) * 100).toFixed(1)) : 0,
+      percentage: moneyRatioPercent(category.amount, total, 1),
       color: COLORS[index % COLORS.length],
     }))
-    .sort((left, right) => right.value - left.value);
+    .sort((left, right) => compareMoney(right.value, left.value));
 };

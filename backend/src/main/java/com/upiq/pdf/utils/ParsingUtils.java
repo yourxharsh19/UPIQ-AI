@@ -11,6 +11,7 @@ import java.time.format.ResolverStyle;
 import java.time.temporal.ChronoField;
 import java.util.Arrays;
 import java.util.List;
+import java.math.BigDecimal;
 
 @Slf4j
 public class ParsingUtils {
@@ -62,8 +63,10 @@ public class ParsingUtils {
         return null;
     }
 
-    public static boolean isValidAmount(Double amount) {
-        return amount != null && amount > 0;
+    public static boolean isValidAmount(BigDecimal amount) {
+        return amount != null && amount.signum() > 0
+                && amount.scale() <= 2
+                && amount.compareTo(new BigDecimal("99999999999999999.99")) <= 0;
     }
 
     private static DateTimeFormatter twoDigitYearFormatter(String prefix) {

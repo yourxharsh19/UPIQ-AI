@@ -26,6 +26,7 @@ import { StatementUploadModal } from '../components/transactions/StatementUpload
 import { TransactionDateFilter } from '../components/transactions/TransactionDateFilter';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
+import { sumMoneyString } from '../utils/money.js';
 import { runAfterDeleteAllConfirmation } from '../utils/transactionOperations';
 
 export const Transactions = () => {
@@ -82,9 +83,9 @@ export const Transactions = () => {
   // Calculate dynamic stats per category from rawTransactions
   const categoryStats = useMemo(() => {
     const list = rawTransactions || [];
-    const totalExpense = list
+    const totalExpense = sumMoneyString(list
       .filter((t) => t.type !== 'income')
-      .reduce((acc, t) => acc + (t.amount || 0), 0);
+      .map((t) => t.amount));
 
     const stats = {};
 
@@ -96,7 +97,7 @@ export const Transactions = () => {
         };
       } else {
         const catTxList = list.filter((t) => t.category === cfg.name);
-        const catTotal = catTxList.reduce((acc, t) => acc + (t.amount || 0), 0);
+        const catTotal = sumMoneyString(catTxList.map((t) => t.amount));
         stats[cfg.name] = {
           count: catTxList.length,
           total: catTotal,

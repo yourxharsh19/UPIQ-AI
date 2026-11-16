@@ -1,36 +1,31 @@
 import StatCard from "./StatCard";
 import { TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { formatInrAmount } from "../../utils/financialDisplay";
+import { calculateBalance, calculateTotalExpenses, calculateTotalIncome } from "../../utils/transactionUtils.js";
 
 const OverviewCards = ({ transactions }) => {
     // Calculate totals
     // Calculate totals
-    const totalIncome = transactions
-        .filter(t => t.type && t.type.toLowerCase() === 'income')
-        .reduce((sum, t) => sum + t.amount, 0);
-
-    const totalExpense = transactions
-        .filter(t => t.type && t.type.toLowerCase() === 'expense')
-        .reduce((sum, t) => sum + t.amount, 0);
-
-    const balance = totalIncome - totalExpense;
+    const totalIncome = calculateTotalIncome(transactions);
+    const totalExpense = calculateTotalExpenses(transactions);
+    const balance = calculateBalance(transactions);
 
     const stats = [
         {
             title: "Total Balance",
-            amount: formatInrAmount(balance),
+            value: formatInrAmount(balance),
             icon: Wallet,
             color: "bg-blue-500"
         },
         {
             title: "Total Income",
-            amount: formatInrAmount(totalIncome),
+            value: formatInrAmount(totalIncome),
             icon: TrendingUp,
             color: "bg-green-500"
         },
         {
             title: "Total Spend",
-            amount: formatInrAmount(totalExpense),
+            value: formatInrAmount(totalExpense),
             icon: TrendingDown,
             color: "bg-red-500"
         },

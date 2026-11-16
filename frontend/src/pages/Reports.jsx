@@ -7,6 +7,7 @@ import { PDFPreviewModal } from '../components/reports/PDFPreviewModal';
 import { FinancialDashboardService } from '../services/financial-dashboard.service';
 import { createMonthlyReportCsv, formatMonthLabel, getAvailableReportMonths, getMonthlyReport } from '../utils/monthlyReport.js';
 import { getTransactionCoverage, hasTransactionsInMonth } from '../utils/transactionCoverage.js';
+import { addMoney, compareMoney, moneyRatioPercent, subtractMoney } from '../utils/money.js';
 
 const monthDate = (value) => {
   const dateText = String(value || '');
@@ -87,9 +88,11 @@ export const Reports = () => {
   };
 
   const changeText = (current, previous) => {
-    if (previous === 0) return 'Percentage change unavailable (previous month was zero)';
-    const change = ((current - previous) / previous) * 100;
-    const direction = change > 0 ? 'up' : change < 0 ? 'down' : 'unchanged';
+    if (compareMoney(previous, '0') === 0) return 'Percentage change unavailable (previous month was zero)';
+    const difference = subtractMoney(current, previous);
+    const directionOrder = compareMoney(current, previous);
+    const change = moneyRatioPercent(difference, previous, 1);
+    const direction = directionOrder > 0 ? 'up' : directionOrder < 0 ? 'down' : 'unchanged';
     return `${Math.abs(change).toFixed(1)}% ${direction} from ${formatMonthLabel(previousMonth)}`;
   };
 
@@ -219,9 +222,9 @@ export const Reports = () => {
             <h3 id="report-comparison-heading" className="text-sm font-semibold text-[var(--text-main)]">Income vs expenses</h3>
             <div className="mt-3 space-y-2 text-xs">
               <p className="text-[var(--text-main)]">Income <span className="float-right font-medium">{formatCurrency(report.totalIncome)}</span></p>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"><div className="h-full bg-emerald-500 rounded-full" style={{ width: `${report.totalIncome + report.totalExpense ? (report.totalIncome / (report.totalIncome + report.totalExpense)) * 100 : 0}%` }} /></div>
+              <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"><div className="h-full bg-emerald-500 rounded-full" style={{ width: `${moneyRatioPercent(report.totalIncome, addMoney(report.totalIncome, report.totalExpense), 2)}%` }} /></div>
               <p className="text-[var(--text-main)]">Expenses <span className="float-right font-medium">{formatCurrency(report.totalExpense)}</span></p>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"><div className="h-full bg-rose-500 rounded-full" style={{ width: `${report.totalIncome + report.totalExpense ? (report.totalExpense / (report.totalIncome + report.totalExpense)) * 100 : 0}%` }} /></div>
+              <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"><div className="h-full bg-rose-500 rounded-full" style={{ width: `${moneyRatioPercent(report.totalExpense, addMoney(report.totalIncome, report.totalExpense), 2)}%` }} /></div>
             </div>
           </div>
           <div className="rounded-xl border border-[var(--border-base)] p-4">
@@ -308,7 +311,7 @@ export const Reports = () => {
                   <div className="flex items-center gap-3">
                     <span className="text-emerald-500 font-semibold">Income: {formatCurrency(item.totalIncome)}</span>
                     <span className="text-rose-500 font-semibold">Expenses: {formatCurrency(item.totalExpense)}</span>
-                    <span className={`font-bold ${item.netCashFlow >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>
+                    <span className={`font-bold ${compareMoney(item.netCashFlow, '0') >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>
                       Net: {formatCurrency(item.netCashFlow)}
                     </span>
                   </div>

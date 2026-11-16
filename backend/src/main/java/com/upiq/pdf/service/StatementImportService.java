@@ -107,7 +107,7 @@ public class StatementImportService {
 
     private boolean isImportable(TransactionRequest row) {
         return row != null && row.getSourceRowIndex() != null && row.getAmount() != null
-                && Double.isFinite(row.getAmount()) && row.getAmount() > 0
+                && row.getAmount().scale() <= 2 && row.getAmount().abs().compareTo(new java.math.BigDecimal("99999999999999999.99")) <= 0 && row.getAmount().signum() > 0
                 && row.getType() != null && ("income".equalsIgnoreCase(row.getType()) || "expense".equalsIgnoreCase(row.getType()))
                 && row.getDescription() != null && !row.getDescription().isBlank() && row.getDate() != null;
     }

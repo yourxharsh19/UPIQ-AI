@@ -33,7 +33,8 @@ api.interceptors.response.use(
     const isAuthEndpoint =
       error.config?.url &&
       (error.config.url.includes('/auth/login') ||
-        error.config.url.includes('/auth/register'));
+        error.config.url.includes('/auth/register') ||
+        error.config.url.includes('/auth/google/exchange'));
 
     // Handle 401 from protected requests only; auth endpoint failures (e.g. invalid credentials)
     // should reject normally without clearing stored credentials or redirecting the user.

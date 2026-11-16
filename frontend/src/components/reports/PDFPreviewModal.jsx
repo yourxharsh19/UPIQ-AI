@@ -4,6 +4,7 @@ import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { useFinancial } from '../../context/FinancialContext';
 import { formatMonthLabel } from '../../utils/monthlyReport.js';
+import { compareMoney, moneyRatioPercent, subtractMoney } from '../../utils/money.js';
 
 export const PDFPreviewModal = ({ isOpen, onClose, reportData }) => {
   const { formatCurrency, openStatementModal } = useFinancial();
@@ -17,14 +18,14 @@ export const PDFPreviewModal = ({ isOpen, onClose, reportData }) => {
     ? reportData.month
     : (reportData.monthKey ? formatMonthLabel(reportData.monthKey) : 'Monthly Statement');
 
-  const totalIncome = Number(reportData.totalIncome) || 0;
-  const totalExpense = Number(reportData.totalExpense) || 0;
+  const totalIncome = String(reportData.totalIncome ?? '0.00');
+  const totalExpense = String(reportData.totalExpense ?? '0.00');
   const netSavings = reportData.netSavings !== undefined
-    ? Number(reportData.netSavings)
-    : (Number(reportData.netCashFlow) || (totalIncome - totalExpense));
+    ? String(reportData.netSavings)
+    : String(reportData.netCashFlow ?? subtractMoney(totalIncome, totalExpense));
 
-  const calculatedRate = totalIncome > 0
-    ? `${Math.max(0, ((totalIncome - totalExpense) / totalIncome) * 100).toFixed(1)}%`
+  const calculatedRate = compareMoney(totalIncome, '0') > 0
+    ? `${Math.max(0, moneyRatioPercent(netSavings, totalIncome, 1)).toFixed(1)}%`
     : '0%';
   const savingsRate = reportData.savingsRate || calculatedRate;
   const topCategory = reportData.topCategory || reportData.categories?.[0]?.category || 'General';
@@ -71,7 +72,7 @@ export const PDFPreviewModal = ({ isOpen, onClose, reportData }) => {
             </div>
             <div className="bg-slate-50 dark:bg-slate-900 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800">
               <span className="text-slate-500 dark:text-slate-400 block text-[10px] uppercase font-semibold">Net Cash Flow</span>
-              <span className={`text-sm font-bold ${netSavings >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400'}`}>
+              <span className={`text-sm font-bold ${compareMoney(netSavings, '0') >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400'}`}>
                 {formatCurrency(netSavings)}
               </span>
             </div>

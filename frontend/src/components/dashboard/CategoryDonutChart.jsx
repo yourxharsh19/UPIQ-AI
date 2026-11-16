@@ -3,11 +3,12 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } 
 import { Card } from '../common/Card';
 import { useFinancial } from '../../context/FinancialContext';
 import { getTransactionCategorySpending } from '../../utils/dashboardAnalytics.js';
+import { sumMoneyString } from '../../utils/money.js';
 
 export const CategoryDonutChart = () => {
   const { transactions, transactionsError, loading, formatCurrency } = useFinancial();
   const categories = getTransactionCategorySpending(transactions);
-  const totalSpent = categories.reduce((acc, category) => acc + category.value, 0);
+  const totalSpent = sumMoneyString(categories.map((category) => category.value));
 
   const CustomPieTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -51,7 +52,7 @@ export const CategoryDonutChart = () => {
               innerRadius={55}
               outerRadius={78}
               paddingAngle={2}
-              dataKey="value"
+              dataKey="chartValue"
             >
               {categories.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} stroke="var(--bg-card)" strokeWidth={1.5} />

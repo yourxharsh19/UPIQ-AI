@@ -9,27 +9,28 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.math.BigDecimal;
 
 @Slf4j
 @Service
 public class TransactionMappingService {
 
-    private static final double MAX_REASONABLE_AMOUNT = 10_000_000d; // 1 crore
+    private static final BigDecimal MAX_AMOUNT = new BigDecimal("99999999999999999.99");
 
     private static final String TYPE_CREDIT = "credit";
     private static final String TYPE_DEBIT = "debit";
 
     private static final Pattern CURRENCY_AMOUNT_PATTERN = Pattern.compile(
-            "(?:₹|rs\\.?|inr)\\s*([-+]?\\d[\\d,]*(?:\\.\\d{1,2})?)",
+            "(?:₹|rs\\.?|inr)\\s*((?<![\\d.,])[-+]?\\d[\\d,]*(?:\\.\\d{1,2})?(?![\\d.,]))",
             Pattern.CASE_INSENSITIVE
     );
 
     private static final Pattern DECIMAL_AMOUNT_PATTERN = Pattern.compile(
-            "([-+]?\\d[\\d,]*\\.\\d{1,2})"
+            "(?<![\\d.,])([-+]?\\d[\\d,]*\\.\\d{1,2})(?![\\d.,])"
     );
 
     private static final Pattern SMALL_INTEGER_AMOUNT_PATTERN = Pattern.compile(
-            "([-+]?\\d{1,7})"
+            "(?<![\\d.,])([-+]?\\d{1,17})(?![\\d.,])"
     );
 
     private static final Pattern DATE_PATTERN = Pattern.compile(
@@ -50,7 +51,7 @@ public class TransactionMappingService {
 
         String combined = String.join(" ", blockLines);
 
-        double amount = extractAmountFromLines(blockLines);
+        BigDecimal amount = extractAmountFromLines(blockLines);
         if (!ParsingUtils.isValidAmount(amount)) {
             amount = extractAmount(combined);
         }
@@ -69,15 +70,15 @@ public class TransactionMappingService {
         return tx;
     }
 
-    public double extractAmountFromLines(List<String> blockLines) {
+    public BigDecimal extractAmountFromLines(List<String> blockLines) {
         if (blockLines == null) {
-            return 0.0;
+            return BigDecimal.ZERO;
         }
 
         for (String line : blockLines) {
             if (shouldSkipAmountFromLine(line)) continue;
 
-            double amount = extractAmountFromCurrencyLine(line);
+            BigDecimal amount = extractAmountFromCurrencyLine(line);
             if (ParsingUtils.isValidAmount(amount)) {
                 return amount;
             }
@@ -86,32 +87,32 @@ public class TransactionMappingService {
         for (String line : blockLines) {
             if (shouldSkipAmountFromLine(line)) continue;
 
-            double amount = extractAmount(line);
+            BigDecimal amount = extractAmount(line);
             if (ParsingUtils.isValidAmount(amount)) {
                 return amount;
             }
         }
 
-        return 0.0;
+        return BigDecimal.ZERO;
     }
 
-    private double extractAmountFromCurrencyLine(String text) {
-        if (text == null) return 0.0;
+    private BigDecimal extractAmountFromCurrencyLine(String text) {
+        if (text == null) return BigDecimal.ZERO;
 
         Matcher matcher = CURRENCY_AMOUNT_PATTERN.matcher(text);
         if (matcher.find()) {
             return parseAmount(matcher.group(1));
         }
-        return 0.0;
+        return BigDecimal.ZERO;
     }
 
-    public Double extractAmount(String text) {
+    public BigDecimal extractAmount(String text) {
         if (text == null || text.isEmpty()) {
-            return 0.0;
+            return BigDecimal.ZERO;
         }
 
         if (shouldSkipAmountFromLine(text)) {
-            return 0.0;
+            return BigDecimal.ZERO;
         }
 
         try {
@@ -127,8 +128,8 @@ public class TransactionMappingService {
 
             Matcher integerMatcher = SMALL_INTEGER_AMOUNT_PATTERN.matcher(text);
             while (integerMatcher.find()) {
-                double value = parseAmount(integerMatcher.group(1));
-                if (value > 0 && value <= MAX_REASONABLE_AMOUNT) {
+                BigDecimal value = parseAmount(integerMatcher.group(1));
+                if (ParsingUtils.isValidAmount(value) && value.compareTo(MAX_AMOUNT) <= 0) {
                     return value;
                 }
             }
@@ -137,7 +138,7 @@ public class TransactionMappingService {
             log.debug("Could not extract amount from parsed transaction text");
         }
 
-        return 0.0;
+        return BigDecimal.ZERO;
     }
 
     public String extractType(String text) {
@@ -357,15 +358,16 @@ public class TransactionMappingService {
         return cleaned.isEmpty() ? null : cleaned;
     }
 
-    private double parseAmount(String candidate) {
-        if (candidate == null || candidate.isBlank()) return 0.0;
+    private BigDecimal parseAmount(String candidate) {
+        if (candidate == null || candidate.isBlank()) return BigDecimal.ZERO;
 
         try {
-            double value = Double.parseDouble(candidate.replace(",", ""));
-            if (value <= 0 || value > MAX_REASONABLE_AMOUNT) return 0.0;
+            if (!candidate.matches("[+-]?(?:\\d+|\\d{1,3}(?:,\\d{3})+|\\d{1,2}(?:,\\d{2})*,\\d{3})(?:\\.\\d{1,2})?")) return BigDecimal.ZERO;
+            BigDecimal value = new BigDecimal(candidate.replace(",", ""));
+            if (!ParsingUtils.isValidAmount(value) || value.compareTo(MAX_AMOUNT) > 0) return BigDecimal.ZERO;
             return value;
         } catch (NumberFormatException ex) {
-            return 0.0;
+            return BigDecimal.ZERO;
         }
     }
 }

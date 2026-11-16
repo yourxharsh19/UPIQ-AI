@@ -43,7 +43,7 @@ public class CorsOriginConfiguration {
         this.allowedOrigins = origins;
     }
 
-    List<String> getAllowedOrigins() {
+    public List<String> getAllowedOrigins() {
         return allowedOrigins;
     }
 

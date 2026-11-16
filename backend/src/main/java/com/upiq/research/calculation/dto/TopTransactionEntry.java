@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 /**
  * A single transaction entry used in top-N result lists.
@@ -18,6 +20,7 @@ import java.time.LocalDateTime;
 public class TopTransactionEntry {
     private Long transactionId;
     private Long userId;
+    @JsonSerialize(using = ToStringSerializer.class)
     private BigDecimal amount;
     private String type;
     private String category;

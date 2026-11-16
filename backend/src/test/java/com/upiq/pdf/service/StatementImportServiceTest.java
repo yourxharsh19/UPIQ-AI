@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -147,7 +148,7 @@ class StatementImportServiceTest {
 
     private static TransactionRequest row(int sourceRowIndex) {
         return TransactionRequest.builder()
-                .amount(20.0).type("expense").description("Same merchant")
+                .amount(new BigDecimal("20.00")).type("expense").description("Same merchant")
                 .date(LocalDateTime.of(2026, 9, 1, 10, 0)).sourceRowIndex(sourceRowIndex).build();
     }
 

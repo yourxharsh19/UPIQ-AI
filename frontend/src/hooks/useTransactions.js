@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useFinancial } from '../context/FinancialContext';
+import { compareMoney } from '../utils/money.js';
 import { createDateRangePreset, filterTransactionsByDateRange } from '../utils/transactionFilters';
 
 export const useTransactions = () => {
@@ -33,8 +34,8 @@ export const useTransactions = () => {
       .sort((a, b) => {
         if (sortBy === 'date-desc') return new Date(b.date) - new Date(a.date);
         if (sortBy === 'date-asc') return new Date(a.date) - new Date(b.date);
-        if (sortBy === 'amount-desc') return b.amount - a.amount;
-        if (sortBy === 'amount-asc') return a.amount - b.amount;
+        if (sortBy === 'amount-desc') return compareMoney(b.amount, a.amount);
+        if (sortBy === 'amount-asc') return compareMoney(a.amount, b.amount);
         return 0;
       });
   }, [dateFilteredTransactions, searchTerm, selectedCategory, selectedMode, selectedType, sortBy]);

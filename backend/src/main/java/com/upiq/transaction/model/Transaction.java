@@ -3,6 +3,7 @@ package com.upiq.transaction.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "transactions", indexes = {
@@ -23,8 +24,8 @@ public class Transaction {
     @Column(nullable = false)
     private Long userId;             // user making the transaction
 
-    @Column(nullable = false)
-    private Double amount;
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal amount;
 
     @Column(nullable = false)
     private String type;             // income/expense or credit/debit

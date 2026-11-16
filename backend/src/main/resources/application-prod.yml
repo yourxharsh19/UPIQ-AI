@@ -1,14 +1,26 @@
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
+        http-only: true
+        same-site: lax
+
 spring:
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
   sql:
     init:
       mode: never
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
 jwt:
-  # Production must receive its signing key from the deployment environment.
+  # Supply a cryptographically random value from the deployment secret manager; randomness is provisioned externally.
   secret: ${JWT_SECRET}
 
 upiq:

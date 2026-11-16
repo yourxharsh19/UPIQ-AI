@@ -61,7 +61,7 @@ public class FinancialReportService {
             if (!"expense".equalsIgnoreCase(transaction.getType())) continue;
             String category = transaction.getCategory() == null || transaction.getCategory().isBlank()
                     ? "Uncategorized" : transaction.getCategory();
-            BigDecimal amount = transaction.getAmount() == null ? BigDecimal.ZERO : BigDecimal.valueOf(transaction.getAmount());
+            BigDecimal amount = transaction.getAmount() == null ? BigDecimal.ZERO : transaction.getAmount();
             categories.merge(category, amount, BigDecimal::add);
         }
         categories.replaceAll((category, amount) -> amount.setScale(2, RoundingMode.HALF_UP));
@@ -182,7 +182,7 @@ public class FinancialReportService {
             String category = transaction.getCategory() == null || transaction.getCategory().isBlank()
                     ? "Uncategorized" : transaction.getCategory();
             String detail = date + " | " + transaction.getType() + " | " + description + " | " + category
-                    + " | " + amount(transaction.getAmount() == null ? BigDecimal.ZERO : BigDecimal.valueOf(transaction.getAmount()));
+                    + " | " + amount(transaction.getAmount() == null ? BigDecimal.ZERO : transaction.getAmount());
             ensure(18);
             text(detail.length() > 145 ? detail.substring(0, 142) + "..." : detail, regular, 8);
         }

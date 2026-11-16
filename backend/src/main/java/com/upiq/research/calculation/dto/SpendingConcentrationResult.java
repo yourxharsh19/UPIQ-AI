@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.List;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 /**
  * Result for spending concentration analysis.
@@ -35,7 +37,9 @@ public class SpendingConcentrationResult {
     private Long userId;
     private PeriodRange period;
     private int topN;
+    @JsonSerialize(using = ToStringSerializer.class)
     private BigDecimal totalExpense;
+    @JsonSerialize(using = ToStringSerializer.class)
     private BigDecimal topNAmount;
     /** Top-N expense percentage of total expense (0–100). */
     private BigDecimal concentrationPercentage;

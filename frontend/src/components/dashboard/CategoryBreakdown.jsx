@@ -1,6 +1,8 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { getCategoryExpenseBreakdown } from '../../utils/transactionUtils';
 import { getCategoryColor, getCategoryIcon } from '../../utils/categoryUtils';
+import { formatInrAmount } from '../../utils/financialDisplay.js';
+import { moneyRatioPercent, moneyToNumber, sumMoneyString } from '../../utils/money.js';
 
 const CategoryBreakdown = ({ transactions }) => {
   const breakdown = getCategoryExpenseBreakdown(transactions);
@@ -23,22 +25,23 @@ const CategoryBreakdown = ({ transactions }) => {
     const colorInfo = getCategoryColor(item.name);
     return {
       name: item.name,
-      value: item.amount,
+      value: moneyToNumber(item.amount),
+      amount: item.amount,
       color: colorInfo.value
     };
   });
 
-  const total = breakdown.reduce((sum, item) => sum + item.amount, 0);
+  const total = sumMoneyString(breakdown.map((item) => item.amount));
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0];
-      const percentage = ((data.value / total) * 100).toFixed(1);
+      const percentage = moneyRatioPercent(data.payload.amount, total, 1).toFixed(1);
       return (
         <div className="bg-[var(--bg-card)] p-2.5 rounded-lg border border-[var(--border-base)] shadow-md">
           <p className="font-semibold text-[var(--text-main)] text-xs">{data.name}</p>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            ₹{data.value.toLocaleString('en-IN')} ({percentage}%)
+            {formatInrAmount(data.payload.amount)} ({percentage}%)
           </p>
         </div>
       );
@@ -77,7 +80,7 @@ const CategoryBreakdown = ({ transactions }) => {
 
         <div className="space-y-5">
           {breakdown.slice(0, 6).map((item, index) => {
-            const percentage = ((item.amount / total) * 100).toFixed(1);
+            const percentage = moneyRatioPercent(item.amount, total, 1).toFixed(1);
             const colorInfo = getCategoryColor(item.name);
             return (
               <div key={index} className="space-y-2">
@@ -92,7 +95,7 @@ const CategoryBreakdown = ({ transactions }) => {
                   </div>
                   <div className="text-right">
                     <span className="text-sm font-bold text-[var(--text-main)]">
-                      ₹{item.amount.toLocaleString('en-IN')}
+                      {formatInrAmount(item.amount)}
                     </span>
                     <span className="text-[10px] font-bold text-[var(--text-muted)] ml-2 uppercase tracking-wider">{percentage}%</span>
                   </div>

@@ -19,6 +19,7 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.List;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,7 +44,7 @@ class AIPDFParserServiceTest {
         MockMultipartFile file = pdf("01/10/2025", "Paid to Acme Stores Rs. 250.00");
         List<TransactionRequest> transactions = parser.parsePDF(file);
         assertEquals(1, transactions.size());
-        assertEquals(250.0, transactions.get(0).getAmount());
+        assertEquals(new BigDecimal("250.00"), transactions.get(0).getAmount());
         assertEquals("expense", transactions.get(0).getType());
         assertEquals(1, transactions.get(0).getSourceRowIndex());
     }
@@ -86,13 +87,12 @@ class AIPDFParserServiceTest {
 
     @Test
     void amountsAroundOneMillionAreParsedAsValidRows() throws Exception {
-        for (double expected : List.of(999_999.99, 1_000_000.00, 1_000_000.01)) {
-            String amount = String.format(java.util.Locale.ROOT, "%.2f", expected);
+        for (String amount : List.of("999999.99", "1000000.00", "1000000.01")) {
             List<com.upiq.pdf.dto.StatementRow> rows = parser.parsePDFRows(
                     pdf("01/10/2025", "Paid to Acme Stores Rs. " + amount));
 
             assertEquals(1, rows.size());
-            assertEquals(expected, rows.get(0).getTransaction().getAmount());
+            assertEquals(new BigDecimal(amount), rows.get(0).getTransaction().getAmount());
             assertTrue(rows.get(0).getValidationReasons().isEmpty());
             assertEquals(1, rows.get(0).getSourceRowIndex());
         }

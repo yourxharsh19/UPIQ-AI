@@ -125,7 +125,7 @@ class ExperimentDataModelTest {
 
     private static ResearchTransactionDefinition transaction() {
         return ResearchTransactionDefinition.builder().id("tx_001").profileId("profile_01")
-                .amount(40.00).type("expense").category("Food").description("Groceries")
+                .amount(new java.math.BigDecimal("40.00")).type("expense").category("Food").description("Groceries")
                 .paymentMethod("UPI").date(LocalDateTime.of(2026, 8, 1, 12, 0)).recurring(false).build();
     }
 }

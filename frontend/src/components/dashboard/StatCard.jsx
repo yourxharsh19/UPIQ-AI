@@ -25,7 +25,7 @@ export const StatCard = ({ title, value, change, isPositive = true, icon: Icon, 
 
       <div className="mt-4 flex items-baseline justify-between gap-2">
         <h3 className={`${featured ? 'text-2xl sm:text-3xl' : 'text-xl sm:text-2xl'} font-bold tracking-tight text-[var(--text-main)] tabular-nums`}>
-          {typeof value === 'number' ? formatCurrency(value) : value}
+          {typeof value === 'string' && value.endsWith('%') ? value : formatCurrency(value)}
         </h3>
         {change && (
           <span

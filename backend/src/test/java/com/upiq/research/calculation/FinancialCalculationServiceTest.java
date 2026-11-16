@@ -69,7 +69,7 @@ class FinancialCalculationServiceTest {
         return Transaction.builder()
                 .id(null)
                 .userId(userId)
-                .amount(amount)
+                .amount(BigDecimal.valueOf(amount))
                 .type("income")
                 .category(category)
                 .description("Test income")
@@ -82,7 +82,7 @@ class FinancialCalculationServiceTest {
         return Transaction.builder()
                 .id(null)
                 .userId(userId)
-                .amount(amount)
+                .amount(BigDecimal.valueOf(amount))
                 .type("expense")
                 .category(category)
                 .description("Test expense")
@@ -788,21 +788,9 @@ class FinancialCalculationServiceTest {
         }
 
         @Test
-        @DisplayName("NaN converts to zero")
-        void nanToZero() {
-            assertThat(FinancialCalculationService.toBigDecimal(Double.NaN)).isEqualByComparingTo(BigDecimal.ZERO);
-        }
-
-        @Test
-        @DisplayName("positive infinity converts to zero")
-        void infinityToZero() {
-            assertThat(FinancialCalculationService.toBigDecimal(Double.POSITIVE_INFINITY)).isEqualByComparingTo(BigDecimal.ZERO);
-        }
-
-        @Test
         @DisplayName("1000.50 converts without IEEE 754 drift")
         void normalDouble() {
-            BigDecimal result = FinancialCalculationService.toBigDecimal(1000.50);
+            BigDecimal result = FinancialCalculationService.toBigDecimal(new BigDecimal("1000.50"));
             assertThat(result).isEqualByComparingTo("1000.50");
         }
     }

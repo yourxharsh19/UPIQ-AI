@@ -2,6 +2,9 @@ package com.upiq.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import jakarta.servlet.FilterChain;
@@ -16,6 +19,21 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class AuthRateLimitFilterTest {
+    @Test
+    void springCreatesFilterUsingItsConfiguredConstructor() {
+        new ApplicationContextRunner()
+                .withBean(ObjectMapper.class, ObjectMapper::new)
+                .withUserConfiguration(FilterBeanConfiguration.class)
+                .withPropertyValues(
+                        "upiq.auth.rate-limit.window-seconds=60",
+                        "upiq.auth.rate-limit.login-attempts=10",
+                        "upiq.auth.rate-limit.registration-attempts=5")
+                .run(context -> {
+                    assertDoesNotThrow(() -> context.getBean(AuthRateLimitFilter.class));
+                    assertEquals(null, context.getStartupFailure());
+                });
+    }
+
     @Test
     void rejectsWindowConversionOverflowAndExcessiveWindow() {
         IllegalArgumentException overflow = assertThrows(IllegalArgumentException.class,
@@ -86,5 +104,10 @@ class AuthRateLimitFilterTest {
         return new AuthRateLimitFilter(new ObjectMapper(),
                 Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC),
                 seconds, loginLimit, registrationLimit);
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @Import(AuthRateLimitFilter.class)
+    static class FilterBeanConfiguration {
     }
 }

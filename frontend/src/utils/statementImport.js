@@ -41,6 +41,7 @@ const CSV_CREDIT_HEADERS = new Set([
 const CURRENCY_PREFIX_PATTERN = /^(?:₹|\$|INR|RS\.?)/i;
 const CURRENCY_MARKER_PATTERN = /(?:₹|\$|INR|RS\.?)/i;
 const VALID_CSV_AMOUNT_PATTERN = /^[+-]?(?:(?:\d+|\d{1,3}(?:,\d{3})+|\d{1,2}(?:,\d{2})*,\d{3})(?:\.\d*)?|\.\d+)$/;
+import { moneyFromMinorUnits, parseMoneyMinorUnits } from './money.js';
 
 const parseCsvAmount = (rawAmount) => {
   if (rawAmount == null || !rawAmount.trim()) return null;
@@ -62,8 +63,8 @@ const parseCsvAmount = (rawAmount) => {
 
   const normalized = `${sign}${value}`;
   if (!VALID_CSV_AMOUNT_PATTERN.test(normalized)) return Number.NaN;
-  const parsed = Number(normalized.replace(/,/g, ''));
-  return Number.isFinite(parsed) ? parsed : Number.NaN;
+  const parsed = parseMoneyMinorUnits(normalized.replace(/,/g, ''));
+  return parsed == null ? Number.NaN : moneyFromMinorUnits(parsed);
 };
 
 export const normalizeParsedTransactions = (transactions, rows = null) => {
@@ -95,19 +96,21 @@ export const normalizeParsedTransactions = (transactions, rows = null) => {
   const rejectedRows = [];
 
   transactions.forEach((transaction, index) => {
-    const amount = transaction?.amount;
+    const rawAmount = transaction?.amount;
+    const amountMinor = parseMoneyMinorUnits(rawAmount);
+    const amount = amountMinor == null ? null : moneyFromMinorUnits(amountMinor);
     const type = typeof transaction?.type === 'string' ? transaction.type.toLowerCase() : '';
     const description = typeof transaction?.description === 'string' ? transaction.description.trim() : '';
     const rawDate = transaction?.date;
     const date = normalizeStatementDate(rawDate);
 
-    if (!Number.isFinite(amount) || amount <= 0 || !['income', 'expense'].includes(type) || !description || !date) {
+    if (amountMinor == null || amountMinor <= 0n || !['income', 'expense'].includes(type) || !description || !date) {
       rejectedCount += 1;
       rejectedRows.push({
         sourceRowIndex: Number.isInteger(transaction?.sourceRowIndex) ? transaction.sourceRowIndex : index,
         reasons: [
           !date ? (rawDate == null || (typeof rawDate === 'string' && !rawDate.trim()) ? 'missing_date' : 'invalid_date') : null,
-          amount == null ? 'missing_amount' : !Number.isFinite(amount) ? 'invalid_amount' : amount <= 0 ? 'non_positive_amount' : null,
+          rawAmount == null || (typeof rawAmount === 'string' && !rawAmount.trim()) ? 'missing_amount' : amountMinor == null ? 'invalid_amount' : amountMinor <= 0n ? 'non_positive_amount' : null,
           !description ? 'missing_description' : null,
           !['income', 'expense'].includes(type) ? 'invalid_transaction_type' : null,
         ].filter(Boolean),
@@ -281,18 +284,18 @@ export const parseCsvStatementText = (csvText) => {
 
     const debitAmount = debitIdx >= 0 ? parseCsvAmount(cols[debitIdx]) : null;
     const creditAmount = creditIdx >= 0 ? parseCsvAmount(cols[creditIdx]) : null;
-    const hasInvalidDirectionalAmount = [debitAmount, creditAmount].some((value) => value !== null && !Number.isFinite(value));
-    const hasNegativeDirectionalAmount = [debitAmount, creditAmount].some((value) => value !== null && value < 0);
+    const hasInvalidDirectionalAmount = [debitAmount, creditAmount].some((value) => value !== null && typeof value !== 'string');
+    const hasNegativeDirectionalAmount = [debitAmount, creditAmount].some((value) => typeof value === 'string' && (parseMoneyMinorUnits(value) ?? 0n) < 0n);
     if (hasInvalidDirectionalAmount) {
       amount = Number.NaN;
     } else if (hasNegativeDirectionalAmount) {
-      amount = [debitAmount, creditAmount].find((value) => value !== null && value < 0);
-    } else if (debitAmount > 0 && creditAmount > 0) {
+      amount = [debitAmount, creditAmount].find((value) => typeof value === 'string' && (parseMoneyMinorUnits(value) ?? 0n) < 0n);
+    } else if ((parseMoneyMinorUnits(debitAmount) ?? 0n) > 0n && (parseMoneyMinorUnits(creditAmount) ?? 0n) > 0n) {
       amount = Number.NaN;
-    } else if (debitAmount > 0) {
+    } else if ((parseMoneyMinorUnits(debitAmount) ?? 0n) > 0n) {
       amount = debitAmount;
       type = 'expense';
-    } else if (creditAmount > 0) {
+    } else if ((parseMoneyMinorUnits(creditAmount) ?? 0n) > 0n) {
       amount = creditAmount;
       type = 'income';
     } else if (debitAmount !== null || creditAmount !== null) {

@@ -1,20 +1,23 @@
+import { formatInrMoney, moneyFromMinorUnits, parseMoneyArithmeticMinorUnits } from './money.js';
+
 export const toFinancialNumber = (value) => {
   const amount = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(amount) ? amount : 0;
 };
 
 export const formatInrAmount = (amount, decimals = 2) => {
-  const safeAmount = toFinancialNumber(amount);
-  return `₹${safeAmount.toLocaleString('en-IN', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  })}`;
+  return formatInrMoney(amount, decimals);
+};
+
+const canonicalMoney = (value) => {
+  const minor = parseMoneyArithmeticMinorUnits(value);
+  return minor == null ? '0.00' : moneyFromMinorUnits(minor);
 };
 
 export const mapDashboardSummary = (summary = {}) => ({
-  totalBalance: toFinancialNumber(summary.netBalance),
-  monthlyIncome: toFinancialNumber(summary.totalIncome),
-  monthlyExpense: toFinancialNumber(summary.totalExpense),
+  totalBalance: canonicalMoney(summary.netBalance),
+  monthlyIncome: canonicalMoney(summary.totalIncome),
+  monthlyExpense: canonicalMoney(summary.totalExpense),
   savingsRate: toFinancialNumber(summary.savingsRate),
   transactionCount: toFinancialNumber(summary.incomeTransactionCount)
     + toFinancialNumber(summary.expenseTransactionCount),
@@ -26,7 +29,7 @@ export const mapCategorySpending = (categories = [], getCategoryColor) =>
     return {
       id: `cat-${index}`,
       name: typeof name === 'string' && name.trim() ? name : 'Uncategorized',
-      value: toFinancialNumber(category.total ?? category.totalAmount),
+      value: canonicalMoney(category.total ?? category.totalAmount),
       percentage: toFinancialNumber(category.percentageOfTotalExpense ?? category.percentage),
       count: toFinancialNumber(category.transactionCount),
       color: typeof getCategoryColor === 'function' ? getCategoryColor(name) : '#6B7280',

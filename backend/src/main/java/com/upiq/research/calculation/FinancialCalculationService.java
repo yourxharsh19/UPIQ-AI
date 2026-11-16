@@ -21,18 +21,12 @@ import java.util.stream.Collectors;
  * Deterministic financial calculation engine for UPIQ 2.0 Paper 1 research.
  *
  * <h2>Precision boundary</h2>
- * <p>The {@code Transaction} entity stores {@code amount} as {@code Double} (IEEE 754 double-precision
- * floating point). This service converts each {@code Double} to {@code BigDecimal} via
- * {@link BigDecimal#valueOf(double)} — <strong>not</strong> {@code new BigDecimal(double)} — so that
- * the conversion uses the canonical decimal string representation of the double, minimising
- * accumulated binary floating-point artefacts (e.g. 0.1 + 0.2 = 0.30000000000000004 is avoided).
+ * <p>Transaction amounts are stored and calculated as decimal values using BigDecimal.
  *
  * <p>All arithmetic is performed with {@link MathContext#DECIMAL128} precision and results are
  * rounded to 2 decimal places using {@link RoundingMode#HALF_UP} before being stored in result DTOs.
  *
- * <p>Known limitation: amounts that cannot be exactly represented in IEEE 754 double (e.g. recurring
- * fractions) may carry a small representational error introduced at database insertion time. This
- * engine does not introduce additional error beyond that boundary.
+ * <p>Percentage and ratio outputs are rounded explicitly; transaction amounts are never rounded on input.
  *
  * <h2>Type conventions</h2>
  * <ul>
@@ -117,7 +111,7 @@ public class FinancialCalculationService {
 
         BigDecimal totalIncome = sumAmounts(incomeTxns);
         BigDecimal totalExpense = sumAmounts(expenseTxns);
-        BigDecimal netBalance = totalIncome.subtract(totalExpense, MC).setScale(RESULT_SCALE, ROUNDING);
+        BigDecimal netBalance = totalIncome.subtract(totalExpense).setScale(RESULT_SCALE, RoundingMode.UNNECESSARY);
 
         BigDecimal savingsRate = BigDecimal.ZERO;
         if (totalIncome.compareTo(BigDecimal.ZERO) > 0) {
@@ -237,7 +231,7 @@ public class FinancialCalculationService {
 
         BigDecimal p1Total = sumAmounts(p1Txns);
         BigDecimal p2Total = sumAmounts(p2Txns);
-        BigDecimal absoluteDiff = p2Total.subtract(p1Total, MC).setScale(RESULT_SCALE, ROUNDING);
+        BigDecimal absoluteDiff = p2Total.subtract(p1Total).setScale(RESULT_SCALE, RoundingMode.UNNECESSARY);
 
         boolean zeroDenominator = p1Total.compareTo(BigDecimal.ZERO) == 0;
         BigDecimal percentageDiff = null;
@@ -289,7 +283,7 @@ public class FinancialCalculationService {
 
         BigDecimal cat1Total = sumAmounts(cat1Txns);
         BigDecimal cat2Total = sumAmounts(cat2Txns);
-        BigDecimal absoluteDiff = cat1Total.subtract(cat2Total, MC).setScale(RESULT_SCALE, ROUNDING);
+        BigDecimal absoluteDiff = cat1Total.subtract(cat2Total).setScale(RESULT_SCALE, RoundingMode.UNNECESSARY);
 
         boolean zeroDenominator = cat2Total.compareTo(BigDecimal.ZERO) == 0;
         BigDecimal percentageDiff = null;
@@ -445,25 +439,20 @@ public class FinancialCalculationService {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Converts a nullable {@code Double} to {@code BigDecimal} using the canonical decimal string
-     * representation via {@link BigDecimal#valueOf(double)}.
-     * Null or NaN inputs return {@link BigDecimal#ZERO}.
+     * Returns an exact decimal amount, treating a null aggregate input as zero.
      */
-    static BigDecimal toBigDecimal(Double amount) {
-        if (amount == null || amount.isNaN() || amount.isInfinite()) {
-            return BigDecimal.ZERO;
-        }
-        return BigDecimal.valueOf(amount);
+    static BigDecimal toBigDecimal(BigDecimal amount) {
+        return amount == null ? BigDecimal.ZERO : amount;
     }
 
     /**
-     * Sum the amounts in a list of transactions converting each via {@link #toBigDecimal(Double)}.
+     * Sum the exact decimal amounts in a list of transactions.
      * Returns a result rounded to {@value #RESULT_SCALE} decimal places.
      */
     private BigDecimal sumAmounts(List<Transaction> transactions) {
         return transactions.stream()
                 .map(t -> toBigDecimal(t.getAmount()))
-                .reduce(BigDecimal.ZERO, (a, b) -> a.add(b, MC))
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(RESULT_SCALE, ROUNDING);
     }
 }

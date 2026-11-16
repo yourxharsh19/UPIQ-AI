@@ -1,5 +1,6 @@
 package com.upiq.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -16,7 +17,10 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Process-local fixed-window limiter for public login and registration requests. */
+/**
+ * Process-local fixed-window limiter for public login and registration
+ * requests.
+ */
 @Component
 public class AuthRateLimitFilter extends OncePerRequestFilter {
     private static final int MAX_IDENTITIES = 10_000;
@@ -29,6 +33,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     private final int registrationLimit;
     private final LinkedHashMap<String, Window> windows = new LinkedHashMap<>(128, 0.75f, true);
 
+    @Autowired
     public AuthRateLimitFilter(ObjectMapper objectMapper,
             @Value("${upiq.auth.rate-limit.window-seconds:60}") long windowSeconds,
             @Value("${upiq.auth.rate-limit.login-attempts:10}") int loginLimit,
@@ -38,7 +43,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     AuthRateLimitFilter(ObjectMapper objectMapper, Clock clock, long windowSeconds,
             int loginLimit, int registrationLimit) {
-        if (windowSeconds < 1) throw invalidConfiguration("window-seconds must be at least 1");
+        if (windowSeconds < 1)
+            throw invalidConfiguration("window-seconds must be at least 1");
         long convertedWindowMillis;
         try {
             convertedWindowMillis = Math.multiplyExact(windowSeconds, 1_000L);
@@ -88,7 +94,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setContentType("application/json");
             response.setCharacterEncoding("UTF-8");
-            objectMapper.writeValue(response.getWriter(), ApiResponse.error("Too many authentication attempts. Please wait and try again."));
+            objectMapper.writeValue(response.getWriter(),
+                    ApiResponse.error("Too many authentication attempts. Please wait and try again."));
             return;
         }
         chain.doFilter(request, response);
@@ -106,7 +113,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             }
             return true;
         }
-        if (current.count >= limit) return false;
+        if (current.count >= limit)
+            return false;
         current.count++;
         return true;
     }
@@ -114,6 +122,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     private static final class Window {
         private final long startedAt;
         private int count;
-        private Window(long startedAt, int count) { this.startedAt = startedAt; this.count = count; }
+
+        private Window(long startedAt, int count) {
+            this.startedAt = startedAt;
+            this.count = count;
+        }
     }
 }

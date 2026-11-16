@@ -1,4 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { addMoney, moneyToNumber } from '../../utils/money.js';
 
 const SpendChart = ({ transactions }) => {
     // Group transactions by month (simplified for now) or category
@@ -7,13 +8,13 @@ const SpendChart = ({ transactions }) => {
         .filter(t => t.type === 'EXPENSE')
         .reduce((acc, t) => {
             const category = t.category || 'Uncategorized';
-            acc[category] = (acc[category] || 0) + t.amount;
+            acc[category] = addMoney(acc[category] || '0', t.amount);
             return acc;
         }, {});
 
     const data = Object.keys(categoryData).map(key => ({
         name: key,
-        amount: categoryData[key]
+        amount: moneyToNumber(categoryData[key])
     }));
 
     if (data.length === 0) {

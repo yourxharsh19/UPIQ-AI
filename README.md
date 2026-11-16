@@ -6,7 +6,7 @@ UPIQ AI is a personal-finance college project. It provides transaction tracking,
 
 - **Frontend:** React 19, Vite 8, Axios, Tailwind CSS 4, Recharts. The active app uses `FinancialContext.currentView` and `activeTab` for navigation; page components are lazy-loaded behind Suspense and an error boundary. Although React Router is a dependency and `src/routes` exists, it is not the active navigation path.
 - **Backend:** Java 21, Spring Boot 3.3, Spring Security, stateless JWT authentication, Spring Data JPA, PostgreSQL. PDFBox and Commons CSV support statement parsing; PDFBox also creates report PDFs.
-- **Database:** PostgreSQL 16 in Docker Compose. Hibernate is configured with `ddl-auto: update`; use a disposable/local database for development and migrations before production.
+- **Database:** PostgreSQL 16 in Docker Compose. Flyway owns schema changes and all profiles use Hibernate `ddl-auto: validate`; see the [database migration runbook](docs/DATABASE_MIGRATION_RUNBOOK.md) before upgrading an existing database.
 - **Assistant:** recognized question intents are resolved and financial results are calculated deterministically. System C grounds its response in verified context and uses Ollama when configured. Ollama is needed for supported AI chat responses, not for the basic application.
 - **Research:** separate backend A/B/C prompt adapters, shared Ollama generation boundary, benchmark resources, and opt-in raw-result runner. There are no answer-quality metrics or statistical conclusions.
 
@@ -18,7 +18,7 @@ Transactions can be created, viewed, filtered, edited, and deleted through front
 
 ## Authentication, sessions, and API integration
 
-The backend exposes `POST /api/auth/register` and `POST /api/auth/login`; a successful login returns an `ApiResponse` with `data.token`. The frontend validates saved JWT structure before restoring a backend session, stores the bearer token, and attaches it to protected Axios requests. Client-side token structure validation is not token authenticity validation; the backend validates protected requests. A protected 401 clears auth/session storage, resets in-memory user state, and returns the app to Login without reloading. Demo login is an explicit local demo path and is separate from backend authentication. Google login is unavailable.
+The backend exposes `POST /api/auth/register` and `POST /api/auth/login`; a successful login returns an `ApiResponse` with `data.token`. The frontend validates saved JWT structure before restoring a backend session, stores the bearer token, and attaches it to protected Axios requests. Client-side token structure validation is not token authenticity validation; the backend validates protected requests. A protected 401 clears auth/session storage, resets in-memory user state, and returns the app to Login without reloading. Demo login is an explicit local demo path and is separate from backend authentication. Google OpenID Connect is opt-in and requires deployment-supplied credentials; see [Authentication Setup](docs/AUTHENTICATION_SETUP.md).
 
 The frontend API base defaults to `http://localhost:8080/api` (`VITE_API_BASE_URL`). Implemented API paths include `/api/transactions`, `/api/categories`, `/api/pdf/upload`, `/api/pdf/import`, `/api/financial/dashboard`, `/api/financial/report`, `/api/financial-chat`, `/api/auth`, `/api/v1/users`, and health routes. Protected routes require `Authorization: Bearer <token>`; auth and health routes are public as configured. The canonical docs describe request boundaries and known limitations. Do not assume UI labels imply a working API feature.
 
@@ -71,11 +71,11 @@ npm run build
 
 ## Environment configuration
 
-See [.env.example](.env.example) for the supported template variables: database connection (`DB_*`, `POSTGRES_*`), server/JWT (`SERVER_PORT`, `JWT_SECRET`, `JWT_EXPIRATION`, `SPRING_PROFILES_ACTIVE`), Ollama (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_TEMPERATURE`, `OLLAMA_TIMEOUT`), and frontend (`VITE_PORT`, `VITE_API_BASE_URL`). For a backend running in Docker, the template uses `host.docker.internal` to reach Ollama on the host. For a backend running natively, use `http://localhost:11434`. Set `OLLAMA_MODEL` to an already available model tag; the application does not download models. No Ollama model is required for ordinary backend/frontend builds or tests.
+See [.env.example](.env.example) for supported template variables, including database connection (`DB_*`, `POSTGRES_*`), server/JWT, Ollama, frontend, optional Google OIDC (`UPIQ_GOOGLE_*`), and opt-in first-admin bootstrap (`UPIQ_ADMIN_*`). For OAuth and admin setup, follow [Authentication Setup](docs/AUTHENTICATION_SETUP.md). For a backend running in Docker, the template uses `host.docker.internal` to reach Ollama on the host. For a backend running natively, use `http://localhost:11434`. Set `OLLAMA_MODEL` to an already available model tag; the application does not download models. No Ollama model is required for ordinary backend/frontend builds or tests.
 
 ## Database and API notes
 
-The datasource is PostgreSQL, configured from `DB_URL` or `DB_HOST`/`DB_PORT`/`DB_NAME`. Hibernate updates the schema automatically in the current configuration; the production migration risk is documented in [Bugs and Issues](docs/BUGS_AND_ISSUES.md). Compose persists data in its `upiq-postgres-data` volume. `/api/auth/**` and `/health/**` are public; other API requests require authentication. Transaction and category operations are scoped to the authenticated user.
+The datasource is PostgreSQL, configured from `DB_URL` or `DB_HOST`/`DB_PORT`/`DB_NAME`. Flyway applies versioned migrations before Hibernate validates the schema. Existing databases require an explicit schema comparison and Flyway baseline; see the [database migration runbook](docs/DATABASE_MIGRATION_RUNBOOK.md). Compose persists data in its `upiq-postgres-data` volume. `/api/auth/**` and `/health/**` are public; other API requests require authentication. Transaction and category operations are scoped to the authenticated user.
 
 ## Frontend status, fixes, and limitations
 
@@ -86,7 +86,7 @@ The frontend has been updated with the following features, boundaries, and limit
 * **Dashboard & Ledger Consistency:** All mutations (add, edit, single delete, bulk delete) consistently invalidate cache and refetch backend ledger and financial dashboard summaries (`/api/transactions`, `/api/financial/dashboard`). Stale KPI retention and optimistic double-counting have been eliminated.
 * **Session & Auth Handling:** Expired and tampered JWT tokens are caught before render; protected 401 responses clear stored sessions and redirect to Login with a friendly toast notification. Protected views prevent unauthenticated rendering.
 * **Theme System (Light / Dark / System):** 3-mode theme switcher with OS preference synchronization (`matchMedia`). An inline anti-flash script in `index.html` prevents FOUC. The design uses a subtle, low-saturation academic navy palette with crisp pure white (`#ffffff`) background in light mode, satisfying WCAG AA/AAA contrast.
-* **Codebase Health:** Clean build and 0 errors, 0 warnings across all frontend files; 129 automated unit tests pass.
+* **Codebase Health:** Focused automated tests cover frontend authentication, account sessions, and the principal application workflows; run the current test command in the Tests and Builds section for the up-to-date result.
 
 ### 2. What is Frontend-Only (Client-Side)
 * **Local Category Budgets:** Budgets are partitioned per authenticated user in browser storage (`upiq_budgets_user_${userId}`). Includes JSON Export/Import for cross-device migration and is clearly labeled *"Budgets are saved on this device only"*.
@@ -98,18 +98,19 @@ The frontend has been updated with the following features, boundaries, and limit
 * **BLOCKED – Backend Cloud Budget Sync:** No backend controller, entity, table, or service exists for budgets. Budgets remain browser-local until backend CRUD endpoints are implemented.
 * **BLOCKED – Scanned PDF OCR:** Backend parser extracts text from digital PDFs and CSVs; scanned image-only PDFs require an OCR engine (e.g., Tesseract). Labeled *"Coming soon"*.
 * **BLOCKED – Report Archive Workflow:** Backend generates downloadable PDF streams but does not store generated reports in the database.
-* **BLOCKED – Google OAuth:** Backend authentication only supports username/password credentials. Google button is disabled and labeled *"Coming soon"*.
+* **OPTIONAL – Google OpenID Connect:** Enabled only when `UPIQ_GOOGLE_ENABLED=true` and provider credentials/redirect settings are supplied. It uses verified OIDC subject identity, a short-lived one-use session handoff, and issues the existing UPIQ JWT. Live provider authentication is not verified by automated tests.
 * **BLOCKED – Fraud Monitoring & Anomaly Blocking:** Graph Neural Network (GNN) microservice is not implemented on the backend. Labeled *"Coming soon"*.
-* **BLOCKED – Live Admin Telemetry:** No backend telemetry APIs exist for platform metrics, user counts, or retraining status. Labeled *"Coming soon"*.
+* **PARTIAL – Admin Dashboard:** The authenticated admin endpoint provides aggregate account and transaction totals. Operational health, fraud, model, and retraining telemetry are not implemented.
 * **BLOCKED – Push Notifications:** Server-side push webhook subscriptions are not implemented. Labeled *"Coming soon"*.
 
 ## Limitations and known risks
 
-- Browser-local budgets and simple run-rate estimates are not server-synchronized or AI predictions. Investment advice, fraud detection, persistent push notifications, and live admin telemetry are not implemented and are labeled Coming soon.
+- Browser-local budgets and simple run-rate estimates are not server-synchronized or AI predictions. Authenticated users can view on-demand spending-change notifications and verified monthly ledger insights; the admin dashboard provides role-protected aggregate account/transaction metrics. Investment advice, fraud detection, persistent push notifications, and operational admin telemetry are not implemented.
 - Financial chat supports bounded intents and depends on backend/Ollama for grounded answers. A timeout is not evidence of an incorrect calculation; consult the issue register before drawing performance conclusions.
 - Statement upload supports CSV and digital text PDFs. Scanned image-only PDFs (OCR) are not supported.
-- Transaction records have no currency metadata and use a `Double` amount. Do not infer original currency or conversion from display formatting.
-- Backend schema uses Hibernate `ddl-auto: update`; a versioned production migration workflow is not yet configured. CORS uses a wildcard origin with credentials disabled; set deployment-specific policy before exposing publicly.
+- Transactions are INR-only, use Java `BigDecimal` and PostgreSQL `NUMERIC(19,2)`, and expose monetary values as decimal strings. Inputs with more than two fractional digits or outside the database range are rejected; no conversion or rounding is performed.
+- Existing installations are not baselined or migrated automatically. Follow the backup, schema comparison, explicit baseline, migration, and verification procedure in the [database migration runbook](docs/DATABASE_MIGRATION_RUNBOOK.md). Production CORS requires an explicit HTTP(S) origin allowlist and fails startup when it is missing or invalid; credentials are disabled.
+- First-admin provisioning is disabled by default and is documented in [Authentication Setup](docs/AUTHENTICATION_SETUP.md). It uses a PostgreSQL transaction advisory lock and an existing BCrypt encoder; provision once, then disable the flag.
 - The research dataset is small, and no answer-quality metrics/statistics exist. Recorded local runtime issues are not evidence that any system performs better.
 
 ## Team workflow and documentation

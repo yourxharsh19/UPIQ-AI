@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildLocalBudgetForecasts, formatBudgetUsage } from '../src/utils/budgetForecasts.js';
+import { buildLocalBudgetForecasts, formatBudgetUsage, getBudgetProgress } from '../src/utils/budgetForecasts.js';
 
 test('builds local monthly estimates from saved category budgets and expense transactions', () => {
   const now = new Date(2026, 9, 15, 12);
@@ -17,7 +17,7 @@ test('builds local monthly estimates from saved category budgets and expense tra
     budget: forecasts[0].budget,
     spent: forecasts[0].spent,
     predicted: forecasts[0].predicted,
-  }, { category: 'Food', budget: 600, spent: 300, predicted: 620 });
+  }, { category: 'Food', budget: '600', spent: '300.00', predicted: '620.00' });
   assert.match(forecasts[0].color, /^#/);
 });
 
@@ -25,4 +25,17 @@ test('shows a useful empty-budget message instead of a NaN percentage', () => {
   assert.deepEqual(buildLocalBudgetForecasts({}, [], new Date(2026, 9, 1)), []);
   assert.equal(formatBudgetUsage(0, 0), 'Set category budgets to see usage');
   assert.equal(formatBudgetUsage(300, 600), '50.0% of total cap');
+});
+
+test('budget progress compares decimal strings and computes the exact difference', () => {
+  assert.deepEqual(getBudgetProgress('100.01', '100.00'), {
+    percentage: 100.01,
+    isOverBudget: true,
+    difference: '0.01',
+  });
+  assert.deepEqual(getBudgetProgress('9.00', '100.00'), {
+    percentage: 9,
+    isOverBudget: false,
+    difference: '91.00',
+  });
 });

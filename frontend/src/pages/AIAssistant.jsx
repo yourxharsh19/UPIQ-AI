@@ -7,16 +7,7 @@ import { FinancialChatService } from '../services/financial-chat.service';
 import { requestFinancialChatAnswer } from '../utils/financialChat.js';
 
 export const AIAssistant = () => {
-  const { aiPromptQuery, setAiPromptQuery, transactions } = useFinancial();
-
-  const [messages, setMessages] = useState([
-    {
-      id: 'm1',
-      sender: 'ai',
-      text: 'Hello! I am your UPIQ Finance Assistant. I can answer questions on supported financial ledger intents: income, expenses, category spending, monthly summaries, period comparisons, spending trends, net balance, and largest transactions. AI-generated answers require the backend server and Ollama to be running.',
-      timestamp: 'Just now',
-    },
-  ]);
+  const { aiPromptQuery, setAiPromptQuery, transactions, chatMessages: messages, appendChatMessage } = useFinancial();
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef(null);
@@ -41,24 +32,24 @@ export const AIAssistant = () => {
     if (isTyping || !userMsg.trim()) return;
     setIsTyping(true);
     if (appendUserMessage) {
-      setMessages((prev) => [...prev, {
+      appendChatMessage({
         id: `usr-${Date.now()}`,
         sender: 'user',
         text: userMsg,
         timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-      }]);
+      });
       if (userMsg === inputText) setInputText('');
     }
     try {
       const result = await requestFinancialChatAnswer(FinancialChatService.ask, userMsg);
-      setMessages((prev) => [...prev, {
+      appendChatMessage({
         id: `ai-${Date.now()}`,
         sender: 'ai',
         text: result.success ? result.answer : result.error,
         retryQuestion: result.success ? undefined : userMsg,
         isError: !result.success,
         timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-      }]);
+      });
     } finally {
       setIsTyping(false);
     }

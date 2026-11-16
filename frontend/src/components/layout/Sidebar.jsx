@@ -23,7 +23,7 @@ export const Sidebar = () => {
     { id: 'transactions', label: 'Transactions', icon: Receipt },
     { id: 'categories', label: 'Categories', icon: Tags },
     { id: 'ai-assistant', label: 'AI Assistant', icon: Bot, isAi: true },
-    { id: 'insights', label: 'Local Budgets & Estimates', icon: BrainCircuit },
+    { id: 'insights', label: 'Financial Insights', icon: BrainCircuit },
     { id: 'security', label: 'Security & Fraud', icon: ShieldAlert, upcoming: true },
     { id: 'reports', label: 'Monthly Reports', icon: FileText },
     { id: 'profile', label: 'User Profile', icon: User },

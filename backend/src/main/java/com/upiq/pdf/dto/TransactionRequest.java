@@ -6,6 +6,9 @@ import jakarta.validation.constraints.Positive;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 @Data
 @NoArgsConstructor
@@ -15,7 +18,8 @@ public class TransactionRequest {
 
     @NotNull(message = "Amount is required")
     @Positive(message = "Amount must be positive")
-    private Double amount;
+    @JsonSerialize(using = ToStringSerializer.class)
+    private BigDecimal amount;
 
     private String type;       // expense / income
 

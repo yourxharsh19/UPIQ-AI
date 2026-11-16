@@ -1,5 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { calculateTotalIncome, calculateTotalExpenses } from '../../utils/transactionUtils';
+import { formatInrAmount } from '../../utils/financialDisplay.js';
+import { moneyToNumber } from '../../utils/money.js';
 
 const IncomeExpenseComparison = ({ transactions }) => {
   const income = calculateTotalIncome(transactions);
@@ -8,17 +10,17 @@ const IncomeExpenseComparison = ({ transactions }) => {
   const data = [
     {
       name: 'Income',
-      amount: income,
+      amount: moneyToNumber(income),
       type: 'income'
     },
     {
       name: 'Expenses',
-      amount: expenses,
+      amount: moneyToNumber(expenses),
       type: 'expense'
     }
   ];
 
-  if (income === 0 && expenses === 0) {
+  if (moneyToNumber(income) === 0 && moneyToNumber(expenses) === 0) {
     return (
       <div className="bg-[var(--bg-card)] p-6 sm:p-8 rounded-xl border border-[var(--border-base)] shadow-sm min-h-80 flex flex-col items-center justify-center">
         <div className="text-center">
@@ -39,7 +41,7 @@ const IncomeExpenseComparison = ({ transactions }) => {
         <div className="bg-[var(--bg-card)] p-2.5 rounded-lg border border-[var(--border-base)] shadow-md">
           <p className="font-semibold text-[var(--text-main)] text-xs">{data.payload.name}</p>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            ₹{data.value.toLocaleString('en-IN')}
+            {formatInrAmount(data.value)}
           </p>
         </div>
       );
@@ -86,11 +88,11 @@ const IncomeExpenseComparison = ({ transactions }) => {
       <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-emerald-500/5 p-4 rounded-xl border border-emerald-500/10">
           <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider mb-1">Total Income</p>
-          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">₹{income.toLocaleString('en-IN')}</p>
+          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatInrAmount(income)}</p>
         </div>
         <div className="bg-rose-500/5 p-4 rounded-xl border border-rose-500/10">
           <p className="text-xs text-rose-600 dark:text-rose-400 font-bold uppercase tracking-wider mb-1">Total Expenses</p>
-          <p className="text-2xl font-black text-rose-600 dark:text-rose-400">₹{expenses.toLocaleString('en-IN')}</p>
+          <p className="text-2xl font-black text-rose-600 dark:text-rose-400">{formatInrAmount(expenses)}</p>
         </div>
       </div>
     </div>

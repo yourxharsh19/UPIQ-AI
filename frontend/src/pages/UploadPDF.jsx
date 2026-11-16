@@ -8,6 +8,7 @@ import clsx from "clsx";
 import { normalizeApiError } from "../services/safeApiError.js";
 
 import { validateStatementFile } from "../utils/fileValidation";
+import { formatInrAmount } from "../utils/financialDisplay.js";
 
 const UploadPDF = () => {
     let financial = null;
@@ -192,7 +193,7 @@ const UploadPDF = () => {
                                                     "px-4 py-2.5 font-semibold tabular-nums",
                                                     t.type.toLowerCase() === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--text-main)]'
                                                 )}>
-                                                    {t.type.toLowerCase() === 'income' ? '+' : '-'}₹{t.amount?.toLocaleString('en-IN')}
+                                                    {t.type.toLowerCase() === 'income' ? '+' : '-'}{formatInrAmount(t.amount, 0)}
                                                 </td>
                                                 <td className="px-4 py-2.5 whitespace-nowrap">
                                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-base)]">Pending server check</span>

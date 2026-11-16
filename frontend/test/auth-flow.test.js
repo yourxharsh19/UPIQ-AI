@@ -24,7 +24,7 @@ if (typeof globalThis.CustomEvent === 'undefined') {
 }
 
 import { getInitialAuthState } from '../src/utils/authUtils.js';
-import { activateDemoSession, applySessionExpiration, authenticateWithBackend, clearAuthSession, isWellFormedJwt, isJwtExpired } from '../src/utils/authFlow.js';
+import { activateDemoSession, applySessionExpiration, authenticateWithBackend, clearAuthSession, isWellFormedJwt, isJwtExpired, persistTokenResponse } from '../src/utils/authFlow.js';
 import { resolveAuthView } from '../src/utils/registrationFlow.js';
 import api from '../src/services/api.js';
 import { AuthService } from '../src/services/auth.service.js';
@@ -250,6 +250,18 @@ describe('production backend login helper', () => {
     assert.equal(result.success, false);
     assert.equal(storage.getItem('token'), null);
     assert.equal(storage.getItem('upiq_auth'), null);
+  });
+
+  test('Google token exchange uses the same validated token session handoff', () => {
+    const storage = makeStorage({ upiq_demo: 'true' });
+    const result = persistTokenResponse({
+      response: { success: true, data: { token: validJwt } },
+      profile: makeProfile(), currency: 'INR', storage,
+    });
+    assert.deepEqual(result, { success: true, mode: 'backend' });
+    assert.equal(storage.getItem('token'), validJwt);
+    assert.equal(storage.getItem('upiq_auth'), 'true');
+    assert.equal(storage.getItem('upiq_demo'), null);
   });
 
   test('empty or malformed JWT cannot authenticate', async () => {

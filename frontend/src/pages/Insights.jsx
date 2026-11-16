@@ -1,26 +1,74 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ShieldAlert } from 'lucide-react';
 import { useFinancial } from '../context/FinancialContext';
 import { useAIBudget } from '../hooks/useAIBudget';
 import { BudgetForecastCard } from '../components/insights/BudgetForecastCard';
 import { InvestmentSuggestions } from '../components/insights/InvestmentSuggestions';
 import { formatBudgetUsage } from '../utils/budgetForecasts.js';
+import { FinancialInsightsService } from '../services/financial-insights.service.js';
+import { getAuthSessionMode } from '../utils/authFlow.js';
+import { getFeatureSessionKey } from '../utils/featureSession.js';
 
 export const Insights = () => {
-  const { formatCurrency } = useFinancial();
+  const { formatCurrency, profile } = useFinancial();
   const { budgets, totalBudgeted, totalSpent, totalPredicted, idleCash } = useAIBudget();
+  const sessionMode = getAuthSessionMode();
+  const sessionKey = getFeatureSessionKey(profile, sessionMode);
+  const [insightResult, setInsightResult] = useState(null);
+  const [insightsError, setInsightsError] = useState('');
+  const [isInsightsLoading, setIsInsightsLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setInsightResult(null);
+    setInsightsError('');
+    setIsInsightsLoading(false);
+    if (sessionMode !== 'authenticated') {
+      setInsightsError(sessionMode === 'inconsistent'
+        ? 'Your session state needs to be resolved. Sign in again to view account insights.'
+        : 'Verified account insights require a backend-authenticated session.');
+      return () => { active = false; };
+    }
+    setIsInsightsLoading(true);
+    FinancialInsightsService.getInsights().then((response) => {
+      if (!response?.success || !response.data) throw new Error('Insights unavailable');
+      if (active) setInsightResult({ sessionKey, data: response.data });
+    }).catch(() => {
+      if (active) setInsightsError('Account insights could not be loaded.');
+    }).finally(() => {
+      if (active) setIsInsightsLoading(false);
+    });
+    return () => { active = false; };
+  }, [sessionKey, sessionMode]);
+
+  const insights = insightResult?.sessionKey === sessionKey ? insightResult.data : null;
+  const hasCurrentMonthActivity = insights
+    && (Number(insights.income) !== 0 || Number(insights.expenses) !== 0 || Boolean(insights.topExpenseCategory));
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-main)]">
-          Local Budgets & Estimates
+          Financial Insights
         </h1>
         <p className="text-xs text-[var(--text-muted)] mt-0.5">
-          Browser-local budgets and estimates are available now. Cloud budget sync and advanced AI predictions are Coming Soon; these estimates are not AI-generated or synced to the backend.
+          Verified monthly totals come from your backend ledger. Ollama may explain verified aggregate facts; browser-local budget estimates remain separate.
         </p>
       </div>
+
+      <section className="rounded-xl border border-[var(--border-base)] bg-[var(--bg-card)] p-4 space-y-3" aria-labelledby="verified-insights-heading">
+          <div><h2 id="verified-insights-heading" className="text-sm font-semibold text-[var(--text-main)]">Backend financial insights</h2><p className="text-xs text-[var(--text-muted)]">{insights?.month ? `Recorded month: ${insights.month}` : 'Current calendar month'} · sourced from your recorded ledger</p></div>
+        {isInsightsLoading && <p role="status" className="text-xs text-[var(--text-muted)]">Loading verified account insights…</p>}
+        {insightsError && <p role="alert" className="text-xs text-[var(--text-muted)]">{insightsError}</p>}
+        {insights && !hasCurrentMonthActivity && <p role="status" className="text-xs text-[var(--text-muted)]">No income or expense transactions are recorded for this month.</p>}
+        {insights && <>
+          <div className="grid gap-3 sm:grid-cols-3 text-sm"><p>Income: <strong>{formatCurrency(insights.income)}</strong></p><p>Expenses: <strong>{formatCurrency(insights.expenses)}</strong></p><p>Net: <strong>{formatCurrency(insights.net)}</strong></p></div>
+          {insights.topExpenseCategory && <p className="text-xs text-[var(--text-muted)]">Largest expense category: {insights.topExpenseCategory} ({formatCurrency(insights.topExpenseCategoryTotal)}).</p>}
+          <ul className="list-disc pl-5 text-xs text-[var(--text-muted)]">{insights.insights?.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>
+          <p className="rounded-lg bg-[var(--bg-surface)] p-3 text-xs text-[var(--text-main)]">{insights.explanation} <span className="text-[var(--text-muted)]">{insights.aiGenerated ? 'AI explanation from verified aggregate facts.' : 'Calculated summary; AI explanation unavailable.'}</span></p>
+        </>}
+      </section>
 
       {/* Top Predictive Overview Banner */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">

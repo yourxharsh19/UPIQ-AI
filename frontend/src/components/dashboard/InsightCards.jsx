@@ -8,6 +8,7 @@ import {
   getIncomeExpenseRatio
 } from "../../utils/transactionUtils";
 import clsx from "clsx";
+import { formatInrAmount } from "../../utils/financialDisplay.js";
 
 const InsightCards = ({ transactions }) => {
   const topCategory = useMemo(() => getTopSpendingCategory(transactions), [transactions]);
@@ -31,7 +32,7 @@ const InsightCards = ({ transactions }) => {
         : categoryMom.direction === 'down'
           ? `Spending ↓ ${categoryMom.change.toFixed(1)}% vs last month`
           : "Spending unchanged vs last month",
-      value: `₹${topCategory.amount.toLocaleString('en-IN')}`,
+      value: formatInrAmount(topCategory.amount),
       severity: "info"
     });
   }

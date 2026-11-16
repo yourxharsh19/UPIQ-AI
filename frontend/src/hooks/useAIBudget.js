@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useFinancial } from '../context/FinancialContext';
 import { useBudget } from '../context/BudgetContext';
 import { buildLocalBudgetForecasts } from '../utils/budgetForecasts.js';
+import { compareMoney, moneyRatioPercent, subtractMoney, sumMoneyString } from '../utils/money.js';
 
 export const useAIBudget = () => {
   const { kpi, transactions } = useFinancial();
@@ -9,15 +10,16 @@ export const useAIBudget = () => {
 
   const metrics = useMemo(() => {
     const forecasts = buildLocalBudgetForecasts(budgets, transactions);
-    const totalBudgeted = forecasts.reduce((acc, forecast) => acc + forecast.budget, 0);
-    const totalSpent = forecasts.reduce((acc, forecast) => acc + forecast.spent, 0);
-    const totalPredicted = forecasts.reduce((acc, forecast) => acc + forecast.predicted, 0);
+    const totalBudgeted = sumMoneyString(forecasts.map((forecast) => forecast.budget));
+    const totalSpent = sumMoneyString(forecasts.map((forecast) => forecast.spent));
+    const totalPredicted = sumMoneyString(forecasts.map((forecast) => forecast.predicted));
 
-    const overBudgetCount = forecasts.filter((forecast) => forecast.spent > forecast.budget).length;
-    const warningCount = forecasts.filter((forecast) => forecast.spent / forecast.budget >= 0.85
-      && forecast.spent <= forecast.budget).length;
+    const overBudgetCount = forecasts.filter((forecast) => compareMoney(forecast.spent, forecast.budget) > 0).length;
+    const warningCount = forecasts.filter((forecast) => compareMoney(forecast.spent, forecast.budget) <= 0
+      && moneyRatioPercent(forecast.spent, forecast.budget, 1) >= 85).length;
 
-    const idleCash = Math.max(0, kpi.totalBalance - totalBudgeted);
+    const remaining = subtractMoney(kpi.totalBalance, totalBudgeted);
+    const idleCash = compareMoney(remaining, '0') > 0 ? remaining : '0.00';
 
     return {
       totalBudgeted,

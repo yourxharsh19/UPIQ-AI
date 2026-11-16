@@ -1,7 +1,8 @@
 import { Target, AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { useBudget } from "../../context/BudgetContext";
-import { buildLocalBudgetForecasts } from "../../utils/budgetForecasts.js";
+import { buildLocalBudgetForecasts, getBudgetProgress } from "../../utils/budgetForecasts.js";
 import { getCategoryDisplayProps } from "../../utils/categoryUtils";
+import { formatInrAmount } from "../../utils/financialDisplay.js";
 import clsx from "clsx";
 
 const BudgetProgress = ({ transactions }) => {
@@ -31,8 +32,7 @@ const BudgetProgress = ({ transactions }) => {
     );
   }
 
-  const getBudgetStatus = (spent, budget) => {
-    const percentage = (spent / budget) * 100;
+  const getBudgetStatus = (percentage) => {
     if (percentage < 80) {
       return { color: 'green', icon: CheckCircle2, label: 'On Track' };
     } else if (percentage < 100) {
@@ -60,8 +60,9 @@ const BudgetProgress = ({ transactions }) => {
           const categoryName = forecast.category;
           const budget = forecast.budget;
           const spent = forecast.spent;
-          const percentage = Math.min((spent / budget) * 100, 100);
-          const status = getBudgetStatus(spent, budget);
+          const progress = getBudgetProgress(spent, budget);
+          const percentage = Math.min(progress.percentage, 100);
+          const status = getBudgetStatus(progress.percentage);
           const displayProps = getCategoryDisplayProps({ name: categoryName });
           const StatusIcon = status.icon;
 
@@ -86,7 +87,7 @@ const BudgetProgress = ({ transactions }) => {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-bold text-[var(--text-main)]">
-                    ₹{spent.toLocaleString('en-IN')} <span className="text-[var(--text-muted)] font-medium">/ ₹{budget.toLocaleString('en-IN')}</span>
+                    {formatInrAmount(spent)} <span className="text-[var(--text-muted)] font-medium">/ {formatInrAmount(budget)}</span>
                   </span>
                   <div className={clsx(
                     "flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
@@ -110,13 +111,13 @@ const BudgetProgress = ({ transactions }) => {
 
               <div className="flex justify-between text-[11px] font-medium">
                 <span className="text-[var(--text-muted)]">{percentage.toFixed(0)}% of budget used</span>
-                {spent > budget ? (
+                {progress.isOverBudget ? (
                   <span className="text-rose-500 font-bold">
-                    Over by ₹{(spent - budget).toLocaleString('en-IN')}
+                    Over by {formatInrAmount(progress.difference)}
                   </span>
                 ) : (
                   <span className="text-emerald-500 font-bold">
-                    ₹{(budget - spent).toLocaleString('en-IN')} left
+                    {formatInrAmount(progress.difference)} left
                   </span>
                 )}
               </div>

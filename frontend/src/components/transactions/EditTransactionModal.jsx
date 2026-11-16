@@ -100,7 +100,7 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, onSave }) => {
         try {
             await onSave(transaction.id, {
                 ...formData,
-                amount: parseFloat(formData.amount)
+                amount: String(formData.amount ?? '').trim()
             });
             onClose();
         } catch (error) {

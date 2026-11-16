@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 /**
  * Result for comparing two categories within the same period and transaction type.
@@ -27,11 +29,14 @@ public class CategoryComparisonResult {
     private String transactionType;
     private PeriodRange period;
     private String category1;
+    @JsonSerialize(using = ToStringSerializer.class)
     private BigDecimal category1Total;
     private long category1TransactionCount;
     private String category2;
+    @JsonSerialize(using = ToStringSerializer.class)
     private BigDecimal category2Total;
     private long category2TransactionCount;
+    @JsonSerialize(using = ToStringSerializer.class)
     private BigDecimal absoluteDifference;
     /** Null when category2Total is zero. */
     private BigDecimal percentageDifference;

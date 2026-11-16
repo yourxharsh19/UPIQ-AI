@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 @Data
 @Builder
@@ -16,6 +18,7 @@ public class CategoryTotalResult {
     private String category;
     private String transactionType;
     private PeriodRange period;
+    @JsonSerialize(using = ToStringSerializer.class)
     private BigDecimal total;
     private long transactionCount;
     /** Percentage of total expense for the same period. Null if transactionType is not expense. */

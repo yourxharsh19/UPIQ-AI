@@ -1,35 +1,31 @@
 import { getTransactionCoverage, monthKeyForTransaction } from './transactionCoverage.js';
+import { addMoney, compareMoney, divideMoney, moneyRatioPercent, sumMoneyString } from './money.js';
 
 const monthKeyFor = monthKeyForTransaction;
 
-const amountOf = (transaction) => {
-  const value = Number(transaction?.amount);
-  return Number.isFinite(value) ? value : 0;
-};
-
-const roundMoney = (amount) => Math.round((amount + Number.EPSILON) * 100) / 100;
+const amountOf = (transaction) => String(transaction?.amount ?? '0');
 
 export const getMonthlyReport = (transactions = [], monthKey) => {
   const monthlyTransactions = transactions.filter((transaction) => monthKeyFor(transaction.date) === monthKey
     && ['income', 'expense'].includes(String(transaction.type).toLowerCase()));
   const incomeTransactions = monthlyTransactions.filter((transaction) => String(transaction.type).toLowerCase() === 'income');
   const expenseTransactions = monthlyTransactions.filter((transaction) => String(transaction.type).toLowerCase() === 'expense');
-  const totalIncome = roundMoney(incomeTransactions.reduce((sum, transaction) => sum + amountOf(transaction), 0));
-  const totalExpense = roundMoney(expenseTransactions.reduce((sum, transaction) => sum + amountOf(transaction), 0));
+  const totalIncome = sumMoneyString(incomeTransactions.map(amountOf));
+  const totalExpense = sumMoneyString(expenseTransactions.map(amountOf));
   const categoryTotals = new Map();
 
   for (const transaction of expenseTransactions) {
     const category = transaction.category?.trim() || 'Uncategorized';
-    categoryTotals.set(category, (categoryTotals.get(category) || 0) + amountOf(transaction));
+    categoryTotals.set(category, addMoney(categoryTotals.get(category) || '0', amountOf(transaction)));
   }
 
   const categories = [...categoryTotals.entries()]
     .map(([category, amount]) => ({
       category,
-      amount: roundMoney(amount),
-      percentage: totalExpense > 0 ? (amount / totalExpense) * 100 : 0,
+      amount,
+      percentage: moneyRatioPercent(amount, totalExpense, 2),
     }))
-    .sort((left, right) => right.amount - left.amount);
+    .sort((left, right) => compareMoney(right.amount, left.amount));
 
   const sortedExpenses = [...expenseTransactions].sort((left, right) => String(right.date).localeCompare(String(left.date)));
   const recentTransactions = [...monthlyTransactions].sort((left, right) => String(right.date).localeCompare(String(left.date)));
@@ -39,13 +35,13 @@ export const getMonthlyReport = (transactions = [], monthKey) => {
     transactions: monthlyTransactions,
     totalIncome,
     totalExpense,
-    netCashFlow: roundMoney(totalIncome - totalExpense),
+    netCashFlow: sumMoneyString([totalIncome, `-${totalExpense}`]),
     transactionCount: incomeTransactions.length + expenseTransactions.length,
     incomeCount: incomeTransactions.length,
     expenseCount: expenseTransactions.length,
-    averageExpense: expenseTransactions.length ? roundMoney(totalExpense / expenseTransactions.length) : 0,
+    averageExpense: expenseTransactions.length ? divideMoney(totalExpense, 1, expenseTransactions.length) : '0.00',
     categories,
-    largestExpenses: [...sortedExpenses].sort((left, right) => amountOf(right) - amountOf(left)).slice(0, 5),
+    largestExpenses: [...sortedExpenses].sort((left, right) => compareMoney(amountOf(right), amountOf(left))).slice(0, 5),
     recentTransactions: recentTransactions.slice(0, 5),
   };
 };
@@ -59,14 +55,14 @@ export const createMonthlyReportCsv = (report) => {
   const rows = [
     ['UPIQ Monthly Financial Report', report.monthKey],
     ['Metric', 'Amount (INR)'],
-    ['Total income', report.totalIncome.toFixed(2)],
-    ['Total expenses', report.totalExpense.toFixed(2)],
-    ['Net cash flow', report.netCashFlow.toFixed(2)],
+    ['Total income', report.totalIncome],
+    ['Total expenses', report.totalExpense],
+    ['Net cash flow', report.netCashFlow],
     ['Transaction count', report.transactionCount],
-    ['Average expense', report.averageExpense.toFixed(2)],
+    ['Average expense', report.averageExpense],
     [],
     ['Expense category', 'Amount (INR)', 'Share of expenses (%)'],
-    ...report.categories.map((category) => [category.category, category.amount.toFixed(2), category.percentage.toFixed(2)]),
+    ...report.categories.map((category) => [category.category, category.amount, category.percentage.toFixed(2)]),
     [],
     ['Date', 'Type', 'Description', 'Category', 'Amount (INR)', 'Payment method'],
     ...report.transactions.map((transaction) => [
@@ -74,7 +70,7 @@ export const createMonthlyReportCsv = (report) => {
       transaction.type,
       transaction.title || transaction.merchant || '',
       transaction.category || 'Uncategorized',
-      amountOf(transaction).toFixed(2),
+      amountOf(transaction),
       transaction.mode || '',
     ]),
   ];

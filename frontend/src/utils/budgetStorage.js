@@ -1,4 +1,14 @@
+import { moneyFromMinorUnits, parseMoneyMinorUnits } from './money.js';
+
 export const LEGACY_STORAGE_KEY = 'upiq_budgets';
+
+const normalizeBudgetMap = (budgets) => Object.fromEntries(
+  Object.entries(budgets || {}).flatMap(([category, value]) => {
+    if (typeof category !== 'string' || !category.trim()) return [];
+    const minor = parseMoneyMinorUnits(value);
+    return minor != null && minor >= 0n ? [[category.trim(), moneyFromMinorUnits(minor)]] : [];
+  }),
+);
 
 /**
  * Returns a user-scoped storage key for budget persistence.
@@ -20,7 +30,7 @@ export const getBudgetStorageKey = (userId) => {
  *
  * @param {Storage} [storage]
  * @param {string|number|null} [userId]
- * @returns {Record<string, number>}
+ * @returns {Record<string, string>}
  */
 export const readStoredBudgets = (storage, userId) => {
   try {
@@ -47,7 +57,7 @@ export const readStoredBudgets = (storage, userId) => {
     if (!stored) return {};
 
     const parsed = JSON.parse(stored);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? normalizeBudgetMap(parsed) : {};
   } catch {
     return {};
   }
@@ -65,7 +75,7 @@ export const writeStoredBudgets = (budgets, storage, userId) => {
   try {
     const s = storage ?? globalThis.localStorage;
     const userKey = getBudgetStorageKey(userId);
-    s?.setItem(userKey, JSON.stringify(budgets));
+    s?.setItem(userKey, JSON.stringify(normalizeBudgetMap(budgets)));
     return true;
   } catch {
     return false;
@@ -85,7 +95,7 @@ export const exportBudgetsToJson = (budgets, userId) => {
     schemaVersion: 1,
     exportedAt: new Date().toISOString(),
     user: userId ? String(userId) : 'guest',
-    budgets: budgets || {},
+    budgets: normalizeBudgetMap(budgets),
     note: 'Budgets are saved on this device only',
   };
   return JSON.stringify(payload, null, 2);
@@ -125,9 +135,9 @@ export const parseImportedBudgetsJson = (jsonString) => {
     if (typeof key !== 'string' || !key.trim()) continue;
     if (metadataKeys.includes(key)) continue;
 
-    const num = Number(value);
-    if (Number.isFinite(num) && num >= 0) {
-      sanitized[key.trim()] = Math.round((num + Number.EPSILON) * 100) / 100;
+    const minor = parseMoneyMinorUnits(value);
+    if (minor != null && minor >= 0n) {
+      sanitized[key.trim()] = moneyFromMinorUnits(minor);
     }
   }
 

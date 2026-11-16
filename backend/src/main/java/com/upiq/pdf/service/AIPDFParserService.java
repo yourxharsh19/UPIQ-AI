@@ -5,6 +5,7 @@ import com.upiq.pdf.dto.StatementRow;
 import com.upiq.pdf.dto.StatementRowValidationReason;
 import com.upiq.pdf.service.StatementRowValidator;
 import com.upiq.pdf.exceptions.ParsingException;
+import com.upiq.pdf.utils.ParsingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -22,12 +23,13 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
 
 @Slf4j
 @Service
 public class AIPDFParserService {
 
-    private static final Pattern CURRENCY_PATTERN = Pattern.compile("(?:₹|rs\\.?|inr)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+    private static final Pattern CURRENCY_PATTERN = Pattern.compile("(?:₹|rs\\.?|inr)\\s*((?<![\\d.,])(?:\\d+|\\d{1,3}(?:,\\d{3})+|\\d{1,2}(?:,\\d{2})*,\\d{3})(?:\\.\\d{1,2})?(?![\\d.,]))",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern MALFORMED_AMOUNT_PATTERN = Pattern.compile(
             "(?:₹|\\brs\\.?|\\binr\\b|\\bamount\\b)\\s*(?:[:=]\\s*)?\\S+", Pattern.CASE_INSENSITIVE);
@@ -72,8 +74,7 @@ public class AIPDFParserService {
     public List<TransactionRequest> parsePDF(MultipartFile file) {
         return parsePDFRows(file).stream()
                 .map(StatementRow::getTransaction)
-                .filter(transaction -> transaction != null && transaction.getAmount() != null
-                        && Double.isFinite(transaction.getAmount()) && transaction.getAmount() > 0)
+                .filter(transaction -> transaction != null && ParsingUtils.isValidAmount(transaction.getAmount()))
                 .toList();
     }
 
@@ -173,7 +174,7 @@ public class AIPDFParserService {
             return null;
 
         String finalType = "CREDIT".equals(type) ? "income" : "expense";
-        Double amount = extractAmount(combined);
+        BigDecimal amount = extractAmount(combined);
 
         TransactionRequest tx = new TransactionRequest();
         tx.setType(finalType);
@@ -346,14 +347,14 @@ public class AIPDFParserService {
                 .trim();
     }
 
-    private Double extractAmount(String text) {
+    private BigDecimal extractAmount(String text) {
         Matcher m = CURRENCY_PATTERN.matcher(text);
         while (m.find()) {
             try {
-                String val = m.group(1).replace(",", "");
-                double d = Double.parseDouble(val);
-                if (Double.isFinite(d))
-                    return d;
+                String val = m.group(1);
+                if (!val.matches("(?:\\d+|\\d{1,3}(?:,\\d{3})+|\\d{1,2}(?:,\\d{2})*,\\d{3})(?:\\.\\d{1,2})?")) continue;
+                BigDecimal amount = new BigDecimal(val.replace(",", ""));
+                if (ParsingUtils.isValidAmount(amount)) return amount;
             } catch (Exception e) {
                 /* ignore */ }
         }

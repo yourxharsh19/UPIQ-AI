@@ -32,7 +32,7 @@ public class ResearchSeedingProperties {
     /**
      * Password assigned to synthetic research users in the research database only.
      */
-    private String userPassword = "research-only-not-for-production";
+    private String userPassword = "";
 
     /**
      * JDBC URL substrings that must never be seeded (production Neon, etc.).

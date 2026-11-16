@@ -28,7 +28,12 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(unique = true)
+    @ToString.Exclude
+    private String googleSubject;
+
     @Column(nullable = false)
+    @ToString.Exclude
     private String password;
 
     private String fullName; // Optional

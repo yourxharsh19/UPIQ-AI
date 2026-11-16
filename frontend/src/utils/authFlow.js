@@ -124,30 +124,31 @@ export const authenticateWithBackend = async ({
 }) => {
   try {
     const response = await authService.login(email, password || '');
-    const token = response?.data?.token;
-
-    if (response?.success !== true || !isWellFormedJwt(token)) {
-      return { success: false, error: INVALID_TOKEN_ERROR };
-    }
-
-    try {
-      storage.setItem('token', token);
-      storage.setItem('upiq_auth', JSON.stringify(true));
-      storage.removeItem('upiq_demo');
-      storage.setItem('upiq_profile', JSON.stringify(profile));
-      storage.setItem('upiq_currency', JSON.stringify(currency));
-    } catch {
-      clearAuthSession(storage);
-      return { success: false, error: 'Failed to persist authentication token.' };
-    }
-
-    return { success: true, mode: 'backend' };
+    return persistTokenResponse({ response, profile, currency, storage });
   } catch (err) {
     const error = err?.userFriendlyMessage
       || err?.response?.data?.message
       || err?.message
       || 'Invalid email or password.';
     return { success: false, error };
+  }
+};
+
+export const persistTokenResponse = ({ response, profile, currency, storage }) => {
+  const token = response?.data?.token;
+  if (response?.success !== true || !isWellFormedJwt(token)) {
+    return { success: false, error: INVALID_TOKEN_ERROR };
+  }
+  try {
+    storage.setItem('token', token);
+    storage.setItem('upiq_auth', JSON.stringify(true));
+    storage.removeItem('upiq_demo');
+    storage.setItem('upiq_profile', JSON.stringify(profile));
+    storage.setItem('upiq_currency', JSON.stringify(currency));
+    return { success: true, mode: 'backend' };
+  } catch {
+    clearAuthSession(storage);
+    return { success: false, error: 'Failed to persist authentication token.' };
   }
 };
 

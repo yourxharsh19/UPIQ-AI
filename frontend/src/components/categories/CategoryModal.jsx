@@ -5,6 +5,7 @@ import { CATEGORY_COLORS, CATEGORY_ICONS, getCategoryColor, getCategoryIcon } fr
 import { X } from "lucide-react";
 import clsx from "clsx";
 import { normalizeApiError } from "../../services/safeApiError.js";
+import { moneyFromMinorUnits, parseMoneyMinorUnits } from '../../utils/money.js';
 
 const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
     const { getBudget, setBudget, deleteBudget } = useBudget();
@@ -69,10 +70,10 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
             }
 
             // Save/Update budget if provided in the input field
-            const amount = parseFloat(budgetAmount);
-            if (newName && !isNaN(amount) && amount > 0) {
-                setBudget(newName, amount);
-            } else if (newName && (isNaN(amount) || amount === 0)) {
+            const amountMinor = parseMoneyMinorUnits(budgetAmount);
+            if (newName && amountMinor != null && amountMinor > 0n) {
+                setBudget(newName, moneyFromMinorUnits(amountMinor));
+            } else if (newName && (amountMinor == null || amountMinor === 0n)) {
                 // Remove budget if cleared
                 deleteBudget(newName);
             }

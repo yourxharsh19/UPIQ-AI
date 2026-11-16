@@ -1,3 +1,5 @@
+import { addMoney, compareMoney, divideMoney, moneyRatioPercent, sumMoneyString, subtractMoney } from './money.js';
+
 /**
  * Utility functions for transaction calculations and insights
  * All calculations are done on the frontend using existing transaction data
@@ -29,25 +31,21 @@ export const getTransactionsForMonth = (transactions, year, month) => {
  * Calculate total income
  */
 export const calculateTotalIncome = (transactions) => {
-  return transactions
-    .filter(t => t.type && t.type.toLowerCase() === 'income')
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
+  return sumMoneyString(transactions.filter(t => t.type && t.type.toLowerCase() === 'income').map(t => t.amount));
 };
 
 /**
  * Calculate total expenses
  */
 export const calculateTotalExpenses = (transactions) => {
-  return transactions
-    .filter(t => t.type && t.type.toLowerCase() === 'expense')
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
+  return sumMoneyString(transactions.filter(t => t.type && t.type.toLowerCase() === 'expense').map(t => t.amount));
 };
 
 /**
  * Calculate balance
  */
 export const calculateBalance = (transactions) => {
-  return calculateTotalIncome(transactions) - calculateTotalExpenses(transactions);
+  return subtractMoney(calculateTotalIncome(transactions), calculateTotalExpenses(transactions));
 };
 
 /**
@@ -55,9 +53,9 @@ export const calculateBalance = (transactions) => {
  */
 export const calculateSavingsRate = (transactions) => {
   const income = calculateTotalIncome(transactions);
-  if (income === 0) return 0;
+  if (compareMoney(income, '0') === 0) return 0;
   const expenses = calculateTotalExpenses(transactions);
-  return ((income - expenses) / income) * 100;
+  return moneyRatioPercent(subtractMoney(income, expenses), income, 2);
 };
 
 /**
@@ -68,13 +66,13 @@ export const getCategoryExpenseBreakdown = (transactions) => {
   
   const breakdown = expenses.reduce((acc, t) => {
     const category = t.category || 'Uncategorized';
-    acc[category] = (acc[category] || 0) + (t.amount || 0);
+    acc[category] = addMoney(acc[category] || '0', t.amount || '0');
     return acc;
   }, {});
 
   return Object.entries(breakdown)
     .map(([name, amount]) => ({ name, amount }))
-    .sort((a, b) => b.amount - a.amount);
+    .sort((a, b) => compareMoney(b.amount, a.amount));
 };
 
 /**
@@ -90,12 +88,12 @@ export const getTopSpendingCategory = (transactions) => {
  */
 export const calculateSpendingConcentration = (transactions) => {
   const totalExpenses = calculateTotalExpenses(transactions);
-  if (totalExpenses === 0) return 0;
+  if (compareMoney(totalExpenses, '0') === 0) return 0;
   
   const topCategory = getTopSpendingCategory(transactions);
   if (!topCategory) return 0;
   
-  return (topCategory.amount / totalExpenses) * 100;
+  return moneyRatioPercent(topCategory.amount, totalExpenses, 2);
 };
 
 /**
@@ -113,14 +111,15 @@ export const compareMonthOverMonth = (transactions) => {
   const currentExpenses = calculateTotalExpenses(currentMonth);
   const previousExpenses = calculateTotalExpenses(previousMonth);
 
-  if (previousExpenses === 0) {
-    return currentExpenses > 0 ? { change: 100, direction: 'up' } : { change: 0, direction: 'neutral' };
+  if (compareMoney(previousExpenses, '0') === 0) {
+    return compareMoney(currentExpenses, '0') > 0 ? { change: 100, direction: 'up' } : { change: 0, direction: 'neutral' };
   }
 
-  const change = ((currentExpenses - previousExpenses) / previousExpenses) * 100;
+  const changeDirection = compareMoney(currentExpenses, previousExpenses);
+  const change = Math.abs(moneyRatioPercent(subtractMoney(currentExpenses, previousExpenses), previousExpenses, 2));
   return {
-    change: Math.abs(change),
-    direction: change > 0 ? 'up' : change < 0 ? 'down' : 'neutral'
+    change,
+    direction: changeDirection > 0 ? 'up' : changeDirection < 0 ? 'down' : 'neutral'
   };
 };
 
@@ -138,22 +137,26 @@ export const getCategoryMonthOverMonth = (transactions, categoryName) => {
 
   const currentAmount = currentMonth
     .filter(t => (t.category || 'Uncategorized') === categoryName && t.type?.toLowerCase() === 'expense')
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
+    .map(t => t.amount);
 
   const previousAmount = previousMonth
     .filter(t => (t.category || 'Uncategorized') === categoryName && t.type?.toLowerCase() === 'expense')
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
+    .map(t => t.amount);
 
-  if (previousAmount === 0) {
-    return currentAmount > 0 ? { change: 100, direction: 'up' } : { change: 0, direction: 'neutral' };
+  const currentTotal = sumMoneyString(currentAmount);
+  const previousTotal = sumMoneyString(previousAmount);
+
+  if (compareMoney(previousTotal, '0') === 0) {
+    return compareMoney(currentTotal, '0') > 0 ? { change: 100, direction: 'up' } : { change: 0, direction: 'neutral' };
   }
 
-  const change = ((currentAmount - previousAmount) / previousAmount) * 100;
+  const changeDirection = compareMoney(currentTotal, previousTotal);
+  const change = Math.abs(moneyRatioPercent(subtractMoney(currentTotal, previousTotal), previousTotal, 2));
   return {
     change: Math.abs(change),
-    direction: change > 0 ? 'up' : change < 0 ? 'down' : 'neutral',
-    currentAmount,
-    previousAmount
+    direction: changeDirection > 0 ? 'up' : changeDirection < 0 ? 'down' : 'neutral',
+    currentAmount: currentTotal,
+    previousAmount: previousTotal
   };
 };
 
@@ -164,8 +167,8 @@ export const getIncomeExpenseRatio = (transactions) => {
   const income = calculateTotalIncome(transactions);
   const expenses = calculateTotalExpenses(transactions);
   
-  if (expenses === 0) return income > 0 ? Infinity : 0;
-  return income / expenses;
+  if (compareMoney(expenses, '0') === 0) return compareMoney(income, '0') > 0 ? Infinity : 0;
+  return moneyRatioPercent(income, expenses, 4) / 100;
 };
 
 /**
@@ -173,11 +176,11 @@ export const getIncomeExpenseRatio = (transactions) => {
  */
 export const getOverspendingCategories = (transactions) => {
   const totalExpenses = calculateTotalExpenses(transactions);
-  if (totalExpenses === 0) return [];
+  if (compareMoney(totalExpenses, '0') === 0) return [];
   
   const breakdown = getCategoryExpenseBreakdown(transactions);
-  const threshold = totalExpenses * 0.3; // More than 30% of total expenses
-  
-  return breakdown.filter(cat => cat.amount > threshold);
+  return breakdown.filter(cat => compareMoney(cat.amount, divideMoney(totalExpenses, 30, 100)) > 0);
 };
 
+import { addMoney, compareMoney, moneyRatioPercent, sumMoneyString, subtractMoney } from './money.js';
+import { addMoney, compareMoney, divideMoney, moneyRatioPercent, sumMoneyString, subtractMoney } from './money.js';

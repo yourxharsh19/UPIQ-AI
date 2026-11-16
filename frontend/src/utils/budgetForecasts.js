@@ -1,4 +1,4 @@
-import { toFinancialNumber } from './financialDisplay.js';
+import { addMoney, compareMoney, divideMoney, moneyRatioPercent, sumMoneyString, subtractMoney } from './money.js';
 import { getCategoryColor } from './categoryUtils.js';
 
 export const buildLocalBudgetForecasts = (budgetMap, transactions, now = new Date()) => {
@@ -14,18 +14,19 @@ export const buildLocalBudgetForecasts = (budgetMap, transactions, now = new Dat
 
   return Object.entries(budgetMap || {})
     .map(([category, rawBudget]) => {
-      const budget = toFinancialNumber(rawBudget);
-      if (budget <= 0) return null;
+      const budget = String(rawBudget ?? '0');
+      if (compareMoney(budget, '0') <= 0) return null;
 
       const spent = currentMonthTransactions
         .filter((transaction) => (transaction.category || 'Uncategorized').toLowerCase() === category.toLowerCase())
-        .reduce((total, transaction) => total + toFinancialNumber(transaction.amount), 0);
+        .map((transaction) => transaction.amount);
+      const spentTotal = sumMoneyString(spent);
 
       return {
         category,
         budget,
-        spent,
-        predicted: elapsedDays > 0 ? (spent / elapsedDays) * daysInMonth : spent,
+        spent: spentTotal,
+        predicted: elapsedDays > 0 ? divideMoney(spentTotal, daysInMonth, elapsedDays) : spentTotal,
         color: getCategoryColor(category).value,
       };
     })
@@ -33,7 +34,15 @@ export const buildLocalBudgetForecasts = (budgetMap, transactions, now = new Dat
 };
 
 export const formatBudgetUsage = (spent, budget) => {
-  const safeBudget = toFinancialNumber(budget);
-  if (safeBudget <= 0) return 'Set category budgets to see usage';
-  return `${((toFinancialNumber(spent) / safeBudget) * 100).toFixed(1)}% of total cap`;
+  if (compareMoney(budget, '0') <= 0) return 'Set category budgets to see usage';
+  return `${moneyRatioPercent(spent, budget, 1).toFixed(1)}% of total cap`;
+};
+
+export const getBudgetProgress = (spent, budget) => {
+  const comparison = compareMoney(spent, budget);
+  return {
+    percentage: moneyRatioPercent(spent, budget, 2),
+    isOverBudget: comparison > 0,
+    difference: comparison > 0 ? subtractMoney(spent, budget) : subtractMoney(budget, spent),
+  };
 };

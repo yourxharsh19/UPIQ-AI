@@ -74,14 +74,14 @@ describe('Task 5: report history storage & snapshot persistence', () => {
   test('createReportSnapshot constructs valid report preview with device-only label', () => {
     const mockReport = {
       monthKey: '2026-03',
-      totalIncome: 75000,
-      totalExpense: 32000,
-      netCashFlow: 43000,
+      totalIncome: '75000.00',
+      totalExpense: '32000.00',
+      netCashFlow: '43000.00',
       transactionCount: 14,
-      averageExpense: 2285.71,
+      averageExpense: '2285.71',
       categories: [
-        { category: 'Groceries', amount: 12000, percentage: 37.5 },
-        { category: 'Rent', amount: 20000, percentage: 62.5 },
+        { category: 'Groceries', amount: '12000.00', percentage: 37.5 },
+        { category: 'Rent', amount: '20000.00', percentage: 62.5 },
       ],
       transactions: [],
     };
@@ -89,9 +89,9 @@ describe('Task 5: report history storage & snapshot persistence', () => {
     const snapshot = createReportSnapshot(mockReport);
     assert.ok(snapshot);
     assert.equal(snapshot.monthKey, '2026-03');
-    assert.equal(snapshot.totalIncome, 75000);
-    assert.equal(snapshot.totalExpense, 32000);
-    assert.equal(snapshot.netCashFlow, 43000);
+    assert.equal(snapshot.totalIncome, '75000.00');
+    assert.equal(snapshot.totalExpense, '32000.00');
+    assert.equal(snapshot.netCashFlow, '43000.00');
     assert.equal(snapshot.transactionCount, 14);
     assert.equal(snapshot.topCategory, 'Groceries');
     assert.equal(snapshot.note, 'Saved on this device only');

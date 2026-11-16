@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 /**
  * EXPERIMENTAL: classpath definition of a synthetic transaction.
@@ -25,7 +26,7 @@ public class ResearchTransactionDefinition {
     private String id;
     @JsonProperty("profile_id")
     private String profileId;
-    private Double amount;
+    private BigDecimal amount;
     private String type;
     private String category;
     private String description;

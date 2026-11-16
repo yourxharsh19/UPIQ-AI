@@ -2,11 +2,15 @@ package com.upiq.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.upiq.auth.service.UserService;
+import com.upiq.auth.config.GoogleOAuthHandlers;
+import com.upiq.auth.config.GoogleOAuthProperties;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -29,6 +33,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@EnableConfigurationProperties(GoogleOAuthProperties.class)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -38,12 +43,14 @@ public class SecurityConfig {
     private final CorsOriginConfiguration corsOriginConfiguration;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+            @Value("${upiq.google.enabled:false}") boolean googleOAuthEnabled,
+            ObjectProvider<GoogleOAuthHandlers> googleOAuthHandlers) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/api/auth/health/**", "/health/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/auth/health/**", "/health/**", "/oauth2/**", "/login/oauth2/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) -> writeSecurityError(
@@ -53,6 +60,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+        if (googleOAuthEnabled) {
+            GoogleOAuthHandlers handlers = googleOAuthHandlers.getObject();
+            http.oauth2Login(oauth -> oauth
+                    .successHandler(handlers)
+                    .failureHandler(handlers));
+        }
 
         return http.build();
     }

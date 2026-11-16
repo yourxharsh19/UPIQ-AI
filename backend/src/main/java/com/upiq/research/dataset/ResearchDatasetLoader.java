@@ -86,7 +86,8 @@ public class ResearchDatasetLoader {
             require(tx.getCategory(), "transaction.category");
             require(tx.getDescription(), "transaction.description");
             require(tx.getPaymentMethod(), "transaction.payment_method");
-            if (tx.getAmount() == null || tx.getAmount() <= 0) {
+            if (tx.getAmount() == null || tx.getAmount().signum() <= 0 || tx.getAmount().scale() > 2
+                    || tx.getAmount().compareTo(new java.math.BigDecimal("99999999999999999.99")) > 0) {
                 throw new IllegalStateException("Invalid research transaction amount: " + tx.getId());
             }
             if (tx.getDate() == null) {

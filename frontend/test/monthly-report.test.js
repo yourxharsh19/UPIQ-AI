@@ -14,25 +14,34 @@ const ledger = [
 
 test('calculates selected-month summaries and categories from income/expense transactions only', () => {
   const report = getMonthlyReport(ledger, '2026-10');
-  assert.equal(report.totalIncome, 10000);
-  assert.equal(report.totalExpense, 4001);
-  assert.equal(report.netCashFlow, 5999);
+  assert.equal(report.totalIncome, '10000.00');
+  assert.equal(report.totalExpense, '4001.00');
+  assert.equal(report.netCashFlow, '5999.00');
   assert.equal(report.transactionCount, 4);
-  assert.equal(report.averageExpense, 1333.67);
-  assert.deepEqual(report.categories.map(({ category, amount, percentage }) => ({ category, amount, percentage: Number(percentage.toFixed(2)) })), [
-    { category: 'Food', amount: 3620, percentage: 90.48 },
-    { category: 'Travel', amount: 380, percentage: 9.5 },
-    { category: 'Other', amount: 1, percentage: 0.02 },
+  assert.equal(report.averageExpense, '1333.67');
+  assert.deepEqual(report.categories.map(({ category, amount, percentage }) => ({ category, amount, percentage })), [
+    { category: 'Food', amount: '3620.00', percentage: 90.48 },
+    { category: 'Travel', amount: '380.00', percentage: 9.5 },
+    { category: 'Other', amount: '1.00', percentage: 0.02 },
   ]);
 });
 
 test('handles a month with no transactions and offers prior months through current month', () => {
   const empty = getMonthlyReport(ledger, '2026-08');
-  assert.equal(empty.totalIncome, 0);
-  assert.equal(empty.totalExpense, 0);
+  assert.equal(empty.totalIncome, '0.00');
+  assert.equal(empty.totalExpense, '0.00');
   assert.equal(empty.transactionCount, 0);
   assert.deepEqual(empty.categories, []);
   assert.deepEqual(getAvailableReportMonths(ledger, new Date(2026, 9, 11)), ['2026-10', '2026-09']);
+});
+
+test('ranks large expense amounts exactly when their difference is below Number precision', () => {
+  const report = getMonthlyReport([
+    { id: 'smaller', date: '2026-10-03T10:00:00', type: 'expense', amount: '90071992547409.90', category: 'A' },
+    { id: 'larger', date: '2026-10-04T10:00:00', type: 'expense', amount: '90071992547409.91', category: 'B' },
+  ], '2026-10');
+
+  assert.equal(report.largestExpenses[0].id, 'larger');
 });
 
 test('coverage uses valid transaction dates, defaults to the latest data month, and handles empty/current periods', () => {

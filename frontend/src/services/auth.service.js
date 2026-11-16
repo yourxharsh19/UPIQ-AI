@@ -11,9 +11,14 @@ export const AuthService = {
     return response.data;
   },
 
-  loginWithGoogle: async () => {
-    // Google OAuth is not implemented on the backend; disabled to prevent unverified auth attempts
-    throw new Error('Google OAuth login is not supported by the backend.');
+  getGoogleSignInStatus: async () => {
+    const response = await api.get('/auth/google/status');
+    return response.data;
+  },
+
+  exchangeGoogleCode: async (code) => {
+    const response = await api.post('/auth/google/exchange', { code });
+    return response.data;
   },
 
   getMe: async () => {

@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.math.BigDecimal;
 
 @Slf4j
 @Service
@@ -48,7 +49,7 @@ public class CSVParserService {
     public List<TransactionRequest> parseCSV(MultipartFile file) {
         return parseCSVRows(file).stream()
                 .map(StatementRow::getTransaction)
-                .filter(tx -> tx != null && tx.getAmount() != null && tx.getAmount() > 0)
+                .filter(tx -> tx != null && tx.getAmount() != null && tx.getAmount().signum() > 0)
                 .toList();
     }
 
@@ -92,21 +93,24 @@ public class CSVParserService {
         String amountStr = getValueByHeaderAliases(record, AMOUNT_HEADERS);
         String debitStr = getValueByHeaderAliases(record, DEBIT_HEADERS);
         String creditStr = getValueByHeaderAliases(record, CREDIT_HEADERS);
-        Double debitAmount = parseAmountSafely(debitStr, reasons);
-        Double creditAmount = parseAmountSafely(creditStr, reasons);
+        BigDecimal debitAmount = parseAmountSafely(debitStr, reasons);
+        BigDecimal creditAmount = parseAmountSafely(creditStr, reasons);
 
         if (hasPositiveAmount(debitAmount) && hasPositiveAmount(creditAmount)) {
             addReasonIfAbsent(reasons, StatementRowValidationReason.INVALID_AMOUNT);
-        } else if ((debitAmount != null && debitAmount < 0) || (creditAmount != null && creditAmount < 0)) {
-            tx.setAmount(debitAmount != null && debitAmount < 0 ? debitAmount : creditAmount);
+        } else if ((debitAmount != null && debitAmount.signum() < 0) || (creditAmount != null && creditAmount.signum() < 0)) {
+            tx.setAmount(debitAmount != null && debitAmount.signum() < 0 ? debitAmount : creditAmount);
         } else if (hasPositiveAmount(debitAmount)) {
             tx.setAmount(debitAmount);
             tx.setType("expense");
         } else if (hasPositiveAmount(creditAmount)) {
             tx.setAmount(creditAmount);
             tx.setType("income");
-        } else if (debitAmount != null || creditAmount != null) {
+        } else if (debitStr != null || creditStr != null) {
             tx.setAmount(debitAmount != null ? debitAmount : creditAmount);
+            if ((debitStr != null && debitAmount == null) || (creditStr != null && creditAmount == null)) {
+                addReasonIfAbsent(reasons, StatementRowValidationReason.INVALID_AMOUNT);
+            }
         } else {
             tx.setAmount(parseAmountSafely(amountStr, reasons));
         }
@@ -115,9 +119,9 @@ public class CSVParserService {
             if (!reasons.contains(StatementRowValidationReason.INVALID_AMOUNT)) {
                 addReasonIfAbsent(reasons, StatementRowValidationReason.MISSING_AMOUNT);
             }
-        } else if (!Double.isFinite(tx.getAmount())) {
+        } else if (!isAllowedPrecision(tx.getAmount())) {
             addReasonIfAbsent(reasons, StatementRowValidationReason.INVALID_AMOUNT);
-        } else if (tx.getAmount() <= 0) {
+        } else if (tx.getAmount().signum() <= 0) {
             addReasonIfAbsent(reasons, StatementRowValidationReason.NON_POSITIVE_AMOUNT);
         }
 
@@ -207,7 +211,7 @@ public class CSVParserService {
         return header.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 
-    private Double parseAmountSafely(String amount, List<StatementRowValidationReason> reasons) {
+    private BigDecimal parseAmountSafely(String amount, List<StatementRowValidationReason> reasons) {
         if (amount == null || amount.isBlank()) return null;
         try {
             return parseAmount(amount);
@@ -217,11 +221,11 @@ public class CSVParserService {
         }
     }
 
-    private Double parseAmount(String amount) {
+    private BigDecimal parseAmount(String amount) {
         String normalizedAmount = stripCurrencyPrefix(amount);
         if (!VALID_AMOUNT.matcher(normalizedAmount).matches()) throw new NumberFormatException("Invalid amount format");
-        double parsed = Double.parseDouble(normalizedAmount.replace(",", ""));
-        if (!Double.isFinite(parsed)) throw new NumberFormatException("Amount is not finite");
+        BigDecimal parsed = new BigDecimal(normalizedAmount.replace(",", ""));
+        if (!isAllowedPrecision(parsed)) throw new NumberFormatException("Amount is outside NUMERIC(19,2) precision");
         return parsed;
     }
 
@@ -245,8 +249,12 @@ public class CSVParserService {
         return sign + value;
     }
 
-    private boolean hasPositiveAmount(Double amount) {
-        return amount != null && amount > 0;
+    private boolean hasPositiveAmount(BigDecimal amount) {
+        return amount != null && amount.signum() > 0;
+    }
+
+    private boolean isAllowedPrecision(BigDecimal amount) {
+        return amount.scale() <= 2 && amount.abs().compareTo(new BigDecimal("99999999999999999.99")) <= 0;
     }
 
     private void addReasonIfAbsent(List<StatementRowValidationReason> reasons, StatementRowValidationReason reason) {

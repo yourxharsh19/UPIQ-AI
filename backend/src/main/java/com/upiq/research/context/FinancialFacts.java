@@ -9,6 +9,8 @@ import lombok.Value;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 /**
  * Verified numeric and categorical facts only. No prompt instructions.
@@ -57,8 +59,11 @@ public class FinancialFacts {
     String category;
     String comparisonCategory;
     String transactionType;
+    @JsonSerialize(using = ToStringSerializer.class)
     BigDecimal totalIncome;
+    @JsonSerialize(using = ToStringSerializer.class)
     BigDecimal totalExpense;
+    @JsonSerialize(using = ToStringSerializer.class)
     BigDecimal netBalance;
     BigDecimal savingsRate;
     Long incomeTransactionCount;
@@ -66,21 +71,27 @@ public class FinancialFacts {
     Long transactionCount;
     BigDecimal percentageOfTotalExpense;
     String category1;
+    @JsonSerialize(using = ToStringSerializer.class)
     BigDecimal category1Total;
     Long category1TransactionCount;
     String category2;
+    @JsonSerialize(using = ToStringSerializer.class)
     BigDecimal category2Total;
     Long category2TransactionCount;
     String higherCategory;
+    @JsonSerialize(using = ToStringSerializer.class)
     BigDecimal baselineTotal;
+    @JsonSerialize(using = ToStringSerializer.class)
     BigDecimal currentTotal;
     Long baselineTransactionCount;
     Long currentTransactionCount;
+    @JsonSerialize(using = ToStringSerializer.class)
     BigDecimal absoluteDifference;
     BigDecimal percentageDifference;
     Boolean zeroDenominator;
     Boolean increased;
     Boolean found;
+    @JsonSerialize(using = ToStringSerializer.class)
     BigDecimal amount;
     String description;
     LocalDateTime date;

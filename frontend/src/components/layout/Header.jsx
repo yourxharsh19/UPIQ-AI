@@ -27,12 +27,26 @@ import { useFinancial } from '../../context/FinancialContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Button } from '../common/Button';
 import { BackendFeatureRoadmapModal } from '../common/BackendFeatureRoadmapModal';
+import { NotificationService } from '../../services/notification.service.js';
+import { getAuthSessionMode } from '../../utils/authFlow.js';
+import {
+  getFeatureSessionKey,
+  getUndismissedNotifications,
+  isCurrentFeatureRequest,
+} from '../../utils/featureSession.js';
 
 export const Header = ({ onOpenAddTxModal }) => {
   const [isRoadmapOpen, setIsRoadmapOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsSessionKey, setNotificationsSessionKey] = useState('');
+  const [dismissedNotificationIds, setDismissedNotificationIds] = useState([]);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const userMenuRef = useRef(null);
+  const notificationRequestRef = useRef({ id: 0, sessionKey: '' });
 
   const {
     profile,
@@ -45,6 +59,16 @@ export const Header = ({ onOpenAddTxModal }) => {
 
   const { theme, isDark: _isDark, toggleTheme } = useTheme();
   const [searchValue, setSearchValue] = useState('');
+  const sessionMode = getAuthSessionMode();
+  const notificationSessionKey = getFeatureSessionKey(profile, sessionMode);
+  if (notificationRequestRef.current.sessionKey !== notificationSessionKey) {
+    notificationRequestRef.current = {
+      id: notificationRequestRef.current.id + 1,
+      sessionKey: notificationSessionKey,
+    };
+  }
+  const sessionNotifications = notificationsSessionKey === notificationSessionKey ? notifications : [];
+  const activeNotifications = getUndismissedNotifications(sessionNotifications, dismissedNotificationIds);
 
   // Close user dropdown on outside click
   useEffect(() => {
@@ -73,6 +97,45 @@ export const Header = ({ onOpenAddTxModal }) => {
     };
   }, [isMobileMenuOpen]);
 
+  useEffect(() => {
+    setNotifications([]);
+    setNotificationsSessionKey('');
+    setDismissedNotificationIds([]);
+    setNotificationMessage('');
+    setNotificationsLoading(false);
+    setIsNotificationsOpen(false);
+  }, [profile?.id, profile?.email, profile?.role, sessionMode]);
+
+  const loadNotifications = async () => {
+    setIsNotificationsOpen((open) => !open);
+    if (isNotificationsOpen) return;
+    if (sessionMode !== 'authenticated') {
+      setNotificationMessage(sessionMode === 'inconsistent'
+        ? 'Your session state needs to be resolved. Sign in again to view notifications.'
+        : 'Sign in with a backend account to view ledger notifications.');
+      return;
+    }
+    const request = {
+      id: notificationRequestRef.current.id + 1,
+      sessionKey: notificationSessionKey,
+    };
+    notificationRequestRef.current = request;
+    setNotificationsLoading(true);
+    setNotificationMessage('');
+    try {
+      const response = await NotificationService.getNotifications();
+      if (!response?.success || !Array.isArray(response.data)) throw new Error('Invalid notifications response');
+      if (!isCurrentFeatureRequest(request, notificationRequestRef.current)) return;
+      setNotifications(response.data);
+      setNotificationsSessionKey(request.sessionKey);
+    } catch {
+      if (!isCurrentFeatureRequest(request, notificationRequestRef.current)) return;
+      setNotificationMessage('Notifications could not be loaded.');
+    } finally {
+      if (isCurrentFeatureRequest(request, notificationRequestRef.current)) setNotificationsLoading(false);
+    }
+  };
+
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchValue.trim()) {
@@ -86,7 +149,7 @@ export const Header = ({ onOpenAddTxModal }) => {
     { id: 'transactions', label: 'Transactions', icon: Receipt },
     { id: 'categories', label: 'Categories', icon: Tags },
     { id: 'ai-assistant', label: 'AI Assistant', icon: Bot },
-    { id: 'insights', label: 'Local Budgets & Estimates', icon: BrainCircuit },
+    { id: 'insights', label: 'Financial Insights', icon: BrainCircuit },
     { id: 'reports', label: 'Monthly Reports', icon: FileText },
     { id: 'profile', label: 'User Profile', icon: User },
     ...(profile?.role === 'admin' ? [{ id: 'admin', label: 'Admin View', icon: ShieldCheck }] : []),
@@ -173,18 +236,24 @@ export const Header = ({ onOpenAddTxModal }) => {
             </span>
           </button>
 
-          {/* Alerts Coming Soon indicator */}
-          <button
-            type="button"
-            disabled
-            aria-disabled="true"
-            aria-label="Push notifications & fraud alerts, coming soon"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-amber-500/20 bg-amber-500/5 text-xs font-medium text-amber-600 dark:text-amber-400 cursor-not-allowed opacity-80"
-            title="Push notifications & fraud alerts are coming soon"
-          >
-            <Bell className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Alerts: Coming soon</span>
-          </button>
+          <div className="relative">
+            <button type="button" onClick={loadNotifications} aria-expanded={isNotificationsOpen} aria-label="Open spending notifications"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--border-base)] text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--bg-surface)]">
+              <Bell className="w-3.5 h-3.5" /><span className="hidden sm:inline">Alerts</span>
+              {activeNotifications.length > 0 && <span className="rounded-full bg-blue-600 px-1.5 text-[10px] text-white">{activeNotifications.length}</span>}
+            </button>
+            {isNotificationsOpen && <div className="absolute right-0 top-10 z-40 w-80 max-w-[90vw] rounded-xl border border-[var(--border-base)] bg-[var(--bg-card)] p-3 shadow-xl">
+              <h2 className="text-sm font-semibold text-[var(--text-main)]">Spending notifications</h2>
+              <p className="mb-2 text-[11px] text-[var(--text-muted)]">Generated from your ledger when opened; no push alerts or server-side read history.</p>
+              {notificationsLoading && <p role="status" className="text-xs text-[var(--text-muted)]">Checking your ledger…</p>}
+              {notificationMessage && <p role="status" className="text-xs text-[var(--text-muted)]">{notificationMessage}</p>}
+              {!notificationsLoading && !notificationMessage && activeNotifications.length === 0 && <p className="text-xs text-[var(--text-muted)]">No category meets both alert rules: spending is at least 50% higher and has increased by at least 1,000 compared with the prior month.</p>}
+              <ul className="max-h-64 space-y-2 overflow-auto">{activeNotifications.map((item) => <li key={item.id} className="rounded-lg bg-[var(--bg-surface)] p-2">
+                <p className="text-xs font-medium text-[var(--text-main)]">{item.title}</p><p className="mt-1 text-[11px] text-[var(--text-muted)]">{item.message}</p>
+                <button type="button" onClick={() => setDismissedNotificationIds((current) => [...current, item.id])} className="mt-1 text-[11px] text-blue-600 underline">Dismiss</button>
+              </li>)}</ul>
+            </div>}
+          </div>
 
           {/* Quick Add Transaction Trigger */}
           <Button onClick={onOpenAddTxModal} variant="primary" size="sm" icon={Plus}>

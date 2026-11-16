@@ -13,7 +13,7 @@ import {
 
 const validTransaction = {
   sourceRowIndex: 0,
-  amount: 25,
+  amount: '25.00',
   type: 'expense',
   description: 'Coffee shop',
   date: '2026-09-12',
@@ -96,7 +96,7 @@ test('CSV amount parsing supports currency and valid grouped amounts, but reject
     'date,description,amount,type\n2026-09-12,Rupee amount,"₹1,200.50",expense\n2026-09-12,Grouped amount,"12,500",expense\n2026-09-12,Bad grouping,"1,2,00",expense\n2026-09-12,Non-finite,1e309,expense',
   );
   const result = normalizeParsedTransactions(csvRows);
-  assert.deepEqual(result.transactions.map(({ amount }) => amount), [1200.5, 12500]);
+  assert.deepEqual(result.transactions.map(({ amount }) => amount), ['1200.50', '12500.00']);
   assert.deepEqual(result.rejectedRows.map(({ sourceRowIndex, reasons }) => ({ sourceRowIndex, reasons })), [
     { sourceRowIndex: 2, reasons: ['invalid_amount'] },
     { sourceRowIndex: 3, reasons: ['invalid_amount'] },
@@ -115,7 +115,7 @@ test('CSV amount parsing accepts the shared currency prefixes and rejects embedd
     + '2026-09-12,Unsupported,"€1200",expense';
   const result = normalizeParsedTransactions(parseCsvStatementText(csv));
 
-  assert.deepEqual(result.transactions.map(({ amount }) => amount), [1200.5, 1200.5, 1200.5, 1200.5]);
+  assert.deepEqual(result.transactions.map(({ amount }) => amount), ['1200.50', '1200.50', '1200.50', '1200.50']);
   assert.deepEqual(result.rejectedRows.map(({ sourceRowIndex, reasons }) => ({ sourceRowIndex, reasons })), [
     { sourceRowIndex: 4, reasons: ['invalid_amount'] },
     { sourceRowIndex: 5, reasons: ['invalid_amount'] },
@@ -129,7 +129,7 @@ test('CSV generic amount aliases match backend aliases and unrelated directional
   for (const alias of aliases) {
     const parsed = parseCsvStatementText(`date,description,${alias},type\n2026-09-12,Alias,125.50,expense`);
     const result = normalizeParsedTransactions(parsed);
-    assert.equal(result.transactions[0]?.amount, 125.5, `expected ${alias} to be recognized`);
+    assert.equal(result.transactions[0]?.amount, '125.50', `expected ${alias} to be recognized`);
     assert.equal(result.rejectedCount, 0);
   }
 
@@ -137,7 +137,7 @@ test('CSV generic amount aliases match backend aliases and unrelated directional
     + '2026-09-12,Generic fallback,75,,, ,expense';
   const result = normalizeParsedTransactions(parseCsvStatementText(csv));
   assert.equal(result.transactions.length, 1);
-  assert.equal(result.transactions[0].amount, 75);
+  assert.equal(result.transactions[0].amount, '75.00');
   assert.equal(result.transactions[0].type, 'expense');
 });
 
@@ -148,8 +148,8 @@ test('local CSV parser matches backend debit and credit rules', () => {
   const result = normalizeParsedTransactions(csvRows);
 
   assert.deepEqual(result.transactions.map(({ amount, type }) => ({ amount, type })), [
-    { amount: 25, type: 'expense' },
-    { amount: 50, type: 'income' },
+    { amount: '25.00', type: 'expense' },
+    { amount: '50.00', type: 'income' },
   ]);
   assert.deepEqual(result.rejectedRows.map(({ sourceRowIndex, reasons }) => ({ sourceRowIndex, reasons })), [
     { sourceRowIndex: 2, reasons: ['missing_amount'] },

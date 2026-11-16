@@ -1,6 +1,7 @@
 import { ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import { getCategoryDisplayProps } from "../../utils/categoryUtils";
 import clsx from "clsx";
+import { formatInrAmount } from "../../utils/financialDisplay.js";
 
 const RecentActivity = ({ transactions }) => {
   const recentTransactions = transactions
@@ -77,7 +78,7 @@ const RecentActivity = ({ transactions }) => {
                   "text-base sm:text-lg font-bold tracking-tight",
                   isIncome ? 'text-emerald-500' : 'text-rose-500'
                 )}>
-                  {isIncome ? '+' : '-'}₹{transaction.amount.toLocaleString('en-IN')}
+                  {isIncome ? '+' : '-'}{formatInrAmount(transaction.amount, 0)}
                 </p>
               </div>
             </div>
