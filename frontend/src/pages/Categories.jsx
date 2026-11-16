@@ -13,6 +13,7 @@ import { useBudget } from "../context/BudgetContext";
 import { useFinancial } from "../context/FinancialContext";
 import { categoryListFromResponse } from "../utils/categoryData.js";
 import { normalizeApiError } from "../services/safeApiError.js";
+import { moneyFromMinorUnits, parseMoneyMinorUnits } from "../utils/money.js";
 
 const DEFAULT_DEMO_CATEGORIES = [
     { id: 101, name: 'Food & Dining', type: 'expense', color: '#ef4444', icon: '🍔', description: 'Restaurants, cafes, delivery' },
@@ -36,10 +37,48 @@ const Categories = () => {
 
     const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState(null);
-    const { deleteBudget, budgets, downloadBudgetsFile, importBudgets } = useBudget();
+    const { deleteBudget, budgets, downloadBudgetsFile, importBudgets, storageNote, loading: budgetsLoading, error: budgetsError,
+        isBackendMode, getTotalBudget, setTotalBudget, deleteTotalBudget } = useBudget();
     const [budgetNotice, setBudgetNotice] = useState(null);
+    const [totalBudgetInput, setTotalBudgetInput] = useState('');
+    const [savingTotalBudget, setSavingTotalBudget] = useState(false);
 
     const [loadError, setLoadError] = useState(null);
+
+    useEffect(() => {
+        setTotalBudgetInput(getTotalBudget() || '');
+    }, [getTotalBudget]);
+
+    const handleSaveTotalBudget = async (event) => {
+        event.preventDefault();
+        const amount = parseMoneyMinorUnits(totalBudgetInput);
+        if (amount == null || amount <= 0n) {
+            setBudgetNotice({ type: 'error', message: 'Enter a positive total budget with at most two decimal places.' });
+            return;
+        }
+        setSavingTotalBudget(true);
+        try {
+            await setTotalBudget(moneyFromMinorUnits(amount));
+            setBudgetNotice({ type: 'success', message: 'Total monthly budget saved to your account.' });
+        } catch {
+            setBudgetNotice({ type: 'error', message: 'The total monthly budget could not be saved.' });
+        } finally {
+            setSavingTotalBudget(false);
+        }
+    };
+
+    const handleDeleteTotalBudget = async () => {
+        setSavingTotalBudget(true);
+        try {
+            await deleteTotalBudget();
+            setTotalBudgetInput('');
+            setBudgetNotice({ type: 'success', message: 'Total monthly budget removed.' });
+        } catch {
+            setBudgetNotice({ type: 'error', message: 'The total monthly budget could not be removed.' });
+        } finally {
+            setSavingTotalBudget(false);
+        }
+    };
 
     const fetchCategories = async () => {
         setLoading(true);
@@ -164,7 +203,7 @@ const Categories = () => {
 
             if (isDemo) {
                 if (categoryToDelete) {
-                    deleteBudget(categoryToDelete.name);
+                    await deleteBudget(categoryToDelete.name);
                 }
                 const updated = categories.filter(c => String(c.id) !== String(id));
                 setCategories(updated);
@@ -179,7 +218,7 @@ const Categories = () => {
             try {
                 await CategoryService.delete(id);
                 if (categoryToDelete) {
-                    deleteBudget(categoryToDelete.name);
+                await deleteBudget(categoryToDelete.name);
                 }
                 setCategories(categories.filter(c => String(c.id) !== String(id)));
                 setBudgetNotice({
@@ -221,10 +260,10 @@ const Categories = () => {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             try {
                 const content = event.target?.result;
-                const imported = importBudgets(content);
+                const imported = await importBudgets(content);
                 const count = Object.keys(imported).length;
                 setBudgetNotice({
                     type: "success",
@@ -292,7 +331,9 @@ const Categories = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-base)] text-xs text-[var(--text-muted)]">
                 <div className="flex items-center gap-2">
                     <Info size={14} className="text-blue-500 shrink-0" />
-                    <span><strong>Device Storage:</strong> Budgets are saved on this device only. Use Export/Import to transfer budgets between devices.</span>
+                    <span><strong>Budget storage:</strong> {storageNote} Use Export/Import to transfer category budgets.</span>
+                    {budgetsLoading && <span role="status">Loading budgets…</span>}
+                    {budgetsError && <span role="alert" className="text-rose-600">{budgetsError}</span>}
                 </div>
                 {budgetNotice && (
                     <div className={clsx(
@@ -306,6 +347,14 @@ const Categories = () => {
                     </div>
                 )}
             </div>
+
+            {isBackendMode && <form onSubmit={handleSaveTotalBudget} className="flex flex-col sm:flex-row sm:items-end gap-3 rounded-xl border border-[var(--border-base)] bg-[var(--bg-card)] p-4">
+                <label className="flex-1 text-xs font-medium text-[var(--text-main)]">Total monthly spending limit · {new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' })}
+                    <input type="text" inputMode="decimal" value={totalBudgetInput} onChange={(event) => setTotalBudgetInput(event.target.value)} placeholder="e.g. 50000.00" className="mt-1.5 w-full rounded-lg border border-[var(--border-base)] bg-[var(--bg-surface)] px-3 py-2 text-sm" />
+                </label>
+                <Button type="submit" disabled={savingTotalBudget || budgetsLoading}>{savingTotalBudget ? 'Saving…' : 'Save total limit'}</Button>
+                {getTotalBudget() && <Button type="button" variant="secondary" disabled={savingTotalBudget} onClick={handleDeleteTotalBudget}>Remove</Button>}
+            </form>}
 
             <div className="flex bg-[var(--bg-surface)] p-1 rounded-lg w-fit border border-[var(--border-base)]">
                 <button

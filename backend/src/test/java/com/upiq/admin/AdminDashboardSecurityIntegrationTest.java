@@ -61,9 +61,11 @@ class AdminDashboardSecurityIntegrationTest {
 
     @Test void adminCanReadAggregateDashboardAndExistingAdminDirectory() throws Exception {
         mvc.perform(get("/api/admin/dashboard").header("Authorization", token(ADMIN_EMAIL, Role.ADMIN, 19L)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.userCount").value(3));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.userCount").value(3))
+                .andExpect(jsonPath("$.data.recordedIncome").value("10"));
         mvc.perform(get("/api/v1/users").header("Authorization", token(ADMIN_EMAIL, Role.ADMIN, 19L)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].password").doesNotExist());
     }
 
     @Test void ordinaryUserIsForbiddenAndMissingTokenIsUnauthorized() throws Exception {
@@ -72,6 +74,7 @@ class AdminDashboardSecurityIntegrationTest {
         mvc.perform(get("/api/v1/users").header("Authorization", token(NORMAL_EMAIL, Role.USER, 20L)))
                 .andExpect(status().isForbidden());
         mvc.perform(get("/api/admin/dashboard")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/users")).andExpect(status().isUnauthorized());
     }
 
     private String token(String email, Role role, Long userId) { return "Bearer " + jwtService.generateToken(email, role.name(), userId); }

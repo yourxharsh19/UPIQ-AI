@@ -1,98 +1,81 @@
-# UPIQ 2.0 — Bugs and Issues
+# UPIQ 2.0 — Bugs, risks, and verification status
 
-Audit date: 2026-10-13  
-Repository: `C:\Users\Harsh\Github_Repos\UPIQ-2.0` · branch `main`
+**Review date:** 2026-11-16 | **Branch:** `main`
+**Evidence rule:** findings below distinguish confirmed current limitations from unverified risks and historical incidents. A source implementation or focused test does not establish production runtime behavior.
 
-This register reflects source review and the fresh checks listed below. A code-path finding is marked **Confirmed**; a plausible issue that depends on deployment or real account behavior is **Potential**; prior incidents remembered from the project work are **User-reported**. “Fixed in worktree” does not mean that the current edits are deployed.
+## High-priority release gates
 
-## Confirmed findings fixed in this audit
+| ID | Finding | Impact / evidence | Status and next step |
+|---|---|---|---|
+| H-01 | Flyway V1–V4 and Hibernate schema validation are not verified against PostgreSQL for the current worktree. | V1–V4 source files exist and all profiles use `ddl-auto: validate`, but no completed isolated PostgreSQL V1→V4 plus backend startup/validation result exists. An isolated startup attempt stopped at Flyway connection authentication; it did not verify schema behavior. | **Open release gate.** Run fresh-install and legacy-baseline verification against a separate disposable PostgreSQL 16 database. |
+| H-02 | The existing application database has not been migrated or baseline-verified. | Existing schemas must be compared to V1 and manually baselined at version 1 before V2–V4. No existing database was modified in this work. | **Open release gate.** Require a verified backup/restore, schema comparison, V2/V3 precondition checks, operator approval, and post-migration validation. See [runbook](DATABASE_MIGRATION_RUNBOOK.md). |
+| H-03 | Backend full suite does not currently complete cleanly in this environment. | 334 tests ran with 0 assertion failures, 5 errors, and 3 skipped. All five errors are `OllamaClientTest` loopback server creation failures (`Unable to establish loopback connection`, `SocketException: Permission denied: connect`). | **Open verification gate.** Run the same assertions in an environment that permits loopback sockets; do not skip or weaken them. |
 
-| Priority | Finding and impact | Fix and evidence |
+These are release gates, not confirmed source-code defects. No Critical issue was confirmed by the latest recorded source review.
+
+## Confirmed limitations and deferred issues
+
+| ID | Priority | Area | Description | Status |
+|---|---|---|---|---|
+| M-01 | Medium | Profile | `FinancialContext.updateProfile()` updates browser-local profile state. There is no backend profile update endpoint, so edits do not synchronize across devices or persist as account changes. | Deferred; define server-side editable fields and verification rules. |
+| M-02 | Medium | Chat | Chat history is stored in in-memory frontend context keyed by session/user. It survives app navigation and is cleared on logout/session expiry, but does not survive reload/browser restart and is not server-persisted. | Deferred; decide retention, deletion, and privacy policy before adding durable storage. |
+| M-03 | Medium | Notifications | Budget/spending notifications are generated when the inbox is accessed. Read/dismiss state is persisted by V4; there is no scheduler, push/email delivery, quiet-hours, or preferences API. | Deferred; product/platform decision. |
+| M-04 | Medium | Rate limiting | Authentication rate limiting is process-local and uses a bounded 10,000-entry map; LRU eviction can reset an active counter. Replicas do not share state. Only the socket remote address is trusted. | Deferred; review reverse-proxy topology and use a gateway/shared limiter before scaling. |
+| M-05 | Medium | Google OIDC | Handoff tickets are kept in memory and OAuth authorization state uses servlet session state. Separate instances/restarts do not share handoffs. | Deferred; session affinity is needed unless shared state is designed. |
+| M-06 | Medium | Admin | Admin dashboard and account directory are read-only. User-status changes, transaction-level monitoring, audit-event history, and service/model telemetry are not implemented. | Deferred; define roles/audit scope before adding actions. |
+| M-07 | Medium | Investment | Suggestions are general educational prompts based on deterministic current-month cash flow; there is no suitability/risk-profile assessment or guaranteed-return model. | Deliberate product limitation. |
+| M-08 | Medium | Fraud | Alerts are deterministic review rules, not a trained prediction model, proof of fraud, or payment block. No durable user resolution workflow is implemented. | Deliberate product limitation; define false-positive and resolution policy before expansion. |
+| L-01 | Low | Voice | Voice recognition/playback depend on browser APIs and microphone permission. Recognition may use a browser/vendor speech service and is not guaranteed to run on-device. | Document supported browser/privacy behavior; no paid provider is configured. |
+| L-02 | Low | OCR | Scanned image-only PDF OCR/bill scanning is not implemented; PDFBox extracts text from digital PDFs. | Out of current scope. |
+
+## Security and data-isolation notes
+
+- Registration always assigns `ROLE_USER`; login errors are generic for unknown email, wrong password, and disabled accounts. BCrypt comparison reduces obvious path differences, but constant-time behavior is not guaranteed.
+- JWT startup checks key presence, minimum UTF-8 byte length, known local fallback rejection in production, and HMAC compatibility. Byte length does not prove cryptographic randomness; deployment must supply a secure key through a secret manager.
+- CORS production configuration requires explicit valid HTTP(S) origins, rejects wildcard/missing values, and disables credentials.
+- Controllers/services derive ownership from the authenticated principal for financial operations. Admin endpoints are protected in the Spring Security chain/method security; frontend route hiding is not the security boundary.
+- V1 legacy transactions/categories have `user_id` fields but no user foreign keys; ownership depends on application query/service enforcement. V4 adds cascading user foreign keys for budgets and notifications.
+- Admin bootstrap is disabled by default and opt-in. The runner does not disable its environment flag automatically after provisioning; the operator must set it false and remove temporary values.
+
+## Current API and persistence reference
+
+| Feature | API paths | Persistence/calculation note |
 |---|---|---|
-| High | Generic backend exceptions returned `ex.getMessage()` to API clients, which could disclose database or implementation details. Exception and parse logs could also include raw input. | `GlobalExceptionHandler` now returns a fixed generic 500 message and logs exception classes rather than exception text/stack traces. Added `GlobalExceptionHandlerTest`. |
-| High | PDF/CSV parsing and calculation debug logs included statement filenames, transaction amounts/descriptions/dates, user IDs, and calculated totals. Anyone with log access could see financial data unrelated to their own account. | Parser, mapping, calculation, and transaction logs retain event-level messages without statement payloads or per-user amounts/identifiers. Added a CSV log regression test using synthetic markers. Review log sites before adding diagnostic fields. |
-| Medium | `BudgetProvider` parsed `upiq_budgets` without handling invalid JSON or unavailable browser storage. A malformed or blocked localStorage value could throw while the app initializes or saves. | Added `budgetStorage.js` with guarded reads/writes and safe empty-object fallback. Added tests for valid, malformed, wrong-shaped, and inaccessible storage. Budgets remain usable in memory when persistence is blocked. |
-| Medium | `CreateTransactionRequest` accepted zero/negative amounts, and its case-insensitive type validation allowed values such as `EXPENSE` that could be persisted with noncanonical casing and omitted by case-sensitive consumers. Create also silently replaced an invalid supplied date with the current time; update failures surfaced inconsistently. | Added positive-amount validation; normalize accepted transaction types to lowercase; accept ISO date-only values as start-of-day; reject malformed supplied dates instead of silently changing them. Added DTO/service regression tests. |
-| Medium | Frontend `.env.example` contained server-side DB/JWT/Ollama/OAuth-secret settings. Vite frontend environment files are not a place for server credentials and can encourage operators to put them in browser-facing configuration. | Reduced `frontend/.env.example` to `VITE_PORT` and `VITE_API_BASE_URL`, with a note to configure server-only settings outside the frontend. No actual secret was found in this template. |
+| Authentication | `POST /api/auth/register`, `POST /api/auth/login` | Registration creates `USER`; JWT is returned in `data.token`. |
+| Google OIDC | `GET /api/auth/google/status`, `POST /api/auth/google/exchange`, OAuth callback `/login/oauth2/code/google` | Optional provider flow, verified OIDC identity, one-use in-memory handoff. |
+| User account | `GET /api/v1/users/me`; admin-only `/api/v1/users`, `/email/{email}`, `/username/{username}` | Read APIs only; profile write is not implemented. Directory omits password hashes. |
+| Transactions | `/api/transactions`, `/api/transactions/{id}`, `/api/transactions/category/{category}` | Principal-scoped CRUD; amounts use BigDecimal and decimal-string JSON. |
+| Categories | `/api/categories`, `/api/categories/{id}`, `/api/categories/type/{type}` | Principal-scoped category operations. |
+| Statement import | `POST /api/pdf/upload`, `POST /api/pdf/import` | Preview does not persist; import is user-scoped/idempotent and reports imported/duplicate/rejected/failed counts. Backend accepts CSV/PDF; UI supports CSV/PDF. |
+| Dashboard/report | `GET /api/financial/dashboard`, `GET /api/financial/report?month=YYYY-MM` | Deterministic user-scoped totals; report response is PDF bytes. |
+| Budgets | `/api/budgets`, `/api/budgets/{id}` | User-owned monthly total/category budgets and calculations; V4 schema not PostgreSQL-verified. |
+| Notifications | `/api/notifications`, `/unread-count`, `/{id}/read`, `/{id}/dismiss` | Persistent records, on-demand generation, user-scoped read/dismiss; depends on V4. |
+| Insights/chat | `GET /api/financial-insights`, `POST /api/financial-chat` | Deterministic facts; optional Ollama explanation; chat intents are bounded. |
+| Investment/fraud | `GET /api/investment-suggestions`, `GET /api/fraud-alerts` | User-scoped deterministic summaries/rules; explanatory/educational only. |
+| Admin | `GET /api/admin/dashboard` | `ROLE_ADMIN` only; aggregate metrics, no transaction-level rows. |
+| Health | `GET /health` | Public application health route. Other API health routes remain subject to the general authenticated rule unless explicitly permitted by `SecurityConfig`. |
 
-## Confirmed fixes already present in the inspected worktree
+The common JSON API envelope is `{ success, data, message }`; the financial report returns PDF bytes. Protected endpoints require a bearer JWT. See [README](../README.md) for the endpoint overview and [Authentication Setup](AUTHENTICATION_SETUP.md) for the provisioning flow.
 
-These changes predate this audit turn and were preserved. Fresh tests passed, but they are not edits made by this audit.
+## Historical findings and incidents retained
 
-| Finding | Current evidence/status |
-|---|---|
-| Public registration could accept a caller-selected `ADMIN` role. | `AuthService.registerUser` always assigns `USER`; `AuthServiceRegistrationTest` covers role escalation input. **Fixed in worktree.** |
-| Authenticated user-directory endpoints exposed all users or arbitrary email/username lookups without an admin check. | `UserController` requires `ROLE_ADMIN` for directory/list/lookups; `/me` remains the self endpoint. `UserControllerAuthorizationTest` covers user/admin access. **Fixed in worktree.** |
-| Cross-user transaction read/update/delete failures were generic runtime exceptions and therefore mapped to 500 rather than forbidden. | `TransactionServiceImpl` throws `AccessDeniedException`; the common handler maps this to 403. Ownership regression tests cover read/update/delete. **Fixed in worktree.** |
-| Assistant fallback text could imply invented account facts when the API failed. | The active `App.jsx` view loads `AIAssistant.jsx`; it uses `requestFinancialChatAnswer` and presents an error/retry instead of fixed financial claims. `FinancialAssistant.jsx` also presents API errors, but is routed only through the separate `src/routes` tree. **Fixed in worktree.** |
-| Insights presented client calculations as AI/fraud capabilities; Budget and Prediction navigation was actionable although these advanced services did not exist. | Active UI identifies browser-local budgets and estimates, marks cloud sync/advanced AI predictions Coming Soon, and describes fraud monitoring as upcoming. Basic budget/category/transaction paths remain available. **Fixed in worktree.** |
-| Report preview had unsupported fraud/signature claims and could assume a report existed. | Current `Reports.jsx` computes monthly summaries from loaded transactions, provides empty states, gates month selection/downloads, and does not claim cryptographic signing or fraud blocking. `GET /api/financial/report?month=YYYY-MM` supports the selected month. **Fixed in worktree.** |
-| Category/registration pages were not reachable in active app navigation and category screens lacked their budget provider. | `App.jsx` maps Categories and Register and mounts `BudgetProvider`; **fixed in worktree**. |
+Earlier audits recorded fixes for public role escalation, admin-only user directory access, transaction ownership errors, generic exception messages/log fields, statement parser log sensitivity, malformed transaction amount/date validation, and active navigation. These are preserved in the current source/test history; the latest verification does not prove live deployment.
 
-## Remaining confirmed limitations
+Historical runtime incidents remain unverified against the current runtime:
 
-- **Currency provenance — Low:** transactions are explicitly INR-only for this version and no currency conversion is performed. Existing records have no stored currency metadata; INR is the adopted product contract, not an inferred source value. Transaction amounts now use `BigDecimal` / `NUMERIC(19,2)` and decimal-string APIs.
-- **Existing database migration — High:** Flyway migrations are present and Hibernate uses `ddl-auto: validate`, but the existing database has not been baselined or migrated. Schema equality with V1, backup restore, amount conversion, email normalization, and post-migration checks remain operator/release steps. Follow `docs/DATABASE_MIGRATION_RUNBOOK.md`; do not start a migration-enabled build against an unbaselined existing database.
-- **Bounded Financial Chat — Medium:** supported questions are selected by phrase-based intent resolution; supported grounded answers depend on configured Ollama. Unsupported intents, absent transaction data, and generation errors are distinct handled results. This is not a general financial-advice engine.
-- **Local-only budgets — Low:** budget values use browser localStorage. They are not stored in PostgreSQL, synchronized across devices, or included in the authenticated server report calculations.
-- **Statement parsing — Medium:** backend PDF/CSV parsing is heuristic text extraction; the active browser upload supports CSV and PDF. Scanned-image OCR is not implemented. Generated-PDF fixtures now cover valid extraction, missing dates, and malformed-amount rejection through preview/import, but real bank layouts, multi-page variation, and mixed-row PDF persistence cases remain untested. The arbitrary 1,000,000 PDF amount ceiling was removed because no domain constraint justified it; existing strict numeric syntax and row validation remain.
-- **Financial report currency — Low:** report amounts are labeled/displayed in INR under the confirmed INR-only contract. The schema intentionally stores no per-transaction currency because multi-currency support is out of scope.
-- **Legacy research evaluation — Low:** the A/B/C runner records raw answers, errors, latency, and optional token/timing metadata but does not score correctness, grounding, or statistical significance. Several benchmark calculation types are intentionally rejected as unsupported.
+- Local Ollama requests previously reached long generation timeouts; later prompt-only concision work avoided fixed token caps that truncated test answers. Do not claim current latency is resolved without a live request.
+- A stale backend container image was previously reported and resolved operationally at that time. This documentation update does not rebuild or restart services.
+- A live authenticated transaction-save/dashboard-refresh smoke test was not part of the latest verification.
+- A prior working-tree audit had older test counts (213 backend tests and 77 frontend tests). Those are historical and are superseded by the latest counts below.
 
-## Potential issues requiring deployment or authenticated checks
+## Latest recorded verification
 
-| Priority | Risk | Next check |
-|---|---|---|
-| High | JWT startup validation checks key presence, byte length, and known fallback rejection, but cannot establish entropy or deployment provisioning. | Provision a cryptographically generated key through a secret manager, document rotation, and validate deployment injection without printing values. |
-| Medium | Production browser origins are now required through `UPIQ_CORS_ALLOWED_ORIGINS`; local development defaults to localhost. Actual deployed origin values have not been verified. | Set the deployment allowlist and verify browser preflights from the deployed frontend. |
-| High | Authentication login and registration use a process-local fixed-window limiter with a 10,000-entry map; LRU eviction can reset an active client's counter, and replicas do not coordinate limits. | Use a trusted shared edge limiter or shared store before horizontal scaling; do not trust unverified forwarded identity headers. |
-| Medium | Browser interaction and authenticated transaction creation were not performed in this audit because no authenticated session was available. | In a signed-in account, create an owner-authorized transaction and verify it appears after save; submit an invalid amount/date and confirm a validation error without a false success. Do not use fabricated financial data. |
-| Low | Voice output uses browser SpeechSynthesis; voice input was removed from the current worktree. Compatibility and accessibility across target browsers were not tested. | Exercise supported browsers only if voice features are reintroduced. |
-
-## User-reported incidents retained from project history
-
-- **Financial Chat latency/outage — User-reported, historically confirmed by runtime logs:** requests against local `llama3.1:8b` reached approximately 60-second backend timeouts and exhausted two attempts; a separate manual retry later succeeded. Earlier controlled measurements found uncapped answer generation around 35–57 seconds and fixed limits of 160/256 tokens could truncate answers. The prompt-only concise-answer change avoids arbitrary output caps. Do not claim the current runtime latency is eliminated without a fresh real chat request.
-- **Stale container image / deployment mismatch — User-reported, resolved operationally at the time:** the backend previously ran an older Docker image than local source. The root `docker-compose.yml` and Compose project `upiq-20` were used for the subsequent backend deployment. This audit did not rebuild/restart services; current source edits in this audit are not included in that prior image.
-- **Live transaction save and dashboard refresh — User-reported/unverified:** earlier smoke verification lacked an authenticated browser session. Source/tests cover persistence and response-driven refresh, but no real-account transaction was created in that check.
-
-## API and persistence reference
-
-- Auth: `POST /api/auth/register` and `/api/auth/login` are public. Registration creates a normal user. Login returns an `ApiResponse` with `data.token`.
-- Transactions: authenticated `POST/GET /api/transactions`, `GET /category/{category}`, `GET /{id}`, `PUT /{id}`, `DELETE /{id}`, and user-scoped bulk `DELETE /api/transactions`. The principal, not request JSON, supplies the owner ID. Create returns 201 with the saved `TransactionResponse`.
-- Categories: authenticated `POST/GET /api/categories`, `GET /type/{type}`, `GET /{id}`, `PUT /{id}`, `DELETE /{id}`; service lookups are owner-scoped.
-- Statement parsing: authenticated `POST /api/pdf/upload` returns parse candidates without persisting. Authenticated `POST /api/pdf/import` imports idempotently using file fingerprint plus source row. Frontend supports PDF selection; backend parsers accept PDF and CSV.
-- Dashboard/report: authenticated `GET /api/financial/dashboard` returns per-user latest-month summary; `GET /api/financial/report?month=YYYY-MM` returns PDF bytes. Financial Chat is authenticated `POST /api/financial-chat` with `{ "question": "..." }` and no user ID input. `GET /api/financial-insights` returns current-month user-scoped totals and a grounded Ollama explanation when available, with deterministic fallback text.
-- Notifications: authenticated `GET /api/notifications` derives a current-versus-previous-month category-spend change for the principal's transactions. Results are generated on demand; dismissal is browser-session state only, with no persistence, scheduler, preference API, or push delivery.
-- Admin dashboard: `GET /api/admin/dashboard` is `ROLE_ADMIN`-only and returns platform account counts and transaction aggregates. It does not expose individual transactions and is not operational monitoring or fraud telemetry.
-- Users: authenticated `GET /api/v1/users`, `/email/{email}`, and `/username/{username}` require admin; `/me` is self lookup.
-- `GET /health/health` is public. Other API routes require JWT. JSON responses generally use `{ success, data, message }`; bean validation returns 400; access denial returns 403; unexpected errors return a generic 500 wrapper.
-- Research runner is an opt-in application runner, not a REST endpoint. There are no REST budget persistence, fraud-detection, investment, persistent push-notification, or experiment-metric endpoints.
-
-### Request/response and calculation details
-
-- Registration accepts email, password, and optional username; an optional caller-supplied role is ignored. Login accepts email/password and returns the token in `data.token`. `UserDTO` contains ID, email, username, full name, role, active state, created time, and last-login time; it omits password hashes.
-- Transaction create/update use `{ amount, type, category, description, paymentMethod, date }`. Amount must be positive; type is income/expense (case-insensitive input, canonical lowercase persistence). `TransactionResponse` contains `id`, `userId`, amount, type, category, description, date, and payment method.
-- Category create/update use `{ name, type, description, color, icon }`; response fields are ID, name, type, description, color, and icon. Categories and transaction queries use the authenticated principal's scope.
-- PDF/CSV parse responses include total/success/failure counts, candidate transactions, errors, and message; candidates are not persisted by `/upload`. `/import` returns imported, duplicate, rejected, and failed counts.
-- Dashboard response includes transaction-data presence, latest/previous available month, current-month income/expense/net/savings/count summary, monthly expense comparison, and category spending totals/counts/percentages. Empty accounts receive an explicit no-data response.
-- Financial Chat accepts a nonblank question only; the controller supplies user scope. The response has answer, optional calculation type/context/model/latency, and supported/error flags. The intent resolver is bounded; unsupported questions are not approximated with arbitrary calculations.
-- Financial calculations use inclusive date ranges. Income/expense totals sum positive transaction amounts; net is income minus expense; savings rate is zero when income is zero. Category percentage is zero when total expense is zero. Period percentage change is unavailable for a zero baseline. Research-only unsupported formulas are rejected rather than approximated.
-- Bean validation errors use HTTP 400 with timestamp/status/error/message/field errors/path. Generic JSON operations use the common response wrapper; PDF report returns raw PDF bytes; single-transaction delete returns HTTP 204.
-
-### Configuration and repository hygiene facts
-
-Root `.env.example` supplies local Compose templates; `backend/.env.example` is for local backend setup; `frontend/.env.example` contains only Vite-public variables. Do not commit `.env`, signing keys, DB credentials, OAuth secrets, model files, or private/generated research results. Root Compose runs PostgreSQL/backend; frontend Vite is separate. The checked-in research JSONs and opt-in test fixtures are active inputs, not cleanup candidates. `research-results/` is ignored runtime output and its local artifacts were retained.
+- Backend full suite with the installed Byte Buddy agent preloaded: **334 tests, 0 assertion failures, 5 errors, 3 skipped; BUILD FAILURE.** The errors are all `OllamaClientTest` loopback-server environment errors. Skipped tests: `Checkpoint4ESmallBatchLiveTest`, `SystemBQ001RuntimeDiagnosticTest`, `SystemCLiveOllamaVerificationTest`.
+- Frontend `npm test`: **193 passed, 0 failed, 0 skipped**.
+- Frontend `npm run build`: **passed**.
+- PostgreSQL migrations and Hibernate validation: **not verified** for V1–V4 in the current worktree.
+- No authenticated browser E2E, live Google OAuth, or live Ollama verification was performed in the latest test run.
 
 ## Research observations preserved
 
-The checked-in benchmark contains synthetic fixture data. The selected Q001/Q006/Q011 cases historically calculated Food expense 3,620.00 across 8 transactions (27.50%), July/August expense totals 11,356.00/13,166.00 (difference 1,810.00; 15.94%), and a largest expense of 2,100.00. These are fixture facts, not user financial data or model-quality results.
-
-A prior recorded small-batch run observed System B content-type extraction failures near timeout; System C used an unsupported currency symbol on two cases and made an unsupported “only transaction” claim on another. System C grounding instructions were subsequently hardened. A separate diagnostic recorded a CPU-only prompt evaluation around 3,665 tokens and roughly 69,873,728 ms server-side duration before HTTP 200, after the Java client had already failed. These isolated historical observations have no established root cause and must not be treated as comparative model-quality findings. The opt-in test `Checkpoint4ESmallBatchLiveTest` uses 180 seconds per generation and a `CREATE_NEW` result writer; use a unique output path and a hard external process timeout for future live runs.
-
-## Verification performed for this audit
-
-- Frontend tests: `node --test` — **77 passed, 0 failed**.
-- Frontend production bundle: `node .\node_modules\vite\bin\vite.js build` — **passed**. `npm run build` could not launch because the machine's npm shim points to a missing npm installation; the local Vite executable was used directly.
-- Backend: `docker run --rm -v "<repo>\backend:/workspace" -w /workspace maven:3.9.7-eclipse-temurin-21 mvn test` — **213 tests, 0 failures, 0 errors, 3 skipped**. The short-lived Maven runner did not connect to the application database or Compose services.
-- `git diff --check` is run after final documentation consolidation.
-- No authenticated browser/E2E session or live Ollama generation was used.
+The checked-in benchmark uses synthetic fixtures. Selected historical fixture values include Q001 Food August 2026 total 3,620.00 across 8 transactions (27.50%), Q006 July/August totals 11,356.00/13,166.00 (difference 1,810.00; 15.94%), and Q011 largest August expense 2,100.00. These are not user financial data or model-quality results. The A/B/C runner records raw answers/errors/latency and optional token/timing metadata but does not calculate answer-quality scores or statistical significance. Several unsupported benchmark calculation types are intentionally rejected.

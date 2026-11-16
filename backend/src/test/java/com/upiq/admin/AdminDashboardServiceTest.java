@@ -17,14 +17,15 @@ class AdminDashboardServiceTest {
         TransactionRepository transactions = mock(TransactionRepository.class);
         when(users.count()).thenReturn(7L);
         when(users.countByActiveTrue()).thenReturn(5L);
-        when(transactions.getPlatformTotals()).thenReturn(java.util.List.<Object[]>of(new Object[]{11L, 12500.5, 4200.25}));
+        when(transactions.getPlatformTotals()).thenReturn(java.util.List.<Object[]>of(new Object[]{11L,
+                new BigDecimal("12500.50"), new BigDecimal("4200.25")}));
 
         AdminDashboardResponse response = new AdminDashboardService(users, transactions).getSummary();
 
         assertEquals(7L, response.getUserCount());
         assertEquals(5L, response.getActiveUserCount());
         assertEquals(11L, response.getTransactionCount());
-        assertEquals(new BigDecimal("12500.5"), response.getRecordedIncome());
+        assertEquals(new BigDecimal("12500.50"), response.getRecordedIncome());
         assertEquals(new BigDecimal("4200.25"), response.getRecordedExpenses());
     }
 

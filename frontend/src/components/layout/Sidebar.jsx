@@ -24,7 +24,7 @@ export const Sidebar = () => {
     { id: 'categories', label: 'Categories', icon: Tags },
     { id: 'ai-assistant', label: 'AI Assistant', icon: Bot, isAi: true },
     { id: 'insights', label: 'Financial Insights', icon: BrainCircuit },
-    { id: 'security', label: 'Security & Fraud', icon: ShieldAlert, upcoming: true },
+    { id: 'security', label: 'Security & Fraud', icon: ShieldAlert },
     { id: 'reports', label: 'Monthly Reports', icon: FileText },
     { id: 'profile', label: 'User Profile', icon: User },
     ...(profile?.role === 'admin' ? [{ id: 'admin', label: 'Admin View', icon: ShieldCheck }] : []),

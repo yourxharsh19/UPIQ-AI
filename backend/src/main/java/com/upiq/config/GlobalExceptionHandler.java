@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.upiq.pdf.exceptions.ParsingException;
 import com.upiq.transaction.exceptions.TransactionNotFoundException;
 import com.upiq.category.exceptions.CategoryNotFoundException;
+import com.upiq.budget.exceptions.BudgetNotFoundException;
+import com.upiq.budget.exceptions.BudgetConflictException;
+import com.upiq.notifications.NotificationNotFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,10 +25,17 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler({TransactionNotFoundException.class, CategoryNotFoundException.class})
+    @ExceptionHandler({TransactionNotFoundException.class, CategoryNotFoundException.class,
+            BudgetNotFoundException.class, NotificationNotFoundException.class})
     public ResponseEntity<ApiResponse<String>> handleNotFoundException(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error("The requested resource was not found"));
+    }
+
+    @ExceptionHandler(BudgetConflictException.class)
+    public ResponseEntity<ApiResponse<String>> handleBudgetConflict(BudgetConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error("A budget already exists for this category and month"));
     }
 
     @ExceptionHandler(AccessDeniedException.class)

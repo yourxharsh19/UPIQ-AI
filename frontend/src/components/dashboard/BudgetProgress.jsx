@@ -6,9 +6,18 @@ import { formatInrAmount } from "../../utils/financialDisplay.js";
 import clsx from "clsx";
 
 const BudgetProgress = ({ transactions }) => {
-  const { getAllBudgets } = useBudget();
+  const { getAllBudgets, budgetRecords, isBackendMode } = useBudget();
   const budgets = getAllBudgets();
-  const budgetedCategories = buildLocalBudgetForecasts(budgets, transactions);
+  const budgetedCategories = isBackendMode
+    ? budgetRecords.filter((record) => record.category).map((record) => ({
+      category: record.category,
+      budget: record.amount,
+      spent: record.spent,
+      predicted: record.projectedSpend,
+      remaining: record.remaining,
+      overBudget: record.overBudget,
+    }))
+    : buildLocalBudgetForecasts(budgets, transactions);
 
   if (budgetedCategories.length === 0) {
     return (

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { ShieldAlert } from 'lucide-react';
 import { useFinancial } from '../context/FinancialContext';
 import { useAIBudget } from '../hooks/useAIBudget';
 import { BudgetForecastCard } from '../components/insights/BudgetForecastCard';
@@ -8,6 +7,7 @@ import { formatBudgetUsage } from '../utils/budgetForecasts.js';
 import { FinancialInsightsService } from '../services/financial-insights.service.js';
 import { getAuthSessionMode } from '../utils/authFlow.js';
 import { getFeatureSessionKey } from '../utils/featureSession.js';
+import { compareMoney } from '../utils/money.js';
 
 export const Insights = () => {
   const { formatCurrency, profile } = useFinancial();
@@ -43,7 +43,8 @@ export const Insights = () => {
 
   const insights = insightResult?.sessionKey === sessionKey ? insightResult.data : null;
   const hasCurrentMonthActivity = insights
-    && (Number(insights.income) !== 0 || Number(insights.expenses) !== 0 || Boolean(insights.topExpenseCategory));
+    && (compareMoney(insights.income || '0', '0') !== 0
+      || compareMoney(insights.expenses || '0', '0') !== 0 || Boolean(insights.topExpenseCategory));
 
   return (
     <div className="space-y-6">
@@ -67,6 +68,9 @@ export const Insights = () => {
           {insights.topExpenseCategory && <p className="text-xs text-[var(--text-muted)]">Largest expense category: {insights.topExpenseCategory} ({formatCurrency(insights.topExpenseCategoryTotal)}).</p>}
           <ul className="list-disc pl-5 text-xs text-[var(--text-muted)]">{insights.insights?.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>
           <p className="rounded-lg bg-[var(--bg-surface)] p-3 text-xs text-[var(--text-main)]">{insights.explanation} <span className="text-[var(--text-muted)]">{insights.aiGenerated ? 'AI explanation from verified aggregate facts.' : 'Calculated summary; AI explanation unavailable.'}</span></p>
+          {insights.categoryBreakdown?.length > 0 && <div className="space-y-2"><h3 className="text-xs font-semibold">Expense categories</h3><ul className="grid gap-2 sm:grid-cols-2">{insights.categoryBreakdown.map((item) => <li key={item.category} className="flex items-center justify-between rounded-lg bg-[var(--bg-surface)] px-3 py-2 text-xs"><span>{item.category} <span className="text-[var(--text-muted)]">({item.percentageOfExpense}%)</span></span><strong>{formatCurrency(item.total)}</strong></li>)}</ul></div>}
+          {insights.expenseChangePercentage != null && <p className="text-xs text-[var(--text-muted)]">Expense change from the previous month: {formatCurrency(insights.expenseChange)} ({insights.expenseChangePercentage}%).</p>}
+          {insights.budgetInsights?.length > 0 && <div className="space-y-2"><h3 className="text-xs font-semibold">Verified budget status</h3><ul className="space-y-1">{insights.budgetInsights.map((item, index) => <li key={`${item.category || 'total'}-${index}`} className="flex justify-between rounded-lg bg-[var(--bg-surface)] px-3 py-2 text-xs"><span>{item.category || 'Total monthly'} · {item.percentageConsumed}% used{item.overBudget ? ' · over budget' : ''}</span><span>{formatCurrency(item.spent)} / {formatCurrency(item.amount)}</span></li>)}</ul></div>}
         </>}
       </section>
 
@@ -90,7 +94,7 @@ export const Insights = () => {
 
         <div className="rounded-xl border border-[var(--border-base)] bg-[var(--bg-card)] p-4 shadow-xs">
           <span className="text-xs text-[var(--text-muted)] font-medium">Estimated Month-End Spend</span>
-          <h3 className={`text-xl sm:text-2xl font-bold mt-1.5 tabular-nums ${totalPredicted > totalBudgeted ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--text-main)]'}`}>
+          <h3 className={`text-xl sm:text-2xl font-bold mt-1.5 tabular-nums ${compareMoney(totalPredicted, totalBudgeted) > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--text-main)]'}`}>
             {formatCurrency(totalPredicted)}
           </h3>
           <p className="text-[11px] text-[var(--text-muted)] mt-1">Estimate (not AI prediction)</p>
@@ -104,16 +108,6 @@ export const Insights = () => {
           <p className="text-[11px] text-[var(--text-muted)] mt-1">Estimate (not AI prediction) · balance minus budget</p>
         </div>
       </div>
-
-      <section className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4" aria-labelledby="security-upcoming-title">
-        <div className="flex items-center gap-2.5">
-          <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" aria-hidden="true" />
-          <div>
-            <h2 id="security-upcoming-title" className="text-xs font-semibold text-[var(--text-main)]">Security and fraud monitoring — Coming soon</h2>
-            <p className="text-xs text-[var(--text-muted)] mt-0.5">UPIQ does not currently provide transaction fraud detection, threat monitoring, or dispute actions (Coming soon).</p>
-          </div>
-        </div>
-      </section>
 
       {/* Budget Forecast Grid */}
       <div className="space-y-3">

@@ -75,24 +75,16 @@ test('Task 6: Honest Labels for Limitations & Unavailable Features', async (t) =
       'UploadPDF should note scanned OCR PDFs are Coming soon'
     );
 
-    // Fraud Detection
-    assert.ok(
-      sidebarContent.includes('Coming soon'),
-      'Sidebar should show "Coming soon" badge for fraud/security'
-    );
-    assert.ok(
-      bottomNavContent.includes('Coming soon'),
-      'BottomNav should show "Coming soon" for fraud/security'
-    );
-    assert.ok(
-      fraudDrawerContent.includes('Security and fraud monitoring — Coming soon'),
-      'FraudAlertDrawer should show "Security and fraud monitoring — Coming soon"'
-    );
+    // Fraud review signals
+    assert.ok(sidebarContent.includes("id: 'security', label: 'Security & Fraud'"));
+    assert.ok(bottomNavContent.includes("id: 'security', label: 'Security'"));
+    assert.ok(fraudDrawerContent.includes('A flag is not proof of fraud'));
+    assert.ok(fraudDrawerContent.includes('normalizeFraudAlerts'));
 
     assert.ok(headerContent.includes('NotificationService.getNotifications') || headerContent.includes('Open spending notifications'));
-    assert.ok(headerContent.includes('no push alerts'), 'Header should distinguish on-demand alerts from push notifications');
+    assert.ok(headerContent.includes('Push alerts are not enabled'), 'Header should distinguish on-demand alerts from push notifications');
     assert.ok(adminContent.includes('AdminDashboardService.getSummary'));
-    assert.ok(adminContent.includes('Platform-wide aggregate metrics'));
+    assert.ok(adminContent.includes('Platform aggregates and a read-only account directory'));
     assert.ok(appContent.includes("profile?.role === 'admin' ? <Admin /> : <Dashboard />"), 'direct admin-tab rendering falls back for normal profiles');
     assert.ok(sidebarContent.includes("profile?.role === 'admin' ? [{ id: 'admin'"), 'normal profiles do not receive admin navigation');
     assert.ok(financialContextContent.includes("tab === 'admin' && profile?.role !== 'admin'"), 'tab selection independently blocks normal profiles');

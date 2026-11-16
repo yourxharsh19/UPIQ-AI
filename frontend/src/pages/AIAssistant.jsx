@@ -1,16 +1,36 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Send, Bot, User, Volume2, Info } from 'lucide-react';
+import { Send, Bot, User, Volume2, VolumeX, Info, Mic, MicOff } from 'lucide-react';
 import { useFinancial } from '../context/FinancialContext';
 import { QuickPromptPills } from '../components/ai/QuickPromptPills';
 import { Button } from '../components/common/Button';
 import { FinancialChatService } from '../services/financial-chat.service';
 import { requestFinancialChatAnswer } from '../utils/financialChat.js';
+import { getAuthSessionMode } from '../utils/authFlow.js';
+import {
+  createVoiceRecognition,
+  getSpeechCapabilities,
+  getSpeechErrorMessage,
+  isVoiceChatAuthenticated,
+  startSpeechPlayback,
+  stopSpeechPlayback,
+  submitVoiceTranscript,
+} from '../utils/voiceAssistant.js';
 
 export const AIAssistant = () => {
   const { aiPromptQuery, setAiPromptQuery, transactions, chatMessages: messages, appendChatMessage } = useFinancial();
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceError, setVoiceError] = useState('');
+  const [speakingMessageId, setSpeakingMessageId] = useState(null);
+  const [speechCapabilities] = useState(() => getSpeechCapabilities(
+    typeof window === 'undefined' ? null : window,
+  ));
   const chatEndRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const recognitionSessionRef = useRef(0);
+  const speechRequestRef = useRef(0);
+  const speakingMessageRef = useRef(null);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -20,6 +40,12 @@ export const AIAssistant = () => {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  useEffect(() => () => {
+    recognitionSessionRef.current += 1;
+    try { recognitionRef.current?.stop(); } catch {}
+    stopSpeechPlayback(typeof window === 'undefined' ? null : window);
+  }, []);
+
   // Handle incoming query from search bar or header
   useEffect(() => {
     if (aiPromptQuery) {
@@ -27,6 +53,13 @@ export const AIAssistant = () => {
       setAiPromptQuery('');
     }
   }, [aiPromptQuery]);
+
+  const stopListening = () => {
+    recognitionSessionRef.current += 1;
+    try { recognitionRef.current?.stop(); } catch {}
+    recognitionRef.current = null;
+    setIsListening(false);
+  };
 
   const generateAiResponse = async (userMsg, appendUserMessage = true) => {
     if (isTyping || !userMsg.trim()) return;
@@ -57,15 +90,92 @@ export const AIAssistant = () => {
 
   const handleSend = (textToSend = inputText) => {
     if (!textToSend.trim()) return;
+    if (recognitionRef.current) stopListening();
     generateAiResponse(textToSend);
   };
 
-  const speakText = (text) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text.replace(/[*#]/g, ''));
-      window.speechSynthesis.speak(utterance);
+  const startListening = () => {
+    setVoiceError('');
+    if (isTyping) return;
+    if (!isVoiceChatAuthenticated(getAuthSessionMode())) {
+      setVoiceError('Sign in to a backend account before sending voice questions to the assistant.');
+      return;
     }
+    const browser = typeof window === 'undefined' ? null : window;
+    const sessionId = recognitionSessionRef.current + 1;
+    recognitionSessionRef.current = sessionId;
+    const recognition = createVoiceRecognition(browser, {
+      onTranscript: (transcript) => {
+        if (recognitionSessionRef.current !== sessionId) return;
+        recognitionRef.current = null;
+        setIsListening(false);
+        const submitted = submitVoiceTranscript(transcript, (recognizedText) => handleSend(recognizedText));
+        if (!submitted) setVoiceError(getSpeechErrorMessage('empty'));
+      },
+      onError: (error) => {
+        if (recognitionSessionRef.current === sessionId) setVoiceError(getSpeechErrorMessage(error));
+      },
+      onEnd: () => {
+        if (recognitionSessionRef.current === sessionId) {
+          recognitionRef.current = null;
+          setIsListening(false);
+        }
+      },
+    });
+    if (!recognition) {
+      setVoiceError('Voice input is not supported in this browser. You can still type your question.');
+      return;
+    }
+    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch (error) {
+      recognitionSessionRef.current += 1;
+      recognitionRef.current = null;
+      setIsListening(false);
+      setVoiceError(getSpeechErrorMessage(error));
+    }
+  };
+
+  const stopSpeaking = () => {
+    speechRequestRef.current += 1;
+    speakingMessageRef.current = null;
+    stopSpeechPlayback(typeof window === 'undefined' ? null : window);
+    setSpeakingMessageId(null);
+  };
+
+  const speakText = (text, messageId) => {
+    if (speakingMessageRef.current === messageId) {
+      stopSpeaking();
+      return;
+    }
+    const browser = typeof window === 'undefined' ? null : window;
+    const requestId = speechRequestRef.current + 1;
+    speechRequestRef.current = requestId;
+    const utterance = startSpeechPlayback(browser, text, {
+      onStart: () => {
+        if (speechRequestRef.current === requestId) {
+          speakingMessageRef.current = messageId;
+          setSpeakingMessageId(messageId);
+          setVoiceError('');
+        }
+      },
+      onEnd: () => {
+        if (speechRequestRef.current === requestId) {
+          speakingMessageRef.current = null;
+          setSpeakingMessageId(null);
+        }
+      },
+      onError: () => {
+        if (speechRequestRef.current === requestId) {
+          speakingMessageRef.current = null;
+          setSpeakingMessageId(null);
+          setVoiceError('Speech playback stopped unexpectedly.');
+        }
+      },
+    });
+    if (!utterance) setVoiceError('Speech playback is not supported in this browser.');
   };
 
   return (
@@ -138,11 +248,14 @@ export const AIAssistant = () => {
                 <span>{msg.timestamp}</span>
                 {msg.sender === 'ai' && (
                   <button
-                    onClick={() => speakText(msg.text)}
-                    className="hover:underline flex items-center gap-1 cursor-pointer"
-                    title="Read response aloud"
+                    type="button"
+                    onClick={() => speakText(msg.text, msg.id)}
+                    disabled={!speechCapabilities.speechPlayback}
+                    className="hover:underline flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label={speakingMessageId === msg.id ? 'Stop speech playback' : 'Read response aloud'}
+                    title={speechCapabilities.speechPlayback ? 'Read response aloud or stop playback' : 'Speech playback is not supported in this browser'}
                   >
-                    <Volume2 className="w-3 h-3" /> Listen
+                    {speakingMessageId === msg.id ? <><VolumeX className="w-3 h-3" /> Stop</> : <><Volume2 className="w-3 h-3" /> Listen</>}
                   </button>
                 )}
               </div>
@@ -171,6 +284,11 @@ export const AIAssistant = () => {
 
       {/* Bottom Input Field */}
       <div className="p-3 border-t border-[var(--border-base)] bg-[var(--bg-card)]">
+        {voiceError && <p role="alert" className="px-1 pb-2 text-xs text-rose-600 dark:text-rose-400">{voiceError}</p>}
+        {isListening && <p role="status" aria-live="polite" className="px-1 pb-2 text-xs text-blue-600 dark:text-blue-400">Listening… speak your question. Recording stops when speech ends.</p>}
+        {!speechCapabilities.speechToText && <p role="status" className="px-1 pb-2 text-xs text-[var(--text-muted)]">Voice input is unavailable in this browser. You can still type your question.</p>}
+        {!speechCapabilities.speechPlayback && <p role="status" className="px-1 pb-2 text-xs text-[var(--text-muted)]">Speech playback is unavailable in this browser.</p>}
+        <p className="px-1 pb-2 text-[10px] text-[var(--text-muted)]">Voice recognition uses your browser’s speech service; its audio processing is subject to that browser’s privacy settings.</p>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -186,6 +304,18 @@ export const AIAssistant = () => {
             placeholder="Ask a question about your ledger... (e.g. 'How much did I spend this month?')"
             className="flex-1 px-3.5 py-2 bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-lg text-xs text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors"
           />
+          <button
+            type="button"
+            onClick={isListening ? stopListening : startListening}
+            disabled={!speechCapabilities.speechToText || isTyping}
+            aria-label={isListening ? 'Stop voice recording' : 'Start voice recording'}
+            aria-pressed={isListening}
+            title={!speechCapabilities.speechToText ? 'Voice input is not supported in this browser' : isListening ? 'Stop recording' : 'Start voice input'}
+            className={`rounded-lg border px-3 py-2 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isListening ? 'border-rose-500/40 bg-rose-500/10 text-rose-600' : 'border-[var(--border-base)] text-[var(--text-muted)] hover:bg-[var(--bg-surface)]'}`}
+          >
+            {isListening ? <><MicOff className="inline h-4 w-4" aria-hidden="true" /> <span className="sr-only">Stop recording</span></>
+              : <><Mic className="inline h-4 w-4" aria-hidden="true" /> <span className="sr-only">Start recording</span></>}
+          </button>
           <Button type="submit" variant="primary" size="md" icon={Send} disabled={isTyping}>
             Send
           </Button>

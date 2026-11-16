@@ -12,7 +12,7 @@ export const BottomNav = () => {
     { id: 'ai-assistant', label: 'Assistant', icon: Bot, isAi: true },
     { id: 'insights', label: 'Budgets', icon: BrainCircuit },
     { id: 'profile', label: 'Profile', icon: User },
-    { id: 'security', label: 'Coming soon', icon: ShieldAlert, upcoming: true },
+    { id: 'security', label: 'Security', icon: ShieldAlert },
   ];
 
   return (

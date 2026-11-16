@@ -17,6 +17,7 @@ const Transactions = lazy(() => import('./pages/Transactions').then((module) => 
 const Categories = lazy(() => import('./pages/Categories'));
 const AIAssistant = lazy(() => import('./pages/AIAssistant').then((module) => ({ default: module.AIAssistant })));
 const Insights = lazy(() => import('./pages/Insights').then((module) => ({ default: module.Insights })));
+const FraudAlertDrawer = lazy(() => import('./components/insights/FraudAlertDrawer').then((module) => ({ default: module.FraudAlertDrawer })));
 const Reports = lazy(() => import('./pages/Reports').then((module) => ({ default: module.Reports })));
 const Admin = lazy(() => import('./pages/Admin').then((module) => ({ default: module.Admin })));
 const Profile = lazy(() => import('./pages/Profile').then((module) => ({ default: module.Profile })));
@@ -37,6 +38,8 @@ const AppContent = () => {
       case 'insights':
       case 'insights-tab':
         return <Insights />;
+      case 'security':
+        return <FraudAlertDrawer />;
       case 'reports':
         return <Reports />;
       case 'admin':

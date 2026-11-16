@@ -64,7 +64,7 @@ test('category API envelope maps its data list and no malformed payload becomes 
 
 test('active navigation resolves Categories and does not route upcoming Security into Insights', () => {
   assert.equal(resolveAppTab('categories'), 'categories');
-  assert.equal(resolveAppTab('security'), 'dashboard');
+  assert.equal(resolveAppTab('security'), 'security');
   assert.equal(resolveAppTab('unexpected-tab'), 'dashboard');
 });
 

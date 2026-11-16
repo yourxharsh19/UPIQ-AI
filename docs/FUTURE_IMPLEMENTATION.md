@@ -1,181 +1,147 @@
-# UPIQ 2.0 — Future Implementation
+# UPIQ 2.0 — Roadmap and implementation status
 
-This roadmap consolidates project plans and technical handover notes. Statuses describe current repository evidence, not a production guarantee. Priorities: **P0** release/security prerequisite, **P1** core data integrity, **P2** planned product capability, **P3** optional research/experience work.
+This roadmap describes repository evidence as of 2026-11-16. A source implementation or unit test does not prove live-provider behavior, PostgreSQL compatibility, or production readiness. See the [team handoff](UPIQ_2.0_TEAM_HANDOFF.md) for detailed findings and the [migration runbook](DATABASE_MIGRATION_RUNBOOK.md) for database release procedures.
 
 ## Current implementation map
 
-UPIQ is a React/Vite single-page application backed by one Spring Boot REST application and PostgreSQL. Root `docker-compose.yml` runs PostgreSQL and the backend; the frontend runs separately through Vite unless a future deployment adds a frontend service.
-
-| Area | Current status | Main modules |
+| Area | Status | Relevant code |
 |---|---|---|
-| JWT login, registration, role checks, session cleanup | Implemented; registration creates `USER` and returns a generic HTTP 200 response for success and duplicates; login/register have process-local throttling; directory endpoints are admin-only. Unknown-email and wrong-password responses are generic; BCrypt work is performed on both paths, but database and execution timing are not guaranteed constant. Disabled accounts no longer receive a distinct response. | `backend/src/main/java/com/upiq/auth/`, `backend/src/main/java/com/upiq/config/`, `frontend/src/context/FinancialContext.jsx`, `frontend/src/services/api.js` |
-| Transaction CRUD, owner scoping, deterministic categorization | Implemented | `backend/src/main/java/com/upiq/transaction/`, `backend/src/main/java/com/upiq/category/`, `frontend/src/pages/Transactions.jsx`, `frontend/src/context/FinancialContext.jsx` |
-| Category management and browser-local monthly budgets | Partially implemented; budgets are localStorage-only | `frontend/src/pages/Categories.jsx`, `frontend/src/context/BudgetContext.jsx`, `frontend/src/hooks/useAIBudget.js` |
-| PDF and backend CSV parsing/import | Partially implemented; active browser upload supports PDF and CSV, text parsing is heuristic, no OCR; generated-PDF amount fixtures cover the former 1,000,000 boundary and malformed amounts, while real-template/layout coverage remains limited | `backend/src/main/java/com/upiq/pdf/`, `frontend/src/components/transactions/StatementUploadModal.jsx`, `frontend/src/utils/statementImport.js` |
-| Dashboard, calculated report PDF, monthly CSV | Implemented with data-provenance/currency limitations | `backend/src/main/java/com/upiq/financial/dashboard/`, `backend/src/main/java/com/upiq/financial/report/`, `frontend/src/pages/Reports.jsx`, `frontend/src/utils/monthlyReport.js` |
-| Financial Chat | Partially implemented: bounded intents, deterministic calculation, grounded Ollama explanation; not general advice | `backend/src/main/java/com/upiq/financial/chat/`, `backend/src/main/java/com/upiq/research/llm/`, `frontend/src/pages/AIAssistant.jsx`, `frontend/src/utils/financialChat.js` |
-| Budget estimate | Implemented as a simple frontend run-rate estimate; not an AI prediction | `frontend/src/utils/budgetForecasts.js`, `frontend/src/hooks/useAIBudget.js`, `frontend/src/pages/Insights.jsx` |
-| AI transaction categorization, fraud detection, investment advice, budget sync/advanced AI prediction, persistent push notifications | Planned; no corresponding production service/API today | Feature metadata in `frontend/src/services/backendFeatureStatus.js` |
-| Smart notification MVP, monthly financial insights, aggregate admin dashboard | Implemented on demand over existing ledger/user data; no feature tables or durable notification state | `backend/src/main/java/com/upiq/notifications/`, `backend/src/main/java/com/upiq/financial/insights/`, `backend/src/main/java/com/upiq/admin/` |
-| Voice | Speech output exists in the assistant; voice input is absent from the current worktree | `frontend/src/pages/AIAssistant.jsx` |
-| Research A/B/C experiment runner | Implemented opt-in raw-result collection; no scoring/statistics | `backend/src/main/java/com/upiq/research/experiment/`, `backend/src/main/resources/research/` |
+| Email/password auth, JWT, roles | Implemented; password login and registration are covered by tests. Production secret/CORS configuration fails closed. | `backend/src/main/java/com/upiq/auth/`, `backend/src/main/java/com/upiq/config/`, `frontend/src/utils/authFlow.js` |
+| Google Sign-In | Implemented as optional Google OIDC; no live Google credential/provider verification in the latest recorded test run. Existing-email auto-linking is intentionally refused. | `backend/src/main/java/com/upiq/auth/config/`, `GoogleAccountService.java`, `GoogleLoginHandoffService.java`, `frontend/src/utils/googlePopup.js` |
+| Profile/account management | Partial; authenticated profile read exists, but profile edits are browser-local and there is no backend update endpoint. | `UserController.java`, `frontend/src/pages/Profile.jsx`, `frontend/src/context/FinancialContext.jsx` |
+| Transactions/categories/categorization | Implemented; transaction and category ownership is enforced by principal-scoped queries and service checks. Categorization is deterministic. | `backend/src/main/java/com/upiq/transaction/`, `category/`, `frontend/src/pages/Transactions.jsx`, `Categories.jsx` |
+| CSV/PDF import | Implemented for supported CSV headers and digital text PDFs; source-row/rejection accounting and idempotent import exist. No OCR. | `backend/src/main/java/com/upiq/pdf/`, `frontend/src/utils/statementImport.js`, `StatementUploadModal.jsx` |
+| Dashboard/reports | Implemented; backend calculations are per-user and deterministic; report endpoint streams PDF. Browser report history is local. | `backend/src/main/java/com/upiq/financial/dashboard/`, `report/`, `frontend/src/pages/Reports.jsx` |
+| Budgets | Backend account-scoped monthly CRUD and local/demo fallback exist. V4 persistence and Hibernate validation have not been PostgreSQL-verified. | `backend/src/main/java/com/upiq/budget/`, `frontend/src/context/BudgetContext.jsx`, `V4__user_budgets_and_persistent_notifications.sql` |
+| Notifications | Persistent, user-owned inbox; eligible alerts are generated on inbox access and can be read/dismissed. No scheduler or push/email delivery. | `backend/src/main/java/com/upiq/notifications/`, V4 migration, `frontend/src/services/notification.service.js` |
+| Financial Insights | Deterministic user-ledger metrics with optional constrained qualitative Ollama explanation. | `backend/src/main/java/com/upiq/financial/insights/`, `frontend/src/pages/Insights.jsx` |
+| Financial Chat | Bounded intent resolution and deterministic financial context; Ollama generates answer text. History is in-memory frontend state, not durable backend history. | `backend/src/main/java/com/upiq/financial/chat/`, `research/context/`, `frontend/src/pages/AIAssistant.jsx`, `chatSession.js` |
+| Investment suggestions | Deterministic current-month cash-flow summary with general educational prompts and a disclaimer; not suitability advice or return prediction. | `backend/src/main/java/com/upiq/financial/investments/`, `frontend/src/components/insights/InvestmentSuggestions.jsx` |
+| Fraud review | Deterministic large-amount, category-spike, and duplicate signals with reasons/risk levels. Flags are not proof or transaction blocks. | `backend/src/main/java/com/upiq/fraud/`, `frontend/src/components/insights/FraudAlertDrawer.jsx` |
+| Voice assistant | Browser-native speech recognition and synthesis feed the existing authenticated chat flow. Browser/permission/privacy behavior varies. | `frontend/src/utils/voiceAssistant.js`, `frontend/src/pages/AIAssistant.jsx` |
+| Admin dashboard | Admin-protected database aggregate endpoint and read-only account directory. No account-status mutation or operational telemetry. | `backend/src/main/java/com/upiq/admin/`, `UserController.java`, `frontend/src/pages/Admin.jsx` |
+| Database migrations | Flyway V1–V4 and Hibernate `validate` configuration exist. PostgreSQL migration and validation remain release gates. | `backend/src/main/resources/db/migration/`, `application*.yml` |
 
-## Phase 0 — Release and data-safety foundations (P0)
+## Phase 0 — Database and release safety (P0)
 
-### Production configuration and schema rollout
+### V1–V4 PostgreSQL verification
 
-**Purpose:** Ensure production cannot start with known local credentials or silently mutate schema without a controlled rollout.
+**Status:** pending. Migration SQL exists but the current worktree has not completed a fresh PostgreSQL V1–V4 migration plus Hibernate `ddl-auto: validate`. An existing application database has not been migrated.
 
-**Existing evidence:** production JWT configuration is required and validated at startup, but entropy and secret-manager provisioning are operator responsibilities. Production CORS origins are explicitly configured and validated as explicit HTTP(S) origins at startup. Hibernate still uses `ddl-auto: update`; no migration tool is configured. Compose environment comes from the root template, while the frontend template is limited to Vite variables.
+**Work:** establish an isolated PostgreSQL 16 test path with a dedicated role; verify fresh migration success and V4 persistence; test synthetic two-user ownership; verify amount precision, email normalization, constraints/indexes, and migration failure guards. Do not use the existing application database or volume.
 
-**Steps:** generate JWT signing keys with a cryptographically secure generator and provision through a deployment secret manager; add versioned migrations for schema changes; use a migration-first validation mode only after checking the real schema; provide explicit production origins through `UPIQ_CORS_ALLOWED_ORIGINS`.
+For an existing pre-Flyway schema, take and test an approved backup, compare the schema to V1, manually baseline at version 1 only after review, then run V2–V4. Do not enable baseline-on-migrate or assume a baseline marker checks schema compatibility. The runbook documents the intended sequence and current limits.
 
-**Acceptance:** a production-profile startup without required credentials fails closed; migration tests cover a clean schema and upgrade from a representative prior schema; no secret values enter frontend bundles or logs; configured browser origins are explicit and tested.
+### Existing-database rollout
 
-**Prerequisites:** identify the production database/schema and deployment environment. Do not change Hibernate mode until migration coverage exists.
+V1 is the fresh-install baseline; V2 converts validated amounts to `NUMERIC(19,2)`; V3 normalizes/indexes emails; V4 adds user-owned budgets and notifications. Before rollout, verify sequences, row counts, indexes, constraints, amounts, duplicate email preconditions, and post-migration aggregates. A deployment rollback is not a schema rollback; agree on backup/PITR recovery with the database operator.
 
-### Monetary data semantics
+### Production configuration
 
-**Purpose:** Prevent financial values and reports from presenting unsupported currency or precision claims.
+Production requires externally provisioned datasource settings, a suitable JWT key, and explicit CORS origins. JWT configuration checks presence/byte length/HMAC compatibility and rejects the known development fallback; it cannot prove randomness. Production CORS rejects missing, malformed, or wildcard origins. Admin bootstrap is opt-in; the operator must disable its flag and remove temporary values after provisioning. Never put server secrets in frontend variables.
 
-**Existing evidence:** transactions are INR-only; monetary backend storage uses `BigDecimal`, database storage uses `NUMERIC(19,2)`, and API amounts are decimal strings. Exact browser-side ledger/report/budget totals use integer minor units. No transaction currency metadata or exchange conversion exists.
+**Acceptance:** isolated PG V1–V4 and Hibernate validation pass; the existing-database baseline plan has operator approval; pre/post checks and recovery are documented; production configuration is exercised without exposing values.
 
-**Steps:** retain the INR-only contract. If multi-currency is later approved, design explicit currency metadata and conversion separately; never infer conversion from locale or a display preference.
+## Phase 1 — Core workflow verification (P1)
 
-**Acceptance:** amounts use a fixed decimal representation; each displayed or reported total has a known currency; import/edit tests preserve currency; migration tests cover existing records without inventing provenance.
+### Statement parser coverage
 
-**Status:** the product decision is INR-only for this version; multi-currency is not implemented.
+**Status:** supported parsing/import flows exist. CSV and digital-PDF fixtures cover common validation paths, including strict amount grouping/dates and rejected-row metadata; parser matching remains heuristic.
 
-## Phase 1 — Core ledger and imports (P1)
+**Work:** add representative synthetic fixtures for more bank layouts, multi-page PDFs, row continuation, duplicate imports, mixed valid/rejected rows, and persistence failures. Keep PDF coverage distinct from CSV semantics. OCR for scanned images is not implemented; consider it only after a privacy/retention review.
 
-### Browser CSV statement import
+**Acceptance:** valid rows persist exactly once; invalid rows remain accounted for and never persist; source indexes/reasons are stable; user isolation is tested against PostgreSQL; OCR is not claimed unless implemented and tested.
 
-**Status:** backend parser/import path exists; active browser selection accepts PDF and CSV.
+### Runtime/authenticated regression
 
-**Purpose/behavior:** let users upload a supported CSV, preview parsed rows, correct/reject candidates, and persist only explicit user-approved rows.
+**Status:** source and focused tests exist, but no full browser-to-PostgreSQL workflow was run in the latest verification.
 
-**Relevant modules:** `ParserController`, `CSVParserService`, `AIPDFParserService`, `StatementImportService`, `frontend/src/components/transactions/StatementUploadModal.jsx`, `frontend/src/services/pdf.service.js`, `frontend/src/utils/statementImport.js`.
+**Work:** verify registration/login, Google OIDC with approved test credentials, transaction CRUD/import, categorization, dashboard/report, budgets, notifications, insights, chat, admin denials, and voice permission/unsupported states in an isolated staging environment.
 
-**Steps:** keep supported headers and size limits documented; retain the preview/correction flow, per-row duplicate/rejection/import results, user scoping, idempotent row identity, and sanitized parser logs; add PDF-specific fixtures independently of CSV validation.
+**Acceptance:** authenticated user A cannot read/write user B's financial data; failed API mutations do not appear successful in the UI; success/count responses match backend results.
 
-**Tests/acceptance:** header aliases, quoted delimiters, malformed rows, date/amount edge cases, duplicate upload, user isolation, preview edits, partial failures, and no import before confirmation. Generated PDF fixtures currently cover basic extraction, missing dates, and malformed-amount rejection; broaden real-template, multi-page, mixed-row, duplicate, and persistence-failure coverage independently of CSV tests. No parser row may silently become a current-date transaction. The undocumented 1,000,000 PDF amount ceiling has been removed; no business rule justified retaining it.
+## Phase 2 — Profile and persistent conversation decisions (P2)
 
-### Parser accuracy and OCR
+### Profile updates
 
-**Status:** planned. Current PDFBox path extracts text only and uses statement-dependent heuristics.
+**Status:** profile GET exists; frontend edits update local state only. No profile write API exists.
 
-**Steps:** collect consented synthetic/anonymized fixtures from supported layouts; report confidence and ambiguous fields; consider OCR only with privacy/storage/retention controls; keep user review before save.
+**Work:** define editable fields, uniqueness/verification requirements, audit/privacy expectations, and server validation; add authenticated owner-only update endpoint only after those requirements are approved.
 
-**Acceptance:** fixture-based parsing precision/recall is measured per field and format; low-confidence candidates are visibly flagged; scan/image PDFs are not reported as successfully parsed when no text is extracted.
+**Acceptance:** changes persist across devices and sessions, cannot change roles, and email changes have a verification/uniqueness flow.
 
-## Phase 2 — Explainable categorization assistance (P2)
+### Chat retention
 
-### AI-powered transaction categorization
+**Status:** messages are keyed by session/user in frontend state and survive in-app page navigation; logout/session expiry clears them. Reload/browser restart loses history; there is no server chat-history table/API.
 
-**Status:** planned. Current `SmartCategorizationService` is deterministic rule/phrase matching and returns `Uncategorized` when confidence is low. It does not call an AI model.
+**Work:** decide whether durable history is needed. If yes, define deletion, retention, encryption/access, user isolation, and prompt-data minimization before schema/API work.
 
-**Purpose/behavior:** optionally propose a category from a controlled per-user category list when deterministic rules cannot confidently assign one; never silently override an explicit user category.
+## Phase 3 — Budgets, forecasts, and notifications (P2)
 
-**Implementation steps:**
+### Budgets and forecasts
 
-1. Measure deterministic misclassification and abstention using consented, de-identified fixtures.
-2. Define an allowlisted category schema, confidence threshold, timeout, and safe abstain path.
-3. Evaluate local Ollama or another approved model without sending unnecessary identifiers or full account history.
-4. Present low-confidence proposals for user confirmation; record whether the suggestion was accepted only if the user opts in.
-5. Preserve deterministic rules as fallback and provide a way to correct categories.
+**Status:** account-scoped budget endpoints and a V4 table are implemented in source; local/demo budget behavior remains. PostgreSQL persistence has not been verified. Month-end projections are simple run-rate calculations, not AI predictions.
 
-**Tests/acceptance:** known fixtures yield schema-valid categories; ambiguous/unknown/timeout/malformed output abstains; explicit category edits win; one user's category data never appears in another user's prompt; no suggestion is represented as verified fact.
+**Work:** complete migration and two-user tests; define timezone/month semantics; validate edits/imports and zero/empty cases; evaluate an advanced forecast only after an accurate data baseline and uncertainty approach are defined.
 
-**Prerequisites:** privacy review, model/runtime capacity, baseline labeled fixtures, and product approval for any external model provider.
+**Acceptance:** CRUD is persistent and isolated, arithmetic stays decimal-safe, duplicate month/category budgets are rejected consistently, and forecasts disclose their simple assumptions.
 
-## Phase 3 — Durable budgets and validated forecasts (P2)
+### Notification delivery
 
-### Cloud budget sync
+**Status:** persisted records, user scoping, event-key deduplication, read/dismiss actions, and budget/spending thresholds are implemented. The inbox request triggers eligible generation. Scheduling, push/email, preferences, and quiet hours do not exist.
 
-**Status:** planned; current budgets use browser localStorage.
+**Work:** decide whether event-driven background generation or external delivery is required; define consent, frequency, retention, and sensitive-content policy before adding a scheduler/provider.
 
-**Purpose/behavior:** persist category/month budgets under the authenticated owner so preferences can follow an account across devices.
+**Acceptance:** no duplicate event records, owner-only access, explicit delivery failures/preferences if delivery is added, and no sensitive lock-screen content by default.
 
-**Steps:** decide month/currency/category semantics; add owner-scoped schema and CRUD endpoints with migrations; handle local-to-server merge conflicts; preserve read-only local behavior offline; never sync across users.
+## Phase 4 — AI quality and reliability (P1/P2)
 
-**Tests/acceptance:** authorization tests for every operation, migration tests, merge/conflict and offline tests, month-boundary tests, and verified persistence across sessions/devices.
+**Status:** Financial Chat uses bounded intents, deterministic calculations, and verified user-scoped context. Ollama is optional for answer text. Insights/investment numeric results are deterministic; qualitative explanations can fall back if Ollama is unavailable. No score/statistical evaluation supports claims of answer quality.
 
-### Advanced budget prediction
+**Work:** maintain explicit supported/unsupported intents; expand only with deterministic formulas and test fixtures; verify user isolation and model unavailability; measure queue/connect/generation time; keep raw transactions and unnecessary identifiers out of prompts; evaluate outputs for unsupported claims. Ollama live tests remain opt-in and require a permitted loopback/network environment.
 
-**Status:** planned. Current estimate extrapolates current-month spending locally; it is not AI-generated or server-validated.
+**Historical performance observation:** earlier synthetic runs against local `llama3.1:8b` observed answer generation around 35–57 seconds for tested long responses; fixed token caps truncated some answers and were not kept. This is historical, not a current latency guarantee. Re-measure in the intended runtime before making performance claims.
 
-**Purpose/behavior:** offer a clearly labeled forecast with horizon, inputs, uncertainty, and known missing-data limitations.
+## Phase 5 — Investment, fraud, and admin follow-up (P2/P3)
 
-**Steps:** first establish reliable currency and complete transaction-history coverage; define baselines and evaluation protocol; compare simple statistical baselines before considering ML; show uncertainty and exclude sparse/incomplete histories.
+### Investment Suggestions
 
-**Tests/acceptance:** held-out time-based evaluation, cold-start and sparse-history behavior, month/year/time-zone boundaries, reproducibility, and user-visible disclosure that a forecast is not guaranteed. Do not cap output or call truncation a complete result in any AI explanation.
+**Status:** implemented as deterministic current-month cash-flow summaries and general education. It is not a personalized portfolio/suitability recommendation service and does not guarantee returns.
 
-**Prerequisites:** durable budgets/history, currency semantics, and a measured baseline. No model choice or performance claim is established now.
+**Work:** gather product/legal/privacy approval before expanding to personalized recommendations or instrument/market data. Keep any numbers calculated and sourced deterministically.
 
-## Phase 4 — Financial Assistant quality and reliability (P1/P2)
+### Fraud review
 
-**Status:** bounded intents and grounded System C are implemented. `FinancialChatIntentResolver` selects supported questions; deterministic services compute financial facts; `SystemCService` uses verified context; generic education follows a separate prompt. Ollama retry policy has at most two attempts; default timeout is 60 seconds and frontend Financial Chat timeout is 125 seconds.
+**Status:** deterministic rules flag high amounts, category spikes, and possible duplicate expenses with explanations. Alerts are not a trained fraud model, proof of fraud, or payment block. Some review signals are also inserted into the persistent notification inbox.
 
-**Planned work:** expand intents only with deterministic formulas and explicit unsupported responses; preserve the provenance/definitions shown with answers; keep raw transactions out of model prompts when aggregate facts suffice; measure prompt/load/generation time separately; add cancellable bounded live tests; retain a clear service-unavailable result when generation times out.
+**Work:** review false positives with synthetic data and risk owners; define whether resolution/feedback should persist and how incidents are audited. Do not add a model or external service without privacy/product approval.
 
-**Tests/acceptance:** intent resolver/dispatcher tests, per-user isolation, no invented currency/merchant claims, short/unsupported/no-data/Ollama-error cases, output completeness review, and timeout tests using deterministic transport mocks. Live Ollama tests remain opt-in and synthetic; hard-bound the external process and never claim a chat is fixed until an authenticated real request succeeds.
+### Admin operations
 
-**Prior observed performance:** local `llama3.1:8b` produced warm synthetic answers around 5.9 generated tokens/second; uncapped 212–307 token answers could take roughly 35–57 seconds. Limits of 160 and 256 tokens truncated tested responses, so prompt-only concision was selected; do not introduce a fixed output cap without `done_reason` detection and quality evaluation.
+**Status:** `GET /api/admin/dashboard` returns aggregate platform metrics and is admin-only. The separate `/api/v1/users` directory/lookups are admin-protected. Frontend is read-only and shows account status but cannot change it. No transaction-level monitoring, service/model telemetry, audit-event history, or retraining controls are implemented.
 
-## Phase 5 — Security monitoring, admin observability, and notifications (P2/P3)
+**Work:** define least-privilege admin roles, audit requirements, and approved actions before adding account controls or operational telemetry. Preserve aggregate-only dashboard privacy.
 
-### Fraud/unusual-transaction detection
+## Phase 6 — Voice, browser behavior, and research evaluation (P3)
 
-**Status:** planned; current Insights says fraud monitoring is upcoming. No detector, risk API, or dispute workflow is implemented.
+### Voice
 
-**Steps:** define user-consented signals and false-positive handling; start with interpretable deterministic rules; isolate any model service; present alerts as review suggestions, never as proof of fraud; add dismiss/feedback and incident audit controls.
+**Status:** browser-native speech input/playback is implemented through existing authenticated Financial Chat. Recognition is configured for English (India); microphone permission and browser speech APIs are required. Speech recognition may be provided by the browser/vendor and is not guaranteed to run entirely on device.
 
-**Acceptance:** synthetic known/unknown anomaly fixtures, bias/false-positive review, per-user isolation, explainable signal details, and no claim of a blocked transaction unless the payment rail actually rejected it.
+**Work:** document supported browser versions/privacy behavior, test denied permission/unsupported APIs, and verify keyboard/screen-reader access. Do not add paid speech services without product approval.
 
-The earlier feature list mentioned a Graph Neural Network microservice as one possible architecture. That is an unvalidated proposal, not an implementation choice; compare it with simpler explainable baselines before selecting a model or adding a service.
+### Research
 
-### Investment recommendations
+**Status:** the A/B/C benchmark runner and synthetic data are checked in; answer-quality scoring and statistical conclusions are not.
 
-**Status:** planned only; there is no investment/portfolio recommendation service or validated investment data model.
+**Work:** define ground truth, evaluation protocol, blinded review, and sample-size plan; separate generation failure from inaccurate response; keep live runs synthetic, bounded, and output paths unique.
 
-**Steps:** decide whether this product should offer educational information or personalized recommendations; obtain legal/privacy review before personalized advice; document supported instruments, assumptions, risk tolerance, and suitability boundaries; avoid claiming returns or executing trades.
+**Selected synthetic fixture references:** Q001 Food August 2026 total 3,620.00 (8 transactions, 27.50%); Q006 July/August totals 11,356.00/13,166.00 (difference 1,810.00, 15.94%); Q011 largest August expense 2,100.00. These are fixture facts, not user financial data or model-quality results. Resources: `backend/src/main/resources/research/questions/benchmark-questions.json`, `dataset/profiles.json`, `dataset/transactions.json`, `experiment-case-selection.json`; fixture adapter: `backend/src/test/java/com/upiq/research/experiment/Checkpoint4ECaseFixture.java`.
 
-**Acceptance:** explanations cite input data and uncertainty, never invent holdings/market data, and clearly distinguish education from advice. Do not expose the feature as active until a reviewed backend contract and evaluation process exist.
+## Development and verification notes
 
-### Admin telemetry and alerts
-
-**Status:** an aggregate-only admin dashboard exists at `GET /api/admin/dashboard`, protected with `ROLE_ADMIN`. It reports account counts and transaction count/income/expense aggregates; it does not provide live service/model/fraud telemetry, audit-event history, or user-level transaction details.
-
-An opt-in first-administrator bootstrap is available through the deployment environment. It only creates an admin when none exists and refuses to promote an existing normal account. See `docs/AUTHENTICATION_SETUP.md`; the bootstrap flag should be disabled after provisioning.
-
-Google OpenID Connect can be enabled using deployment-provided Google OAuth credentials. It is disabled by default, does not link existing email accounts automatically, and has not been verified against live Google credentials.
-
-**Steps:** add operational telemetry only after defining least-privilege scopes, retention, audit events, and alert ownership. Keep aggregate metrics separate from user-level financial data.
-
-**Acceptance:** non-admin access denied at API level; no transaction content in metrics/logs; displayed values link to an actual supported service endpoint.
-
-### Notifications and voice
-
-**Status:** an on-demand authenticated notification API compares each user's expense-category totals for this month with last month. The header can display and dismiss current results in memory. There is no notification table, preference API, durable read/dismiss history, scheduling, or push delivery. Browser speech output exists; voice input is not present.
-
-**Steps:** before persistence or push delivery, define consent, notification preferences, quiet hours, retention, and delivery policy. Voice input requires browser support disclosure and explicit microphone permission.
-
-**Acceptance:** opt-in/out, quiet hours, no sensitive amounts on lock screens by default, delivery-failure states, keyboard/screen-reader access, and browser permission-denied coverage.
-
-## Phase 6 — Research evaluation and contributor workflow (P3)
-
-**Status:** the A/B/C benchmark runner and synthetic data are checked in; answer-quality scoring and statistics are not.
-
-**Steps:** define preregistered questions/metrics, ground truth, blind review, and a sample-size plan; maintain prompt/model/runtime metadata; use unique result filenames; separate exploratory runs from claims.
-
-**Acceptance:** reproducible fixture calculations; explicit distinction between generation failures and incorrect answers; answer-completeness/grounding metrics; confidence intervals or other justified statistics before making system comparisons.
-
-**Selected fixture references:** Q001 Food August 2026 total 3,620.00 (8 transactions, 27.50%); Q006 July/August 11,356.00/13,166.00 (difference 1,810.00, 15.94%); Q011 largest August expense 2,100.00. Fixture data is synthetic. Resources: `backend/src/main/resources/research/questions/benchmark-questions.json`, `dataset/profiles.json`, `dataset/transactions.json`, `experiment-case-selection.json`; deterministic fixture adapter: `backend/src/test/java/com/upiq/research/experiment/Checkpoint4ECaseFixture.java`.
-
-## Repository development and verification notes
-
-- Root Compose starts PostgreSQL and backend only; Vite runs separately in local development. Use root `docker-compose.yml` and the configured project name when operating the existing deployment; never assume the nested Compose file matches runtime configuration.
-- Environment templates: root `.env.example` for Compose; `backend/.env.example` for backend development; `frontend/.env.example` only for Vite `VITE_*` settings. Never put server secrets in frontend env files or bundle variables.
-- Backend checks: `cd backend; .\mvnw.cmd test` where Maven Wrapper is available. Frontend checks: `cd frontend; npm test; npm run build; npm run lint`. The current frontend unit convention is Node's built-in `node --test`; there is no configured browser end-to-end framework.
-- Keep migrations, tests, dependency manifests/lockfiles, active benchmark JSON resources, and opt-in experiment fixtures. `research-results/` is Git-ignored runtime output; preserve local artifacts unless their owner explicitly requests deletion.
-- Before publishing: inspect `git status`, run relevant suites and `git diff --check`, keep `.env`, credentials, `node_modules`, `target`, `dist`, model files, and local result artifacts out of versioned changes. Do not delete unrelated untracked user work as cleanup.
+- Root `docker-compose.yml` starts PostgreSQL and backend; frontend runs separately through Vite. The nested Docker Compose file is not the root development stack.
+- Root `.env.example` is for Compose interpolation, `backend/.env.example` is for backend environment setup, and `frontend/.env.example` contains public Vite values only.
+- Backend: from `backend`, run `.\mvnw.cmd test`. Frontend: from `frontend`, run `npm test`, `npm run lint`, and `npm run build`. Frontend tests use Node's built-in `node --test`; no browser end-to-end framework is configured.
+- Latest recorded verification: frontend 193 passed and build passed; backend 334 tests, 0 assertion failures, 5 Ollama loopback setup errors, 3 skipped. The backend suite is not fully passing. Database migration/schema validation remains unverified.
+- Keep `.env`, credentials, `node_modules`, `target`, `dist`, model files, and local experiment output out of version control. Preserve unrelated untracked work; do not use cleanup commands as part of routine verification.

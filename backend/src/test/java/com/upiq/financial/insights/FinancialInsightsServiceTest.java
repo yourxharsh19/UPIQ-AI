@@ -1,108 +1,133 @@
 package com.upiq.financial.insights;
 
+import com.upiq.budget.repository.BudgetRepository;
+import com.upiq.research.context.FinancialContext;
+import com.upiq.research.llm.SystemCResponse;
 import com.upiq.research.llm.SystemCService;
 import com.upiq.transaction.model.Transaction;
 import com.upiq.transaction.repository.TransactionRepository;
-import com.upiq.research.context.FinancialContext;
-import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
-import java.time.YearMonth;
+import org.mockito.ArgumentCaptor;
+
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 class FinancialInsightsServiceTest {
+    private final TransactionRepository transactions = mock(TransactionRepository.class);
+    private final BudgetRepository budgets = mock(BudgetRepository.class);
+    private final SystemCService ollama = mock(SystemCService.class);
+    private final FinancialInsightsService service = new FinancialInsightsService(transactions, budgets, ollama);
+
     @Test
-    void aggregatesOnlyCurrentUserCurrentMonthFactsAndFallsBackWithoutOllama() {
-        TransactionRepository repository = mock(TransactionRepository.class);
-        SystemCService ollama = mock(SystemCService.class);
+    void computesExactCurrentAndPreviousMonthAggregatesForTheRequestedUser() {
         YearMonth month = YearMonth.now();
-        when(repository.findByUserIdAndDateBetweenOrderByDateDesc(org.mockito.ArgumentMatchers.eq(12L), any(), any())).thenReturn(List.of(
-                tx(12L, "income", "Salary", 10000, month),
-                tx(12L, "expense", "Food", 1200, month),
-                tx(12L, "expense", "Rent", 3000, month),
-                tx(12L, "expense", "Food", 800, month)));
+        when(transactions.findByUserIdAndDateBetweenOrderByDateDesc(eq(12L), any(), any())).thenReturn(List.of(
+                tx("income", "Salary", "10000.00", month.atDay(3).atTime(12, 0)),
+                tx("expense", "Food", "1200.50", month.atDay(4).atStartOfDay()),
+                tx("expense", "Rent", "3000.00", month.atDay(5).atStartOfDay()),
+                tx("expense", "Food", "800.25", month.atDay(6).atStartOfDay()),
+                tx("expense", "Food", "4000.00", month.minusMonths(1).atDay(3).atStartOfDay())));
+        when(budgets.findByUser_IdAndPeriodStartOrderByCategoryAsc(eq(12L), eq(month.atDay(1)))).thenReturn(List.of());
         when(ollama.answer(anyString(), any())).thenThrow(new IllegalStateException("unavailable"));
-        var response = new FinancialInsightsService(repository, ollama).getInsights(12L);
+
+        FinancialInsightsResponse response = service.getInsights(12L);
+
         assertEquals("10000.00", response.getIncome().toPlainString());
-        assertEquals("5000.00", response.getExpenses().toPlainString());
-        assertEquals("5000.00", response.getNet().toPlainString());
+        assertEquals("5000.75", response.getExpenses().toPlainString());
+        assertEquals("4999.25", response.getNet().toPlainString());
+        assertEquals("4000.00", response.getPreviousMonthExpenses().toPlainString());
+        assertEquals("1000.75", response.getExpenseChange().toPlainString());
+        assertEquals("25.02", response.getExpenseChangePercentage().toPlainString());
         assertEquals("Rent", response.getTopExpenseCategory());
-        assertEquals("3000.0", response.getTopExpenseCategoryTotal().toPlainString());
+        assertEquals("3000.00", response.getTopExpenseCategoryTotal().toPlainString());
+        assertEquals("Food", response.getCategoryBreakdown().get(1).category());
+        assertEquals("2000.75", response.getCategoryBreakdown().get(1).total().toPlainString());
         assertFalse(response.isAiGenerated());
+
         ArgumentCaptor<FinancialContext> context = ArgumentCaptor.forClass(FinancialContext.class);
         verify(ollama).answer(anyString(), context.capture());
         assertEquals("10000.00", context.getValue().getFacts().getTotalIncome().toPlainString());
-        assertEquals("5000.00", context.getValue().getFacts().getTotalExpense().toPlainString());
-        assertEquals("5000.00", context.getValue().getFacts().getNetBalance().toPlainString());
-        assertEquals("Rent", context.getValue().getFacts().getCategory1());
-        org.mockito.Mockito.verify(repository).findByUserIdAndDateBetweenOrderByDateDesc(
-                eq(12L), eq(month.atDay(1).atStartOfDay()),
-                eq(month.atEndOfMonth().plusDays(1).atStartOfDay().minusNanos(1)));
+        assertEquals("5000.75", context.getValue().getFacts().getTotalExpense().toPlainString());
+        assertEquals("4000.00", context.getValue().getFacts().getBaselineTotal().toPlainString());
+        verify(transactions).findByUserIdAndDateBetweenOrderByDateDesc(eq(12L),
+                eq(month.minusMonths(1).atDay(1).atStartOfDay()),
+                eq(month.plusMonths(1).atDay(1).atStartOfDay().minusNanos(1)));
+        verify(budgets).findByUser_IdAndPeriodStartOrderByCategoryAsc(12L, month.atDay(1));
     }
 
     @Test
-    void emptyHistoryProducesZeroTotalsWithoutCallingOllama() {
-        TransactionRepository repository = mock(TransactionRepository.class);
-        SystemCService ollama = mock(SystemCService.class);
+    void emptyHistoryReturnsExactZerosAndSkipsOllama() {
         YearMonth month = YearMonth.now();
-        when(repository.findByUserIdAndDateBetweenOrderByDateDesc(eq(12L), any(), any())).thenReturn(List.of());
+        when(transactions.findByUserIdAndDateBetweenOrderByDateDesc(eq(12L), any(), any())).thenReturn(List.of());
+        when(budgets.findByUser_IdAndPeriodStartOrderByCategoryAsc(eq(12L), any())).thenReturn(List.of());
 
-        var response = new FinancialInsightsService(repository, ollama).getInsights(12L);
+        FinancialInsightsResponse response = service.getInsights(12L);
 
         assertEquals("0.00", response.getIncome().toPlainString());
         assertEquals("0.00", response.getExpenses().toPlainString());
-        assertEquals("0.00", response.getNet().toPlainString());
+        assertEquals("0.00", response.getPreviousMonthExpenses().toPlainString());
         assertNull(response.getTopExpenseCategory());
+        assertTrue(response.getCategoryBreakdown().isEmpty());
         assertFalse(response.isAiGenerated());
-        org.mockito.Mockito.verifyNoInteractions(ollama);
-        verify(repository).findByUserIdAndDateBetweenOrderByDateDesc(
-                eq(12L), eq(month.atDay(1).atStartOfDay()),
-                eq(month.atEndOfMonth().plusDays(1).atStartOfDay().minusNanos(1)));
+        verifyNoInteractions(ollama);
+        verify(transactions).findByUserIdAndDateBetweenOrderByDateDesc(eq(12L),
+                eq(month.minusMonths(1).atDay(1).atStartOfDay()),
+                eq(month.plusMonths(1).atDay(1).atStartOfDay().minusNanos(1)));
     }
 
     @Test
-    void tiedCategoriesUseStableNameOrder() {
-        TransactionRepository repository = mock(TransactionRepository.class);
-        SystemCService ollama = mock(SystemCService.class);
+    void rejectsModelExplanationsContainingUnsupportedFigures() {
         YearMonth month = YearMonth.now();
-        when(repository.findByUserIdAndDateBetweenOrderByDateDesc(eq(12L), any(), any())).thenReturn(List.of(
-                tx(12L, "expense", "Rent", 1000, month),
-                tx(12L, "expense", "Food", 1000, month),
-                tx(12L, "expense", " ", 500, month)));
-        when(ollama.answer(anyString(), any())).thenThrow(new IllegalStateException("unavailable"));
+        when(transactions.findByUserIdAndDateBetweenOrderByDateDesc(eq(12L), any(), any()))
+                .thenReturn(List.of(tx("expense", "Food", "100.00", month.atDay(1).atStartOfDay())));
+        when(budgets.findByUser_IdAndPeriodStartOrderByCategoryAsc(eq(12L), any())).thenReturn(List.of());
+        when(ollama.answer(anyString(), any())).thenReturn(SystemCResponse.builder()
+                .answer("You may save 500 rupees next month.").build());
 
-        var response = new FinancialInsightsService(repository, ollama).getInsights(12L);
+        FinancialInsightsResponse response = service.getInsights(12L);
 
+        assertFalse(response.isAiGenerated());
+        assertEquals("The figures and observations below are calculated from your recorded transactions.", response.getExplanation());
+    }
+
+    @Test
+    void acceptsQualitativeExplanationButFinancialFiguresRemainDeterministic() {
+        YearMonth month = YearMonth.now();
+        when(transactions.findByUserIdAndDateBetweenOrderByDateDesc(eq(12L), any(), any()))
+                .thenReturn(List.of(tx("expense", "Food", "100.00", month.atDay(1).atStartOfDay())));
+        when(budgets.findByUser_IdAndPeriodStartOrderByCategoryAsc(eq(12L), any())).thenReturn(List.of());
+        when(ollama.answer(anyString(), any())).thenReturn(SystemCResponse.builder()
+                .answer("Review the largest spending areas and compare them with your monthly plan.").build());
+
+        FinancialInsightsResponse response = service.getInsights(12L);
+
+        assertTrue(response.isAiGenerated());
+        assertEquals("100.00", response.getExpenses().toPlainString());
         assertEquals("Food", response.getTopExpenseCategory());
-        assertEquals("1000.0", response.getTopExpenseCategoryTotal().toPlainString());
     }
 
     @Test
-    void blankCategoryIsReportedAsUncategorizedWhenItHasTheLargestExpense() {
-        TransactionRepository repository = mock(TransactionRepository.class);
-        SystemCService ollama = mock(SystemCService.class);
+    void previousMonthZeroHasNoUndefinedPercentage() {
         YearMonth month = YearMonth.now();
-        when(repository.findByUserIdAndDateBetweenOrderByDateDesc(eq(12L), any(), any())).thenReturn(List.of(
-                tx(12L, "expense", " ", 1500, month)));
+        when(transactions.findByUserIdAndDateBetweenOrderByDateDesc(eq(12L), any(), any()))
+                .thenReturn(List.of(tx("expense", "Food", "1.25", month.atDay(1).atStartOfDay())));
+        when(budgets.findByUser_IdAndPeriodStartOrderByCategoryAsc(eq(12L), any())).thenReturn(List.of());
         when(ollama.answer(anyString(), any())).thenThrow(new IllegalStateException("unavailable"));
 
-        var response = new FinancialInsightsService(repository, ollama).getInsights(12L);
+        FinancialInsightsResponse response = service.getInsights(12L);
 
-        assertEquals("Uncategorized", response.getTopExpenseCategory());
-        assertEquals("1500.0", response.getTopExpenseCategoryTotal().toPlainString());
+        assertNull(response.getExpenseChangePercentage());
+        assertEquals("1.25", response.getExpenses().toPlainString());
     }
 
-    private static Transaction tx(Long user, String type, String category, double amount, YearMonth month) {
-        return Transaction.builder().userId(user).type(type).category(category).amount(BigDecimal.valueOf(amount))
-                .date(month.atDay(3).atStartOfDay()).build();
+    private static Transaction tx(String type, String category, String amount, LocalDateTime date) {
+        return Transaction.builder().userId(12L).type(type).category(category)
+                .amount(new BigDecimal(amount)).date(date).build();
     }
 }

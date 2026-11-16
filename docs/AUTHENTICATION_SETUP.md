@@ -23,7 +23,7 @@ The OAuth callback opens in a popup and posts a short-lived, single-use opaque c
 
 ## Provision the first administrator
 
-Bootstrap is disabled by default. It creates one account only if no `ROLE_ADMIN` exists. If the requested email belongs to an existing normal account, startup fails safely; it does not promote that account. If an admin already exists, credentials are never overwritten. Use a unique account email or provision role changes through a separately reviewed operational process.
+Bootstrap is disabled by default. It creates one account only if no `ROLE_ADMIN` exists. If the requested email belongs to an existing normal account, startup fails safely; it does not promote that account. If an admin already exists, credentials are never overwritten. The runner does not automatically clear the enable flag or credentials; the operator must disable bootstrap and remove temporary values after provisioning. Use a unique account email or provision role changes through a separately reviewed operational process.
 
 Set these variables in the backend environment:
 

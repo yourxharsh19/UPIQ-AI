@@ -78,8 +78,8 @@ export const Home = () => {
       id: 'security-radar',
       icon: ShieldAlert,
       title: 'Fraud Monitoring',
-      desc: 'Backend-powered fraud monitoring and transaction blocking are not currently available.',
-      badge: 'Not connected',
+      desc: 'Review explainable transaction anomaly signals from your recent account activity. Signals are not proof of fraud.',
+      badge: 'Review signals',
     },
   ];
 
@@ -102,7 +102,7 @@ export const Home = () => {
     {
       icon: UserCheck,
       title: 'Role-Aware Admin View',
-      desc: 'The frontend limits access to the Admin view by role. Live platform administration APIs are not connected.',
+      desc: 'Administrators can review platform aggregates and a read-only account directory. Account changes and transaction-level views are not available.',
     },
   ];
 

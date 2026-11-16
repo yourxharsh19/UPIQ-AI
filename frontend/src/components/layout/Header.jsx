@@ -31,7 +31,6 @@ import { NotificationService } from '../../services/notification.service.js';
 import { getAuthSessionMode } from '../../utils/authFlow.js';
 import {
   getFeatureSessionKey,
-  getUndismissedNotifications,
   isCurrentFeatureRequest,
 } from '../../utils/featureSession.js';
 
@@ -42,9 +41,11 @@ export const Header = ({ onOpenAddTxModal }) => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [notificationsSessionKey, setNotificationsSessionKey] = useState('');
-  const [dismissedNotificationIds, setDismissedNotificationIds] = useState([]);
   const [notificationMessage, setNotificationMessage] = useState('');
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [notificationActionId, setNotificationActionId] = useState(null);
+  const [notificationActionError, setNotificationActionError] = useState('');
   const userMenuRef = useRef(null);
   const notificationRequestRef = useRef({ id: 0, sessionKey: '' });
 
@@ -68,7 +69,7 @@ export const Header = ({ onOpenAddTxModal }) => {
     };
   }
   const sessionNotifications = notificationsSessionKey === notificationSessionKey ? notifications : [];
-  const activeNotifications = getUndismissedNotifications(sessionNotifications, dismissedNotificationIds);
+  const activeNotifications = sessionNotifications;
 
   // Close user dropdown on outside click
   useEffect(() => {
@@ -100,9 +101,11 @@ export const Header = ({ onOpenAddTxModal }) => {
   useEffect(() => {
     setNotifications([]);
     setNotificationsSessionKey('');
-    setDismissedNotificationIds([]);
     setNotificationMessage('');
     setNotificationsLoading(false);
+    setUnreadNotificationCount(0);
+    setNotificationActionId(null);
+    setNotificationActionError('');
     setIsNotificationsOpen(false);
   }, [profile?.id, profile?.email, profile?.role, sessionMode]);
 
@@ -124,15 +127,47 @@ export const Header = ({ onOpenAddTxModal }) => {
     setNotificationMessage('');
     try {
       const response = await NotificationService.getNotifications();
-      if (!response?.success || !Array.isArray(response.data)) throw new Error('Invalid notifications response');
+      const unreadResponse = await NotificationService.getUnreadCount();
+      if (!response?.success || !Array.isArray(response.data)
+        || !unreadResponse?.success || !Number.isInteger(unreadResponse.data) || unreadResponse.data < 0) {
+        throw new Error('Invalid notifications response');
+      }
       if (!isCurrentFeatureRequest(request, notificationRequestRef.current)) return;
       setNotifications(response.data);
+      setUnreadNotificationCount(unreadResponse.data);
       setNotificationsSessionKey(request.sessionKey);
     } catch {
       if (!isCurrentFeatureRequest(request, notificationRequestRef.current)) return;
       setNotificationMessage('Notifications could not be loaded.');
     } finally {
       if (isCurrentFeatureRequest(request, notificationRequestRef.current)) setNotificationsLoading(false);
+    }
+  };
+
+  const updateNotification = async (notification, action) => {
+    if (!notification?.id || notificationActionId != null) return;
+    setNotificationActionError('');
+    setNotificationActionId(notification.id);
+    const request = { id: notificationRequestRef.current.id, sessionKey: notificationSessionKey };
+    try {
+      const response = action === 'read'
+        ? await NotificationService.markRead(notification.id)
+        : await NotificationService.dismiss(notification.id);
+      if (!response?.success || !response.data || !isCurrentFeatureRequest(request, notificationRequestRef.current)) {
+        throw new Error('Notification action failed');
+      }
+      if (action === 'dismiss') {
+        setNotifications((current) => current.filter((item) => item.id !== notification.id));
+      } else {
+        setNotifications((current) => current.map((item) => item.id === notification.id ? response.data : item));
+      }
+      if (!notification.read) setUnreadNotificationCount((count) => Math.max(0, count - 1));
+    } catch {
+      if (isCurrentFeatureRequest(request, notificationRequestRef.current)) {
+        setNotificationActionError('That notification could not be updated. Please retry.');
+      }
+    } finally {
+      setNotificationActionId(null);
     }
   };
 
@@ -240,17 +275,18 @@ export const Header = ({ onOpenAddTxModal }) => {
             <button type="button" onClick={loadNotifications} aria-expanded={isNotificationsOpen} aria-label="Open spending notifications"
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--border-base)] text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--bg-surface)]">
               <Bell className="w-3.5 h-3.5" /><span className="hidden sm:inline">Alerts</span>
-              {activeNotifications.length > 0 && <span className="rounded-full bg-blue-600 px-1.5 text-[10px] text-white">{activeNotifications.length}</span>}
+              {unreadNotificationCount > 0 && <span className="rounded-full bg-blue-600 px-1.5 text-[10px] text-white">{unreadNotificationCount}</span>}
             </button>
             {isNotificationsOpen && <div className="absolute right-0 top-10 z-40 w-80 max-w-[90vw] rounded-xl border border-[var(--border-base)] bg-[var(--bg-card)] p-3 shadow-xl">
               <h2 className="text-sm font-semibold text-[var(--text-main)]">Spending notifications</h2>
-              <p className="mb-2 text-[11px] text-[var(--text-muted)]">Generated from your ledger when opened; no push alerts or server-side read history.</p>
+              <p className="mb-2 text-[11px] text-[var(--text-muted)]">Stored spending alerts are generated from your ledger when opened. Push alerts are not enabled.</p>
               {notificationsLoading && <p role="status" className="text-xs text-[var(--text-muted)]">Checking your ledger…</p>}
               {notificationMessage && <p role="status" className="text-xs text-[var(--text-muted)]">{notificationMessage}</p>}
-              {!notificationsLoading && !notificationMessage && activeNotifications.length === 0 && <p className="text-xs text-[var(--text-muted)]">No category meets both alert rules: spending is at least 50% higher and has increased by at least 1,000 compared with the prior month.</p>}
-              <ul className="max-h-64 space-y-2 overflow-auto">{activeNotifications.map((item) => <li key={item.id} className="rounded-lg bg-[var(--bg-surface)] p-2">
-                <p className="text-xs font-medium text-[var(--text-main)]">{item.title}</p><p className="mt-1 text-[11px] text-[var(--text-muted)]">{item.message}</p>
-                <button type="button" onClick={() => setDismissedNotificationIds((current) => [...current, item.id])} className="mt-1 text-[11px] text-blue-600 underline">Dismiss</button>
+              {notificationActionError && <p role="alert" className="text-xs text-rose-600">{notificationActionError}</p>}
+              {!notificationsLoading && !notificationMessage && activeNotifications.length === 0 && <p className="text-xs text-[var(--text-muted)]">No active spending or budget alerts right now.</p>}
+              <ul className="max-h-64 space-y-2 overflow-auto">{activeNotifications.map((item) => <li key={item.id} className={`rounded-lg bg-[var(--bg-surface)] p-2 ${item.read ? 'opacity-75' : 'border-l-2 border-blue-500'}`}>
+                <p className="text-xs font-medium text-[var(--text-main)]">{item.title}{!item.read && <span className="ml-1 text-[10px] text-blue-600">Unread</span>}</p><p className="mt-1 text-[11px] text-[var(--text-muted)]">{item.message}</p>
+                <div className="mt-1 flex gap-3">{!item.read && <button type="button" disabled={notificationActionId === item.id} onClick={() => updateNotification(item, 'read')} className="text-[11px] text-blue-600 underline disabled:opacity-50">Mark read</button>}<button type="button" disabled={notificationActionId === item.id} onClick={() => updateNotification(item, 'dismiss')} className="text-[11px] text-blue-600 underline disabled:opacity-50">Dismiss</button></div>
               </li>)}</ul>
             </div>}
           </div>

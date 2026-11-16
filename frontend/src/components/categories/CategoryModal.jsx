@@ -64,18 +64,23 @@ const CategoryModal = ({ isOpen, onClose, category, onSave }) => {
                 // Category was renamed - move the budget
                 const existingBudget = getBudget(oldName);
                 if (existingBudget) {
-                    deleteBudget(oldName);
-                    setBudget(newName, existingBudget);
+                    await setBudget(newName, existingBudget);
+                    await deleteBudget(oldName);
                 }
             }
 
             // Save/Update budget if provided in the input field
             const amountMinor = parseMoneyMinorUnits(budgetAmount);
+            if (budgetAmount.trim() && amountMinor == null) {
+                throw new Error('Enter a valid budget amount with at most two decimal places.');
+            }
             if (newName && amountMinor != null && amountMinor > 0n) {
-                setBudget(newName, moneyFromMinorUnits(amountMinor));
-            } else if (newName && (amountMinor == null || amountMinor === 0n)) {
+                await setBudget(newName, moneyFromMinorUnits(amountMinor));
+            } else if (newName && amountMinor === 0n) {
                 // Remove budget if cleared
-                deleteBudget(newName);
+                await deleteBudget(newName);
+            } else if (newName && !budgetAmount.trim()) {
+                await deleteBudget(newName);
             }
 
             onClose();
